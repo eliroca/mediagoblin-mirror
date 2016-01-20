@@ -456,6 +456,9 @@ class CollectionMixin(GenerateSlugMixin, GeneratePublicIDMixin):
 
         Use a slug if we have one, else use our 'id'.
         """
+        if self.actor is None:
+            return
+
         creator = self.get_actor
 
         return urlgen(
@@ -622,7 +625,29 @@ class ActivityMixin(GeneratePublicIDMixin):
         if self.target_id is not None:
             obj["target"] = self.target().serialize(request)
 
+        # Audiance targetting
+        if self.to:
+            obj["to"] = self.get_to.serialize(request)["items"]
+        if self.cc:
+            obj["cc"] = self.get_cc.serialize(request)["items"]
+        if self.bto:
+            obj["bto"] = self.get_bto.serialize(request)["items"]
+        if self.bcc:
+            obj["bcc"] = self.get_bcc.serialize(request)["items"]
+
         return obj
+
+    def sanitized_serialize(self, request):
+        """ Serialization for sending over the wire """
+        context = self.serialize(request)
+        
+        # Delete bcc and bto if they're there.
+        if "bto" in context:
+            del context["bto"]
+        if "bcc" in context:
+            del context["bcc"]
+        
+        return context
 
     def unseralize(self, data):
         """
