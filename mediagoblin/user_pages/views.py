@@ -36,6 +36,7 @@ from mediagoblin.user_pages.lib import (send_comment_email,
 from mediagoblin.notifications import trigger_notification, \
     add_comment_subscription, mark_comment_notification_seen
 from mediagoblin.tools.pluginapi import hook_transform
+from mediagoblin.federation.task import federate_activity
 
 from mediagoblin.decorators import (uses_pagination, get_user_media_entry,
     get_media_entry_by_id, user_has_privilege, user_not_banned,
@@ -195,7 +196,7 @@ def media_post_comment(request, media):
             messages.ERROR,
             _("Oops, your comment was empty."))
     else:
-        create_activity("post", comment, comment.actor, target=media)
+        activity = create_activity("post", comment, comment.actor, target=media)
         add_comment_subscription(request.user, media)
         comment.save()
 
@@ -203,6 +204,10 @@ def media_post_comment(request, media):
         link.target = media
         link.comment = comment
         link.save()
+
+        # Federate comment out
+        federate_activity(request.host_url[:-1], activity.id)
+
 
         messages.add_message(
             request, messages.SUCCESS,

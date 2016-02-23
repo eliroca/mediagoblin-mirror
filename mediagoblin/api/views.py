@@ -18,11 +18,14 @@ import json
 import io
 import mimetypes
 
+from dateutil import parser
 from werkzeug.datastructures import FileStorage
 
-from mediagoblin.decorators import oauth_required, require_active_login
+from mediagoblin.decorators import oauth_required, require_active_login, \
+                                   remote_user_oauth
 from mediagoblin.api.decorators import user_has_privilege
-from mediagoblin.db.models import User, LocalUser, MediaEntry, Comment, TextComment, Activity
+from mediagoblin.db.models import User, LocalUser, RemoteUser, MediaEntry, \
+                                  MediaFile, Comment, TextComment, Activity
 from mediagoblin.tools.federation import create_activity, create_generator
 from mediagoblin.tools.routing import extract_url_arguments
 from mediagoblin.tools.response import redirect, json_response, json_error, \
@@ -130,7 +133,7 @@ def uploads_endpoint(request):
 
     return json_error("Not yet implemented", 501)
 
-@oauth_required
+@remote_user_oauth
 @csrf_exempt
 def inbox_endpoint(request, inbox=None):
     """ This is the user's inbox
@@ -143,17 +146,120 @@ def inbox_endpoint(request, inbox=None):
     """
     username = request.matchdict["username"]
     user = LocalUser.query.filter(LocalUser.username==username).first()
-
     if user is None:
         return json_error("No such 'user' with id '{0}'".format(username), 404)
 
+    # Get webfinger of user who's making the request.
+    user_webfinger = request.user.get_public_id(request)
 
     # Only the user who's authorized should be able to read their inbox
-    if user.id != request.user.id:
+    if request.method == "GET" and user.id != request.user.id:
         return json_error(
             "Only '{0}' can read this inbox.".format(user.username),
             403
         )
+
+    # Handle other servers posting things to us.
+    if request.method == "POST":
+        # Convert activity from: JSON -> dict
+        data = json.loads(request.data)
+
+        ##
+        # Verification of activity
+        ##
+
+        # Verify actor exists
+        if "actor" not in data and "id" in data["actor"]:
+            return json_error("Invalid actor", 400)
+
+        # Verify actor is real.
+        if user_webfinger != data["actor"]["id"]:
+            return json_error(
+                "Actor is invalid since {0} is not {1}".format(
+                    user_webfinger,
+                    data["actor"]["id"]
+                )
+            )
+
+        # Verify the activity is remote
+        if not isinstance(request.user, RemoteUser):
+            return json_error("Requester originates on this server", 400)
+
+        # TODO: Verify we're actually a recipient in the audience.
+
+        # Check the object is valid, unfortunately we cannot yet store arbitrary
+        # object types yet so if we don't know the object exists, we should
+        # drop it now.
+        if not ("object" in data and "id" in data["object"]):
+            return json_error("Activity has no object", 400)
+
+        accepted_types = ["image", "person", "comment"]
+        if "objectType" not in data["object"] or data["object"]["objectType"] not in accepted_types:
+            return json_error("Object has invalid type", 400)
+
+        # Create the object prior to the activity.
+        if data["object"]["objectType"] == "image":
+            mg_obj, error = MediaEntry.create(request.user, data["object"])
+        elif data["object"]["objectType"] == "comment":
+            mg_obj, error = TextComment.create(request.user, data["object"])
+        elif data["object"]["objectType"] == "person":
+            # Okay, this could be a local user or a remote user.
+            if "id" not in data["object"]:
+                return json_error("Person missing ID", 400)
+
+            # Extract ID username and host
+            username, host = data["object"]["id"][5:].split("@", 1)
+            if host == request.host:
+                mg_obj = LocalUser.query.filter_by(username=username)
+                if mg_obj is None:
+                    error = "User by {0} does not exist".format(username)
+                else:
+                    error = None
+            else:
+                webfinger = "{0}@{1}".format(username, host)
+                mg_obj = RemoteUser.query.filter_by(webfinger=webfinger)
+                if mg_obj is None:
+                    mg_obj, error = RemoteUser.create(request.user, data["object"]),
+                else:
+                    error = None
+
+        # Handle if creating object caused an error.
+        if error:
+            return json_error(error, 400)
+
+
+        # Create the activity
+        activity, error = Activity.create(request, data, mg_obj)
+
+        # If the activity is invalid, this will return None
+        if error is not None:
+            return json_error(error, 400)
+
+        # Add the activity to the user's inbox
+        user.add_to_inbox(activity)
+
+        # Lets now deal with extra things we're expected to do on certain verbs
+        if activity.verb == "follow":
+            # We need to add the person to the followers collection
+            if not isinstance(mg_obj, User):
+                return json_error("Follow activity must be on a user", 400)
+
+            # We don't need to do anything, if they're not local
+            if isinstance(mg_obj, LocalUser):
+                mg_obj.get_followers.add_to_collection(request.user)
+
+        elif activity.verb == "unfollow":
+            # We need to remove the person from the followers collection.
+            if not isinstance(mg_obj, User):
+                return json_error("Unfollow activity must be on a user", 400)
+
+            # We only care if the user is local
+            if isinstance(mg_obj, LocalUser):
+                mg_obj.get_followers.remove_from_collection(request.user)
+
+        # Return the activity
+        # TODO: Do a serialize here.
+        return json_response(data, status=200)
 
     if inbox is None:
         inbox = Activity.query
@@ -759,6 +865,21 @@ def host_meta(request):
                 qualified=True
             ),
         },
+        {
+            "rel": "dialback",
+            "href": request.urlgen(
+                "mediagoblin.federation.dialback",
+                qualified=True
+            )
+        },
+        {
+            "rel": "lrdd",
+            "type": "application/json",
+            "template": request.urlgen(
+                "mediagoblin.webfinger.well-known.webfinger",
+                qualified=True
+            ) + "?resource={uri}"
+        }
     ]
 
     if "application/json" in request.accept_mimetypes:
@@ -799,32 +920,48 @@ def lrdd_lookup(request):
             return json_error(
                 "Can't find 'user' with username '{0}'".format(username))
 
-        return json_response([
-            {
-                "rel": "http://webfinger.net/rel/profile-page",
-                "href": user.url_for_self(request.urlgen),
-                "type": "text/html"
-            },
-            {
-                "rel": "self",
-                "href": request.urlgen(
-                    "mediagoblin.api.user",
-                    username=user.username,
-                    qualified=True
-                )
-            },
-            {
-                "rel": "activity-outbox",
-                "href": request.urlgen(
-                    "mediagoblin.api.feed",
-                    username=user.username,
-                    qualified=True
-                )
-            }
-        ])
+        return json_response({
+            "links": [
+                {
+                    "rel": "http://webfinger.net/rel/profile-page",
+                    "href": user.url_for_self(request.urlgen),
+                    "type": "text/html"
+                },
+                {
+                    "rel": "dialback",
+                    "href": request.urlgen(
+                        "mediagoblin.federation.dialback",
+                        qualified=True
+                    )
+                },
+                {
+                    "rel": "self",
+                    "href": request.urlgen(
+                        "mediagoblin.api.user",
+                        username=user.username,
+                        qualified=True
+                    )
+                },
+                {
+                    "rel": "activity-outbox",
+                    "href": request.urlgen(
+                        "mediagoblin.api.feed",
+                        username=user.username,
+                        qualified=True
+                    )
+                },
+                {
+                    "rel": "activity-inbox",
+                    "href": request.urlgen(
+                        "mediagoblin.api.inbox",
+                        username=user.username,
+                        qualified=True
+                    )
+                }
+            ]
+        })
     else:
         return json_error("Unrecognized resource parameter", status=404)
-
 
 def whoami(request):
     """ /api/whoami - HTTP redirect to API profile """

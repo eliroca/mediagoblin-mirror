@@ -23,7 +23,7 @@ from sqlalchemy import or_
 
 from mediagoblin import mg_globals
 from mediagoblin.tools.crypto import get_timed_signer_url
-from mediagoblin.db.models import LocalUser, Privilege
+from mediagoblin.db.models import LocalUser, Privilege, Collection
 from mediagoblin.tools.mail import (normalize_email, send_email,
                                     email_debug_message)
 from mediagoblin.tools.template import render_template
@@ -133,6 +133,7 @@ def register_user(request, register_form):
         # Create the user
         user = auth.create_user(register_form)
 
+
         # give the user the default privileges
         user.all_privileges += get_default_privileges(user)
         user.save()
@@ -193,5 +194,43 @@ def create_basic_user(form):
     user = LocalUser()
     user.username = form.username.data
     user.email = form.email.data
+
+    # Add their inbox and outbox
+    inbox = Collection()
+    inbox.title = "Inbox for {username}".format(username=user.username)
+    inbox.type = Collection.INBOX_TYPE
+    inbox.save()
+    user.inbox = inbox.id
+
+    outbox = Collection()
+    outbox.title = "Outbox for {username}".format(username=user.username)
+    outbox.type = Collection.OUTBOX_TYPE
+    outbox.save()
+    user.outbox = outbox.id
+
+    # Add their followers and following collections
+    followers = Collection()
+    followers.title = "Followers of {username}".format(username=user.username)
+    followers.type = Collection.FOLLOWER_TYPE
+    followers.save()
+    user.followers = followers.id
+
+    following = Collection()
+    following.title = "Users {username} is following".format(username=user.username)
+    following.type = Collection.FOLLOWING_TYPE
+    following.save()
+    user.following = following.id
+
+    # Lets get the ID.
     user.save()
+
+    # Lets save the actor onto the inbox and outbox.
+    inbox.actor = user.id
+    inbox.save()
+    outbox.actor = user.id
+    outbox.save()
+    following.actor = user.id
+    following.save()
+    followers.actor = user.id
+    followers.save()
     return user

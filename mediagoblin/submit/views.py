@@ -70,12 +70,14 @@ def submit_start(request):
         else:
             try:
                 media = submit_media(
-                    mg_app=request.app, user=request.user,
+                    request=request, user=request.user,
                     submitted_file=request.files['file'],
                     filename=request.files['file'].filename,
                     title=six.text_type(submit_form.title.data),
                     description=six.text_type(submit_form.description.data),
                     license=six.text_type(submit_form.license.data) or None,
+                    to=submit_form.to.data,
+                    cc=submit_form.cc.data,
                     tags_string=submit_form.tags.data,
                     upload_limit=upload_limit, max_file_size=max_file_size,
                     urlgen=request.urlgen)

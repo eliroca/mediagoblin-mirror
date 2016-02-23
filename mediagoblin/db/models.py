@@ -43,10 +43,12 @@ from mediagoblin.db.mixin import UserMixin, MediaEntryMixin, \
 from mediagoblin.tools.files import delete_media_files
 from mediagoblin.tools.common import import_component
 from mediagoblin.tools.routing import extract_url_arguments
+from mediagoblin.api.tools import audience_to_object
 
 import six
 from six.moves.urllib.parse import urljoin
 from pytz import UTC
+from dateutil import parser
 
 _log = logging.getLogger(__name__)
 
@@ -374,6 +376,18 @@ class LocalUser(User):
     uploaded = Column(Integer, default=0)
     upload_limit = Column(Integer)
 
+    # Collections
+    inbox = Column(Integer, ForeignKey("core__collections.id"), nullable=False)
+    outbox = Column(Integer, ForeignKey("core__collections.id"), nullable=False)
+    followers = Column(Integer, ForeignKey("core__collections.id"), nullable=False)
+    following = Column(Integer, ForeignKey("core__collections.id"), nullable=False)
+
+    # Collection getters
+    get_inbox = relationship("Collection", foreign_keys=[inbox])
+    get_outbox = relationship("Collection", foreign_keys=[outbox])
+    get_followers = relationship("Collection", foreign_keys=[followers])
+    get_following = relationship("Collection", foreign_keys=[following])
+
     __mapper_args__ = {
         "polymorphic_identity": "user_local",
     }
@@ -391,6 +405,20 @@ class LocalUser(User):
 
     def get_public_id(self, host):
         return "acct:{0}@{1}".format(self.username, host)
+
+    def add_to_inbox(self, activity):
+        """ Adds an activity to the users inbox """
+        if not isinstance(activity, Activity):
+            raise ValueError("Inbox can only contain activities")
+
+        self.get_inbox.add_to_collection(activity)
+
+    def add_to_outbox(self, activity):
+        """ Adds an activity to the users outbox """
+        if not isinstance(activity, Activity):
+            raise ValueError("Outbox can only contain activities")
+
+        self.get_outbox.add_to_collection(activity)
 
     def serialize(self, request):
         user = {
@@ -443,6 +471,12 @@ class RemoteUser(User):
             self.webfinger
         )
 
+    @property
+    def username(self):
+        return self.webfinger
+
+    def get_public_id(self, *args, **kwargs):
+        return "acct:{webfinger}".format(webfinger=self.webfinger)
 
 class Client(Base):
     """
@@ -456,6 +490,10 @@ class Client(Base):
     application_type = Column(Unicode, nullable=False)
     created = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
     updated = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
+
+    # These are used for federation
+    user = Column(Integer, ForeignKey(User.id), nullable=True)
+    host = Column(Unicode, nullable=True)
 
     # optional stuff
     redirect_uri = Column(JSONEncoded, nullable=True)
@@ -608,9 +646,9 @@ class MediaEntry(Base, MediaEntryMixin, CommentingMixin):
             query = query.order_by(Comment.added.asc())
         else:
             query = query.order_by(Comment.added.desc())
-        
+
         return query
- 
+
     def url_to_prev(self, urlgen):
         """get the next 'newer' entry by this user"""
         media = MediaEntry.query.filter(
@@ -825,6 +863,50 @@ class MediaEntry(Base, MediaEntryMixin, CommentingMixin):
 
         return True
 
+    @classmethod
+    def create(cls, actor, data):
+        """ Takes in dictionary and creates brand new MediaEntry """
+        from mediagoblin.media_types.image import MEDIA_TYPE as IMAGE_MEDIA_TYPE
+        entry = cls()
+        entry.public_id = data["id"]
+        entry.remote = True
+        entry.actor = actor.id
+        entry.title = data.get("displayName", "")
+        entry.description = data.get("content", "")
+        entry.media_type = IMAGE_MEDIA_TYPE
+        entry.state = "processed"
+
+        if "published" in data:
+            entry.created = parser.parse(data["published"])
+        else:
+            return None, "Object missing published date"
+
+        if "updated" in data:
+            entry.updated = parser.parse(data["updated"])
+        else:
+            return None, "Object missing updated date"
+
+        if "image" not in data:
+            return None, "Object missing image property"
+
+        # Save without committing to get the ID
+        entry.save(commit=False)
+
+        if "image" in data:
+            thumb = MediaFile()
+            thumb.file_url = data["image"]["url"]
+            thumb.media_entry = entry.id
+            thumb.name = "thumb"
+            thumb.save()
+        if "fullImage" in data:
+            original = MediaFile()
+            original.file_url = data["fullImage"]["url"]
+            original.media_entry = entry.id
+            original.name = "original"
+            original.save()
+
+        return entry, None
+
 class FileKeynames(Base):
     """
     keywords for various places.
@@ -858,19 +940,16 @@ class MediaFile(Base):
     name_id = Column(SmallInteger, ForeignKey(FileKeynames.id), nullable=False)
     file_path = Column(PathTupleWithSlashes)
     file_metadata = Column(MutationDict.as_mutable(JSONEncoded))
+    file_url = Column(Unicode)
 
     __table_args__ = (
         PrimaryKeyConstraint('media_entry', 'name_id'),
         {})
 
-    def __repr__(self):
-        return "<MediaFile %s: %r>" % (self.name, self.file_path)
-
     name_helper = relationship(FileKeynames, lazy="joined", innerjoin=True)
     name = association_proxy('name_helper', 'name',
         creator=FileKeynames.find_or_new
         )
-
 
 class MediaAttachmentFile(Base):
     __tablename__ = "core__attachment_files"
@@ -941,7 +1020,7 @@ class MediaTag(Base):
 class Comment(Base):
     """
     Link table between a response and another object that can have replies.
-    
+
     This acts as a link table between an object and the comments on it, it's
     done like this so that you can look up all the comments without knowing
     whhich comments are on an object before hand. Any object can be a comment
@@ -952,7 +1031,7 @@ class Comment(Base):
     __tablename__ = "core__comment_links"
 
     id = Column(Integer, primary_key=True)
-    
+
     # The GMR to the object the comment is on.
     target_id = Column(
         Integer,
@@ -981,7 +1060,7 @@ class Comment(Base):
 
     # When it was added
     added = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
-    
+
 
 class TextComment(Base, TextCommentMixin, CommentingMixin):
     """
@@ -1015,7 +1094,7 @@ class TextComment(Base, TextCommentMixin, CommentingMixin):
         if target is None:
             target = {}
         else:
-            target = target.serialize(request, show_comments=False)        
+            target = target.serialize(request, show_comments=False)
 
 
         author = self.get_actor
@@ -1043,7 +1122,7 @@ class TextComment(Base, TextCommentMixin, CommentingMixin):
         if "location" in data:
             Location.create(data["location"], self)
 
-    
+
         # Handle changing the reply ID
         if "inReplyTo" in data:
             # Validate that the ID is correct
@@ -1074,8 +1153,68 @@ class TextComment(Base, TextCommentMixin, CommentingMixin):
             link.target = media
             link.comment = self
             link.save()
-        
+
         return True
+
+    @classmethod
+    def create(cls, actor, data):
+        """ Creates a new TextComment from python dictionary """
+        comment = cls()
+
+        if "id" in data:
+            comment.public_id = data["id"]
+        else:
+            return None, "Comment missing ID"
+
+        if "published" in data:
+            comment.published = parser.parse(data["published"])
+        else:
+            return None, "Comment is missing a valid published date"
+
+        if "updated" in data:
+            comment.updated = parser.parse(data["updated"])
+        else:
+            return None, "Comment is missing a valid updated date"
+
+        if "content" in data:
+            comment.content = data["content"]
+        else:
+            return None, "Comment is missing a content"
+
+        # Set the comment's actor
+        comment.actor = actor.id
+
+        # Get the ID
+        comment.save(commit=False)
+
+        if "inReplyTo" in data and "objectType" in data["inReplyTo"]:
+            if data["inReplyTo"]["objectType"] == "image":
+                in_reply = MediaEntry.query.filter_by(
+                    public_id=data["inReplyTo"]["id"]
+                ).first()
+
+                if in_reply is None:
+                    in_reply, error = MediaEntry.create(actor, data)
+                    if error is not None:
+                        return None, error
+            elif data["inReplyTo"]["objectType"] == "comment":
+                in_reply = TextComment.query.filter_by(
+                    public_id=data["inReplyTo"]["id"]
+                ).first()
+
+                if in_reply is None:
+                    in_reply, error = TextComment.create(data["inReplyTo"])
+                    if error is None:
+                        return None, error
+
+            # Create the link
+            link = Comment()
+            link.target = in_reply
+            link.comment = comment
+            link.save(commit=False)
+
+        comment.save(commit=False)
+        return comment, None
 
 class Collection(Base, CollectionMixin, CommentingMixin):
     """A representation of a collection of objects.
@@ -1160,20 +1299,20 @@ class Collection(Base, CollectionMixin, CommentingMixin):
 
     def serialize(self, request):
         context = {"objectType": self.object_type}
-        
+
         if self.public_id:
             context["id"] = self.public_id
-        
+
         # There is a unique case for PUBLIC_TYPE
         if self.type == self.PUBLIC_TYPE:
             return context
-        
+
         # Get all serialized output in a list
         items = [i.serialize(request) for i in self.get_collection_items()]
         context["items"] = items
         context["totalItems"] = self.num_items,
         context["url"] =  self.url_for_self(request.urlgen, qualified=True),
-        
+
         return context
 
 class CollectionItem(Base, CollectionItemMixin):
@@ -1291,7 +1430,7 @@ class Notification(Base):
     seen = Column(Boolean, default=lambda: False, index=True)
     user = relationship(
         User,
-        backref=backref('notifications', cascade='all, delete-orphan')) 
+        backref=backref('notifications', cascade='all, delete-orphan'))
 
     def __repr__(self):
         return '<{klass} #{id}: {user}: {subject} ({seen})>'.format(
@@ -1336,7 +1475,7 @@ class Report(Base):
                                             which points to the reported object.
     """
     __tablename__ = 'core__reports'
-    
+
     id = Column(Integer, primary_key=True)
     reporter_id = Column(Integer, ForeignKey(User.id), nullable=False)
     reporter =  relationship(
@@ -1364,7 +1503,7 @@ class Report(Base):
 
     resolved = Column(DateTime)
     result = Column(UnicodeText)
-    
+
     object_id = Column(Integer, ForeignKey(GenericModelReference.id), nullable=True)
     object_helper = relationship(GenericModelReference)
     obj = association_proxy("object_helper", "get_object",
@@ -1607,6 +1746,84 @@ class Activity(Base, ActivityMixin):
         collection = self.get_bcc
         for item in items:
             collection.add_to_collection(item)
+
+    @classmethod
+    def create(cls, request, data, obj):
+        """ Creates a new activity from a dictionary. """
+        activity = cls()
+        if "id" in data:
+            activity.public_id = data["id"]
+        else:
+            return None, "Activity has no ID"
+
+        if "verb" in data:
+            activity.verb = data["verb"]
+        else:
+            return None, "Activity has no verb"
+
+        if "published" in data:
+            activity.published = parser.parse(data["published"])
+        else:
+            return None, "Activity has not published date"
+
+        if "updated" in data:
+            activity.updated = parser.parse(data["updated"])
+        else:
+            return None, "Activity has no updated date"
+
+        # Check activity has _some_ audience targetting.
+        if not [target in data for target in ["to", "cc", "bto", "bcc"]]:
+            return None, "Activity has no valid audience targetting"
+
+        # Check the activity has an object.
+        if "object" not in data:
+            return None, "Activity has no object"
+
+        # Add the object to the activity
+        activity.object = obj
+
+        # Add the actor
+        activity.actor = request.user.id
+
+        # Okay great, it seems like it's valid, lets save the activity.
+        activity.save(commit=False)
+
+        # Now lets create the audience targetting.
+        if "to" in data:
+            for audience in data["to"]:
+                audience, error = audience_to_object(request, audience)
+                if error is not None:
+                    return None, error
+                if audience is None:
+                    continue
+                activity.add_to_audience(audience)
+        if "cc" in data:
+            for audience in data["cc"]:
+                audience, error = audience_to_object(request, audience)
+                if error is not None:
+                    return None, error
+                if audience is None:
+                    continue
+                activity.add_cc_audience(audience)
+        if "bto" in data:
+            for audience in data["bto"]:
+                audience, error = audience_to_object(request, audience)
+                if error is not None:
+                    return None, error
+                if audience is None:
+                    continue
+                activity.add_bto_audience(audience)
+        if "bcc" in data:
+            for audience in data["bcc"]:
+                audience, error = audience_to_object(request, audience)
+                if error is not None:
+                    return None, error
+                if audience is None:
+                    continue
+                activity.add_bcc_audience(audience)
+
+        return activity, None
+
 
 class Graveyard(Base):
     """ Where models come to die """

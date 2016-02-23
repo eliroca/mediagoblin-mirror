@@ -26,6 +26,7 @@ from werkzeug.datastructures import FileStorage
 from mediagoblin import mg_globals
 from mediagoblin.tools.response import json_response
 from mediagoblin.tools.text import convert_to_tag_list_of_dicts
+from mediagoblin.federation.task import federate_activity
 from mediagoblin.tools.federation import create_activity, create_generator
 from mediagoblin.db.models import MediaEntry, ProcessingMetaData
 from mediagoblin.processing import mark_entry_failed
@@ -100,14 +101,14 @@ class UserPastUploadLimit(UploadLimitError):
 
 
 
-def submit_media(mg_app, user, submitted_file, filename,
+def submit_media(request, user, submitted_file, filename,
                  title=None, description=None,
                  license=None, metadata=None, tags_string=u"",
-                 upload_limit=None, max_file_size=None,
+                 to=u"", cc=u"", upload_limit=None, max_file_size=None,
                  callback_url=None, urlgen=None,):
     """
     Args:
-     - mg_app: The MediaGoblinApp instantiated for this process
+     - request: The request which submitted the media
      - user: the user object this media entry should be associated with
      - submitted_file: the file-like object that has the
        being-submitted file data in it (this object should really have
@@ -119,6 +120,8 @@ def submit_media(mg_app, user, submitted_file, filename,
      - license: license for this media entry
      - tags_string: comma separated string of tags to be associated
        with this entry
+     - to: comma separated string for the primary audience
+     - cc: comma seperated string for the secondary audience
      - upload_limit: size in megabytes that's the per-user upload limit
      - max_file_size: maximum size each file can be that's uploaded
      - callback_url: possible post-hook to call after submission
@@ -153,13 +156,13 @@ def submit_media(mg_app, user, submitted_file, filename,
     # Generate a slug from the title
     entry.generate_slug()
 
-    queue_file = prepare_queue_task(mg_app, entry, filename)
+    queue_file = prepare_queue_task(request.app, entry, filename)
 
     with queue_file:
         queue_file.write(submitted_file)
 
     # Get file size and round to 2 decimal places
-    file_size = mg_app.queue_store.get_file_size(
+    file_size = request.app.queue_store.get_file_size(
         entry.queued_media_file) / (1024.0 * 1024)
     file_size = float('{0:.2f}'.format(file_size))
 
@@ -202,7 +205,7 @@ def submit_media(mg_app, user, submitted_file, filename,
     add_comment_subscription(user, entry)
 
     # Create activity
-    create_activity("post", entry, entry.actor)
+    activity = create_activity("post", entry, entry.actor, to=to, cc=cc)
     entry.save()
 
     # Pass off to processing
@@ -210,6 +213,10 @@ def submit_media(mg_app, user, submitted_file, filename,
     # (... don't change entry after this point to avoid race
     # conditions with changes to the document via processing code)
     run_process_media(entry, feed_url)
+
+    # Trigger activity federation
+    # This should actually be triggrred after run_process_media has fiished.
+    federate_activity(request.host_url[:-1], activity.id)
 
     return entry
 

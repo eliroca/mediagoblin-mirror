@@ -153,7 +153,7 @@ class GMGRequestValidator(RequestValidator):
     def get_client_secret(self, client_key, request):
         """ Retrives a client secret with from a client with an id of client_key """
         client = Client.query.filter_by(id=client_key).first()
-        return client.secret
+        return None if client is None else client.secret
 
     def get_access_token_secret(self, client_key, token, request):
         access_token = AccessToken.query.filter_by(token=token).first()

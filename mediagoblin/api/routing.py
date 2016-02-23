@@ -18,7 +18,7 @@ from mediagoblin.tools.routing import add_route
 
 # Add user profile
 add_route(
-    "media.api.user",
+    "mediagoblin.api.user",
     "/api/user/<string:username>/",
     "mediagoblin.api.views:user_endpoint",
     match_slash=False

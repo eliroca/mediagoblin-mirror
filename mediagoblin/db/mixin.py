@@ -32,6 +32,7 @@ import re
 from datetime import datetime
 
 from pytz import UTC
+from dateutil import parser
 from werkzeug.utils import cached_property
 
 from mediagoblin.media_types import FileTypeNotSupported
@@ -591,12 +592,7 @@ class ActivityMixin(GeneratePublicIDMixin):
         return self.content
 
     def serialize(self, request):
-        href = request.urlgen(
-            "mediagoblin.api.object",
-            object_type=self.object_type,
-            id=self.id,
-            qualified=True
-        )
+        href = self.get_public_id(request.urlgen)
         published = UTC.localize(self.published)
         updated = UTC.localize(self.updated)
         obj = {
@@ -640,13 +636,13 @@ class ActivityMixin(GeneratePublicIDMixin):
     def sanitized_serialize(self, request):
         """ Serialization for sending over the wire """
         context = self.serialize(request)
-        
+
         # Delete bcc and bto if they're there.
         if "bto" in context:
             del context["bto"]
         if "bcc" in context:
             del context["bcc"]
-        
+
         return context
 
     def unseralize(self, data):
@@ -664,3 +660,5 @@ class ActivityMixin(GeneratePublicIDMixin):
 
         if "content" in data:
             self.content = data["content"]
+
+

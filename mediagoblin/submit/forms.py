@@ -41,6 +41,13 @@ def get_submit_start_form(form, **kwargs):
             description=_("""You can use
                         <a href="http://daringfireball.net/projects/markdown/basics">
                         Markdown</a> for formatting."""))
+
+        to = wtforms.StringField(
+            _("To"),
+        )
+        cc = wtforms.StringField(
+            _("CC"),
+        )
         tags = wtforms.StringField(
             _('Tags'),
             [tag_length_validator],

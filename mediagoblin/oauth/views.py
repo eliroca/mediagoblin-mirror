@@ -13,10 +13,11 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+from __future__ import absolute_import
 
+import dialback
 import datetime
 import urllib
-
 import six
 
 from oauthlib.oauth1.rfc5849.utils import UNICODE_ASCII_CHARACTER_SET
@@ -34,9 +35,11 @@ from mediagoblin.tools.crypto import random_string
 from mediagoblin.tools.validator import validate_email, validate_url
 from mediagoblin.oauth.forms import AuthorizeForm
 from mediagoblin.oauth.oauth import GMGRequestValidator, GMGRequest
+from mediagoblin.oauth.dialback import GMGDialbackEndpoint
 from mediagoblin.oauth.tools.request import decode_authorization_header
 from mediagoblin.oauth.tools.forms import WTFormData
-from mediagoblin.db.models import NonceTimestamp, Client, RequestToken
+from mediagoblin.db.models import NonceTimestamp, Client, RequestToken, \
+                                  RemoteUser
 
 # possible client types
 CLIENT_TYPES = ["web", "native"] # currently what pump supports
@@ -49,6 +52,22 @@ def client_register(request):
     except ValueError:
         error = "Could not decode data."
         return json_response({"error": error}, status=400)
+
+    # Are we using dialback, if so we need to verify the dialback request.
+    if "Authorization" in request.headers and request.headers["Authorization"].startswith("Dialback"):
+        dialback_endpoint = GMGDialbackEndpoint()
+        dialback_request = dialback.DialbackRequest(
+            url=request.url,
+            headers=request.headers,
+            body=request.data
+        )
+
+        if not dialback_endpoint.validate_request(dialback_request):
+            error = "Dialback request is not valid"
+            return json_response({"error": error}, status=400)
+
+    else:
+        dialback_request = None
 
     if data is "":
         error = "Unknown Content-Type"
@@ -116,11 +135,11 @@ def client_register(request):
 
         # save it
         client = Client(
-                id=client_id,
-                secret=client_secret,
-                expirey=expirey_db,
-                application_type=application_type,
-                )
+            id=client_id,
+            secret=client_secret,
+            expirey=expirey_db,
+            application_type=application_type,
+        )
 
     else:
         error = "Invalid registration type"
@@ -170,6 +189,21 @@ def client_register(request):
 
         client.redirect_uri = redirect_uris
 
+    # If it is a dialback request, we need to associate the webfinger (or host)
+    if dialback_request is not None:
+        ruser = RemoteUser.query.filter_by(
+            webfinger=dialback_request.id
+        ).first()
+
+        # If the user doesn't exist, lets make one.
+        if ruser is None:
+            ruser = RemoteUser(
+                webfinger=dialback_request.id
+            )
+            ruser.save()
+
+        # assign it to the client.
+        client.user = ruser.id
 
     client.save()
 

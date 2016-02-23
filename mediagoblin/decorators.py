@@ -17,14 +17,14 @@
 from functools import wraps
 
 from werkzeug.exceptions import Forbidden, NotFound
-from oauthlib.oauth1 import ResourceEndpoint
+from oauthlib.oauth1 import ResourceEndpoint, SignatureOnlyEndpoint
 
 from six.moves.urllib.parse import urljoin
 
 from mediagoblin import mg_globals as mgg
 from mediagoblin import messages
 from mediagoblin.db.models import MediaEntry, LocalUser, TextComment, \
-                                  AccessToken, Comment
+                                  AccessToken, Comment, Client, User
 from mediagoblin.tools.response import (
     redirect, render_404,
     render_user_banned, json_response)
@@ -426,6 +426,40 @@ def oauth_required(controller):
             user_id = request.access_token.actor
             request.user = LocalUser.query.filter_by(id=user_id).first()
 
+        return controller(request, *args, **kwargs)
+
+    return wrapper
+
+def remote_user_oauth(controller):
+    """ Used to wrap API endpoints where remote servers need to auth """
+    @wraps(controller)
+    def wrapper(request, *args, **kwargs):
+        data = request.headers
+        authorization = decode_authorization_header(data)
+
+        if authorization == dict():
+            error = "Missing required parameter."
+            return json_response({"error": error}, status=400)
+
+        request_validator = GMGRequestValidator()
+        resource_endpoint = SignatureOnlyEndpoint(request_validator)
+        valid, r = resource_endpoint.validate_request(
+                uri=request.url,
+                http_method=request.method,
+                body=request.data,
+                headers=dict(request.headers),
+                )
+
+        if not valid:
+            error = "Invalid oauth parameter."
+            return json_response({"error": error}, status=400)
+
+        # Fill the user
+        client = Client.query.get(authorization[u"oauth_consumer_key"])
+        if client.user is not None:
+            request.user = User.query.get(client.user)
+
+        # Call the controller
         return controller(request, *args, **kwargs)
 
     return wrapper

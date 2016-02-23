@@ -14,7 +14,8 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from mediagoblin.db.models import Activity, Generator, User
+from mediagoblin.db.models import Activity, Generator, User, LocalUser, \
+                                  RemoteUser
 
 def create_generator(request):
     """
@@ -41,9 +42,33 @@ def create_generator(request):
 
     return generator
 
+def audience_to_users(audience):
+    """ Covnerts comma seperated list of people to list of User objects """
+    if not audience:
+        return []
 
+    audience = audience.replace(" ", "").split(",")
+    users = []
+    for person in audience:
+        # Is it a remote user (i.e. webfinger)
+        if "@" in person:
+            user = RemoteUser.query.filter_by(webfinger=person).first()
+            if user is None:
+                user = RemoteUser()
+                user.webfinger = person
+                user.save()
+        else:
+            user = LocalUser.query.filter_by(username=person).first()
 
-def create_activity(verb, obj, actor, target=None, generator=None):
+        if user is None:
+            continue # skip, it's probably a typo or collection
+
+        users.append(user)
+
+    return users
+
+def create_activity(verb, obj, actor, target=None, generator=None,
+                    to=None, cc=None):
     """
     This will create an Activity object which for the obj if possible
     and save it. The verb should be one of the following:
@@ -85,6 +110,14 @@ def create_activity(verb, obj, actor, target=None, generator=None):
     activity.actor = actor.id if isinstance(actor, User) else actor
     activity.generator = generator.id
     activity.save()
+
+    # Split the to and cc fields from comma seperated strings to User's
+    to = audience_to_users(to)
+    cc = audience_to_users(cc)
+
+    # Add the audience
+    activity.add_to_audience(*to)
+    activity.add_cc_audience(*cc)
 
     # Sigh want to do this prior to save but I can't figure a way to get
     # around relationship() not looking up object when model isn't saved.

@@ -32,6 +32,7 @@ MANDATORY_CELERY_IMPORTS = [
     'mediagoblin.processing.task',
     'mediagoblin.notifications.task',
     'mediagoblin.submit.task',
+    'mediagoblin.federation.task',
 ]
 
 DEFAULT_SETTINGS_MODULE = 'mediagoblin.init.celery.dummy_settings_module'

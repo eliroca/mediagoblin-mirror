@@ -13,10 +13,110 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
+import json
 import requests
+import dialback
 
-from mediagoblin.db.models import Collection, RemoteUser
+from werkzeug.test import EnvironBuilder
+from werkzeug.wrappers import BaseRequest
+
+from mediagoblin.db.models import Client, Collection, User
+from mediagoblin.routing import get_url_map
+
+class FakeRequest(BaseRequest):
+    """
+    This emulates a request for the purposes to pass it into serialize and
+    unserialize functions. It takes in the base URL (e.g. the URL with scheme)
+    but no path and then it will provide a "request" that you can pass in. This
+    will provide you with the request.urlgen function for building external (or
+    internal) URLs
+
+    Example usage:
+    >>> from mediagoblin.federation.tools import FakeRequest
+    >>> request = FakeRequest("https://my.mediagoblin.org")
+    """
+
+    def __init__(self, url):
+        self.base_url = url.split("://", 1)[1]
+
+        url_map = get_url_map()
+        request_builder = EnvironBuilder(base_url=url)
+
+        # Get the Environ, and get the URL mapper.
+        self.environ = request_builder.get_environ()
+        self.mapper = url_map.bind_to_environ(self.environ)
+
+    def urlgen(self, endpoint, **kw):
+        try:
+            qualified = kw.pop('qualified')
+        except KeyError:
+            qualified = False
+
+        return self.mapper.build(
+            endpoint,
+            values=dict(**kw),
+            force_external=qualified
+        )
+
+def client_registration(server_host, endpoint, sender, recipient, timeout=10):
+    """ Registers the client or fetches stored credentials """
+    # Split the recipient's webfinger so we can get the host and username.
+    username, host = recipient.split("@", 1)
+
+    # Check the database and check if we have any.
+    try:
+        return Client.query.get(
+            user=sender.id,
+            host=host
+        )
+    except Exception:
+        # I guess we're going to have to create one ourselves.
+        pass
+
+    # Split the recipient's webfinger so we can get the host and username.
+    username, host = recipient.split("@", 1)
+    context = {
+        "type": "client_associate",
+        "application_type": "web",
+        "application_name": "GNU Mediagoblin",
+    }
+
+    # Make the dialback client for this request
+    sender_webfinger = sender.get_public_id(server_host)[5:]
+    dialback_auth = dialback.DialbackAuth(webfinger=sender_webfinger)
+
+    # Make the request for client credentials.
+    response = requests.post(
+        endpoint,
+        headers={"Content-Type": "application/json"},
+        data=json.dumps(context),
+        auth=dialback_auth
+    )
+
+    # Check we got a 200
+    if response.status_code != 200:
+        # TODO: Convert this to a mediagoblin specifc exception.
+        raise Exception("Could not register client for activity federation.")
+
+    # Get the JSON response
+    response_data = response.json()
+
+    # Verify we have the required fields in our response.
+    assert "client_id" in response_data
+    assert "client_secret" in response_data
+
+    # Save the client
+    client = Client(
+        id=response_data["client_id"],
+        secret=response_data["client_secret"],
+        user=sender.id,
+        host=host,
+        application_type=context["application_type"]
+    )
+    client.save()
+
+    # Return the client ID and secret pair
+    return client
 
 def extract_users(audiance_list, ignore=None):
     """ Takes a list (the audiance) and extracts all the users. """
@@ -26,8 +126,11 @@ def extract_users(audiance_list, ignore=None):
     # Create the set of users to return
     users = set()
 
-    # Iterate thrugh the audiance
-    for audiance in audiance_list:
+    # Iterate through the audiance
+    for audiance_ci in audiance_list.get_collection_items():
+        # Extract the object from the CollectionItem
+        audiance = audiance_ci.get_object()
+
         # If the audiance is on the ignore list, skip past it
         if audiance in ignore:
             continue
@@ -35,10 +138,11 @@ def extract_users(audiance_list, ignore=None):
         # we found a user, we can just add them straight to the list
         if isinstance(audiance, User):
             users.add(audiance)
+
         # If we've found a collection, expand it and add them.
         elif isinstance(audiance, Collection):
             collection_audiance = audiance.get_collection_items()
-           
+
             # Ignore this collection or we might get into a cycle.
             collection_audiance = extract_users(
                 collection_audiance,
@@ -58,11 +162,11 @@ def get_host_meta(url):
 
     # Try and get the host-meta
     try:
-        host_meta = request.get(
-            "{0}/.well-know/host-meta".format(base_url),
+        host_meta = requests.get(
+            "{0}/.well-known/host-meta".format(url),
             headers=headers
         )
-    except request.exceptions.RequestException:
+    except requests.exceptions.RequestException:
         return None
 
     # If we get anything but a correct response, just bail out.
@@ -71,56 +175,59 @@ def get_host_meta(url):
 
     host_meta = host_meta.json()
     return host_meta["links"]
-     
+
 
 def discover_recipient(recipient):
-    # Sanity check that we got the remote user
-    if not isinstance(recipient, RemoteUser):
-        raise Exception("Can only perform discovery on remote users")
+    """
+    Discover the URLs for the receipient.
 
+    TODO: This should be in PyPump.
+    """
     # base URL of site.
-    base_url = recipient.webfinger.split("@", 1)[1]
-    host_meta = get_host_meta(base_url)
+    username, host = recipient.webfinger.split("@", 1)
+    host_meta = get_host_meta("http://{0}".format(host))
+    assert host_meta != None
 
-    user_lookup_url = None
-    for link in host_meta:
-        # It's got to be an lrdd link
-        if link["rel"] != "lrdd":
-            continue
-   
-        # The type must be application/json
-        if link["type"] != "application/json":
-            continue
-
-        # Finally it has to have a template
-        if "template" not in link:
-            continue
-
-        user_lookup_url = link["template"]
-
-    # Fill in the webfinger into lookup url
-    try:
-        user_lookup_url = user_lookup_url.format(uri=recipient.webfinger)
-    except ValueError:
-        # I guess it's invalid somehow?
-        return None
-
-    # Request the URLs for this user
-    user_urls = request.get(user_lookup_url)
-
-    # If it's anything but a valid request just bail.
-    if user_urls.status_code != 200:
-        return None
-
-    try:
-        user_urls = user_urls.json()
-    except Exception:
-        return None
-
-    # Okay now just format them into a more usable python dictionary
+    # Create the links block which will contain host-meta and the user's URLs
     links = {}
 
-    for link in user_urls["links"]:
-        links[link["rel"]] = link["href"]
+    # Iterate through the host meta assigning them to the links block.
+    hostmeta_links = {}
+    for link in host_meta:
+        # If for whatever odd reason it doesn't have a "rel" skip it.
+        if "rel" not in link:
+            continue
 
+        # Get the rel value out (so it's not in the values)
+        rel = link.pop("rel")
+
+        # Assign it so the rel is the key and all the other information is there.
+        hostmeta_links[rel] = link
+    links["host-meta"] = hostmeta_links
+
+    # If for whatever the lrdd lookup isn't there, just return with what we have.
+    if "lrdd" not in hostmeta_links:
+        return links
+
+    # Extract and populate the template
+    user_lookup = hostmeta_links["lrdd"]["template"].format(
+        uri=recipient.webfinger
+    )
+
+    # Request the URLs for this user
+    user_urls = requests.get(user_lookup).json()
+
+    user_links = {}
+    for link in user_urls["links"]:
+        # Again, if it doesn't have a "rel" just skip.
+        if "rel" not in link:
+            continue
+
+        # Extract the rel to be used as a key later
+        rel = link.pop("rel")
+
+        # Save the link in user_links
+        user_links[rel] = link
+
+    links["user"] = user_links
     return links
