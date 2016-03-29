@@ -8,8 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-07-22 11:25+0300\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"POT-Creation-Date: 2015-07-22 11:22+0300\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
@@ -173,7 +172,7 @@ msgstr ""
 msgid "a person"
 msgstr ""
 
-#: mediagoblin/db/mixin.py:450 mediagoblin/db/mixin.py:459
+#: mediagoblin/db/mixin.py:449 mediagoblin/db/mixin.py:458
 msgid "an object"
 msgstr ""
 
@@ -470,7 +469,7 @@ msgstr ""
 #: mediagoblin/meddleware/csrf.py:134
 msgid ""
 "CSRF cookie not present. This is most likely the result of a cookie "
-"blocker or somesuch.<br/>Make sure to permit the settings of cookies for "
+"blocker or somesuch. Make sure to permit the setting of cookies for "
 "this domain."
 msgstr ""
 

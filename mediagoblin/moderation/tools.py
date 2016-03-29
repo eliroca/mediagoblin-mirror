@@ -17,7 +17,7 @@
 import six
 
 from mediagoblin import mg_globals
-from mediagoblin.db.models import User, Privilege, UserBan
+from mediagoblin.db.models import User, Privilege, UserBan, LocalUser
 from mediagoblin.db.base import Session
 from mediagoblin.tools.mail import send_email
 from mediagoblin.tools.response import redirect
@@ -68,14 +68,14 @@ def take_punitive_actions(request, form, report, user):
 
     if u'delete' in form.action_to_resolve.data and \
         report.is_comment_report():
-            deleted_comment = report.comment
-            Session.delete(deleted_comment)
+            deleted_comment = report.obj()
+            deleted_comment.delete()
             form.resolution_content.data += \
                 _(u"\n{mod} deleted the comment.").format(
                     mod=request.user.username)
     elif u'delete' in form.action_to_resolve.data and \
         report.is_media_entry_report():
-            deleted_media = report.media_entry
+            deleted_media = report.obj()
             deleted_media.delete()
             form.resolution_content.data += \
                 _(u"\n{mod} deleted the media entry.").format(
@@ -122,8 +122,9 @@ def take_away_privileges(user,*privileges):
     if len(privileges) == 1:
         privilege = Privilege.query.filter(
             Privilege.privilege_name==privileges[0]).first()
-        user = User.query.filter(
-            User.username==user).first()
+        user = LocalUser.query.filter(
+            LocalUser.username==user
+        ).first()
         if privilege in user.all_privileges:
             user.all_privileges.remove(privilege)
             return True
@@ -154,8 +155,9 @@ def give_privileges(user,*privileges):
     if len(privileges) == 1:
         privilege = Privilege.query.filter(
             Privilege.privilege_name==privileges[0]).first()
-        user = User.query.filter(
-            User.username==user).first()
+        user = LocalUser.query.filter(
+            LocalUser.username==user
+        ).first()
         if privilege not in user.all_privileges:
             user.all_privileges.append(privilege)
             return True

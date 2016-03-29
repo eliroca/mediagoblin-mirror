@@ -47,7 +47,7 @@ from mediagoblin.tools.text import (
     convert_to_tag_list_of_dicts, media_tags_as_string)
 from mediagoblin.tools.url import slugify
 from mediagoblin.db.util import check_media_slug_used, check_collection_slug_used
-from mediagoblin.db.models import User, Client, AccessToken, Location
+from mediagoblin.db.models import User, LocalUser, Client, AccessToken, Location
 
 import mimetypes
 
@@ -73,7 +73,7 @@ def edit_media(request, media):
         # Make sure there isn't already a MediaEntry with such a slug
         # and userid.
         slug = slugify(form.slug.data)
-        slug_used = check_media_slug_used(media.uploader, slug, media.id)
+        slug_used = check_media_slug_used(media.actor, slug, media.id)
 
         if slug_used:
             form.slug.errors.append(
@@ -91,7 +91,7 @@ def edit_media(request, media):
             return redirect_obj(request, media)
 
     if request.user.has_privilege(u'admin') \
-            and media.uploader != request.user.id \
+            and media.actor != request.user.id \
             and request.method != 'POST':
         messages.add_message(
             request, messages.WARNING,
@@ -293,7 +293,7 @@ def deauthorize_applications(request):
                 _("Application has been deauthorized")
             )
 
-    access_tokens = AccessToken.query.filter_by(user=request.user.id)
+    access_tokens = AccessToken.query.filter_by(actor=request.user.id)
     applications = [(a.get_requesttoken, a) for a in access_tokens]
 
     return render_to_response(
@@ -314,7 +314,8 @@ def delete_account(request):
             request.session.delete()
 
             # Delete user account and all related media files etc....
-            request.user.delete()
+            user = User.query.filter(User.id==user.id).first()
+            user.delete()
 
             # We should send a message that the user has been deleted
             # successfully. But we just deleted the session, so we
@@ -349,12 +350,12 @@ def edit_collection(request, collection):
     if request.method == 'POST' and form.validate():
         # Make sure there isn't already a Collection with such a slug
         # and userid.
-        slug_used = check_collection_slug_used(collection.creator,
+        slug_used = check_collection_slug_used(collection.actor,
                 form.slug.data, collection.id)
 
         # Make sure there isn't already a Collection with this title
         existing_collection = request.db.Collection.query.filter_by(
-                creator=request.user.id,
+                actor=request.user.id,
                 title=form.title.data).first()
 
         if existing_collection and existing_collection.id != collection.id:
@@ -375,7 +376,7 @@ def edit_collection(request, collection):
             return redirect_obj(request, collection)
 
     if request.user.has_privilege(u'admin') \
-            and collection.creator != request.user.id \
+            and collection.actor != request.user.id \
             and request.method != 'POST':
         messages.add_message(
             request, messages.WARNING,
@@ -444,8 +445,9 @@ def change_email(request):
 
     if request.method == 'POST' and form.validate():
         new_email = form.new_email.data
-        users_with_email = User.query.filter_by(
-            email=new_email).count()
+        users_with_email = User.query.filter(
+            LocalUser.email==new_email
+        ).count()
 
         if users_with_email:
             form.new_email.errors.append(

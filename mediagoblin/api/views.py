@@ -22,7 +22,7 @@ from werkzeug.datastructures import FileStorage
 
 from mediagoblin.decorators import oauth_required, require_active_login
 from mediagoblin.api.decorators import user_has_privilege
-from mediagoblin.db.models import User, MediaEntry, MediaComment, Activity
+from mediagoblin.db.models import User, LocalUser, MediaEntry, Comment, TextComment, Activity
 from mediagoblin.tools.federation import create_activity, create_generator
 from mediagoblin.tools.routing import extract_url_arguments
 from mediagoblin.tools.response import redirect, json_response, json_error, \
@@ -45,7 +45,7 @@ def get_profile(request):
     can be found then this function returns a (None, None).
     """
     username = request.matchdict["username"]
-    user = User.query.filter_by(username=username).first()
+    user = LocalUser.query.filter(LocalUser.username==username).first()
 
     if user is None:
         return None, None
@@ -94,7 +94,7 @@ def user_endpoint(request):
 def uploads_endpoint(request):
     """ Endpoint for file uploads """
     username = request.matchdict["username"]
-    requested_user = User.query.filter_by(username=username).first()
+    requested_user = LocalUser.query.filter(LocalUser.username==username).first()
 
     if requested_user is None:
         return json_error("No such 'user' with id '{0}'".format(username), 404)
@@ -142,7 +142,7 @@ def inbox_endpoint(request, inbox=None):
     inbox: allows you to pass a query in to limit inbox scope
     """
     username = request.matchdict["username"]
-    user = User.query.filter_by(username=username).first()
+    user = LocalUser.query.filter(LocalUser.username==username).first()
 
     if user is None:
         return json_error("No such 'user' with id '{0}'".format(username), 404)
@@ -225,7 +225,7 @@ def inbox_major_endpoint(request):
 def feed_endpoint(request, outbox=None):
     """ Handles the user's outbox - /api/user/<username>/feed """
     username = request.matchdict["username"]
-    requested_user = User.query.filter_by(username=username).first()
+    requested_user = LocalUser.query.filter(LocalUser.username==username).first()
 
     # check if the user exists
     if requested_user is None:
@@ -268,7 +268,7 @@ def feed_endpoint(request, outbox=None):
                         status=403
                     )
 
-                comment = MediaComment(author=request.user.id)
+                comment = TextComment(actor=request.user.id)
                 comment.unserialize(data["object"], request)
                 comment.save()
 
@@ -278,7 +278,7 @@ def feed_endpoint(request, outbox=None):
                     verb="post",
                     actor=request.user,
                     obj=comment,
-                    target=comment.get_entry,
+                    target=comment.get_reply_to(),
                     generator=generator
                 )
 
@@ -286,12 +286,22 @@ def feed_endpoint(request, outbox=None):
 
             elif obj.get("objectType", None) == "image":
                 # Posting an image to the feed
-                media_id = int(extract_url_arguments(
+                media_id = extract_url_arguments(
                     url=data["object"]["id"],
                     urlmap=request.app.url_map
-                )["id"])
+                )["id"]
 
-                media = MediaEntry.query.filter_by(id=media_id).first()
+                # Build public_id
+                public_id = request.urlgen(
+                    "mediagoblin.api.object",
+                    object_type=obj["objectType"],
+                    id=media_id,
+                    qualified=True
+                )
+
+                media = MediaEntry.query.filter_by(
+                    public_id=public_id
+                ).first()
 
                 if media is None:
                     return json_response(
@@ -299,7 +309,7 @@ def feed_endpoint(request, outbox=None):
                         status=404
                     )
 
-                if media.uploader != request.user.id:
+                if media.actor != request.user.id:
                     return json_error(
                         "Privilege 'commenter' required to comment.",
                         status=403
@@ -345,10 +355,17 @@ def feed_endpoint(request, outbox=None):
             if "id" not in obj:
                 return json_error("Object ID has not been specified.")
 
-            obj_id = int(extract_url_arguments(
+            obj_id = extract_url_arguments(
                 url=obj["id"],
                 urlmap=request.app.url_map
-            )["id"])
+            )["id"]
+
+            public_id = request.urlgen(
+                "mediagoblin.api.object",
+                object_type=obj["objectType"],
+                id=obj_id,
+                qualified=True
+            )
 
             # Now try and find object
             if obj["objectType"] == "comment":
@@ -358,7 +375,9 @@ def feed_endpoint(request, outbox=None):
                         status=403
                     )
 
-                comment = MediaComment.query.filter_by(id=obj_id).first()
+                comment = TextComment.query.filter_by(
+                    public_id=public_id
+                ).first()
                 if comment is None:
                     return json_error(
                         "No such 'comment' with id '{0}'.".format(obj_id)
@@ -366,7 +385,7 @@ def feed_endpoint(request, outbox=None):
 
                 # Check that the person trying to update the comment is
                 # the author of the comment.
-                if comment.author != request.user.id:
+                if comment.actor != request.user.id:
                     return json_error(
                         "Only author of comment is able to update comment.",
                         status=403
@@ -391,7 +410,9 @@ def feed_endpoint(request, outbox=None):
                 return json_response(activity.serialize(request))
 
             elif obj["objectType"] == "image":
-                image = MediaEntry.query.filter_by(id=obj_id).first()
+                image = MediaEntry.query.filter_by(
+                    public_id=public_id
+                ).first()
                 if image is None:
                     return json_error(
                         "No such 'image' with the id '{0}'.".format(obj["id"])
@@ -399,7 +420,7 @@ def feed_endpoint(request, outbox=None):
 
                 # Check that the person trying to update the comment is
                 # the author of the comment.
-                if image.uploader != request.user.id:
+                if image.actor != request.user.id:
                     return json_error(
                         "Only uploader of image is able to update image.",
                         status=403
@@ -454,16 +475,23 @@ def feed_endpoint(request, outbox=None):
                 return json_error("Object ID has not been specified.")
 
             # Parse out the object ID
-            obj_id = int(extract_url_arguments(
+            obj_id = extract_url_arguments(
                 url=obj["id"],
                 urlmap=request.app.url_map
-            )["id"])
+            )["id"]
+
+            public_id = request.urlgen(
+                "mediagoblin.api.object",
+                object_type=obj["objectType"],
+                id=obj_id,
+                qualified=True
+            )
 
             if obj.get("objectType", None) == "comment":
                 # Find the comment asked for
-                comment = MediaComment.query.filter_by(
-                    id=obj_id,
-                    author=request.user.id
+                comment = TextComment.query.filter_by(
+                    public_id=public_id,
+                    actor=request.user.id
                 ).first()
 
                 if comment is None:
@@ -491,8 +519,8 @@ def feed_endpoint(request, outbox=None):
             if obj.get("objectType", None) == "image":
                 # Find the image
                 entry = MediaEntry.query.filter_by(
-                    id=obj_id,
-                    uploader=request.user.id
+                    public_id=public_id,
+                    actor=request.user.id
                 ).first()
 
                 if entry is None:
@@ -537,9 +565,9 @@ def feed_endpoint(request, outbox=None):
 
     # Create outbox
     if outbox is None:
-        outbox = Activity.query.filter_by(actor=request.user.id)
+        outbox = Activity.query.filter_by(actor=requested_user.id)
     else:
-        outbox = outbox.filter_by(actor=request.user.id)
+        outbox = outbox.filter_by(actor=requested_user.id)
 
     # We want the newest things at the top (issue: #1055)
     outbox = outbox.order_by(Activity.published.desc())
@@ -559,7 +587,12 @@ def feed_endpoint(request, outbox=None):
     outbox = outbox.limit(limit)
 
     # Offset (default: no offset - first <count>  result)
-    outbox = outbox.offset(request.args.get("offset", 0))
+    offset = request.args.get("offset", 0)
+    try:
+        offset = int(offset)
+    except ValueError:
+        offset = 0
+    outbox = outbox.offset(offset)
 
     # Build feed.
     for activity in outbox:
@@ -617,7 +650,14 @@ def object_endpoint(request):
             status=404
         )
 
-    media = MediaEntry.query.filter_by(id=object_id).first()
+    public_id = request.urlgen(
+        "mediagoblin.api.object",
+        object_type=object_type,
+        id=object_id,
+        qualified=True
+    )
+
+    media = MediaEntry.query.filter_by(public_id=public_id).first()
     if media is None:
         return json_error(
             "Can't find '{0}' with ID '{1}'".format(object_type, object_id),
@@ -629,7 +669,13 @@ def object_endpoint(request):
 @oauth_required
 def object_comments(request):
     """ Looks up for the comments on a object """
-    media = MediaEntry.query.filter_by(id=request.matchdict["id"]).first()
+    public_id = request.urlgen(
+        "mediagoblin.api.object",
+        object_type=request.matchdict["object_type"],
+        id=request.matchdict["id"],
+        qualified=True
+    )
+    media = MediaEntry.query.filter_by(public_id=public_id).first()
     if media is None:
         return json_error("Can't find '{0}' with ID '{1}'".format(
             request.matchdict["object_type"],
@@ -747,7 +793,7 @@ def lrdd_lookup(request):
         username, host = resource.split("@", 1)
 
         # Now lookup the user
-        user = User.query.filter_by(username=username).first()
+        user = LocalUser.query.filter(LocalUser.username==username).first()
 
         if user is None:
             return json_error(
@@ -792,5 +838,3 @@ def whoami(request):
     )
 
     return redirect(request, location=profile)
-
-

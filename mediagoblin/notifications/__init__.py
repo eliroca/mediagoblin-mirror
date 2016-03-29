@@ -16,8 +16,8 @@
 
 import logging
 
-from mediagoblin.db.models import Notification, \
-        CommentNotification, CommentSubscription, User
+from mediagoblin.db.models import Notification, CommentSubscription, User, \
+                                  Comment, GenericModelReference
 from mediagoblin.notifications.task import email_notification_task
 from mediagoblin.notifications.tools import generate_comment_message
 
@@ -27,20 +27,29 @@ def trigger_notification(comment, media_entry, request):
     '''
     Send out notifications about a new comment.
     '''
+    # Verify we have the Comment object and not any other type e.g. TextComment
+    if not isinstance(comment, Comment):
+        raise ValueError("Must provide Comment to trigger_notification")
+
+    # Get the associated object associated to the Comment wrapper.
+    comment_object = comment.comment()
+
     subscriptions = CommentSubscription.query.filter_by(
         media_entry_id=media_entry.id).all()
 
     for subscription in subscriptions:
+        # Check the user wants to be notified, if not, skip.
         if not subscription.notify:
             continue
 
-        if comment.get_author == subscription.user:
+        # If the subscriber is the current actor, don't bother.
+        if comment_object.get_actor == subscription.user:
             continue
 
-        cn = CommentNotification(
+        cn = Notification(
             user_id=subscription.user_id,
-            subject_id=comment.id)
-
+        )
+        cn.obj = comment
         cn.save()
 
         if subscription.send_email:
@@ -61,9 +70,25 @@ def mark_notification_seen(notification):
 
 
 def mark_comment_notification_seen(comment_id, user):
-    notification = CommentNotification.query.filter_by(
+    comment = Comment.query.get(comment_id)
+
+    # If there is no comment, there is no notification
+    if comment == None:
+        return
+
+    comment_gmr = GenericModelReference.query.filter_by(
+        obj_pk=comment.id,
+        model_type=comment.__tablename__
+    ).first()
+
+    # If there is no GMR, there is no notification
+    if comment_gmr == None:
+        return
+
+    notification = Notification.query.filter_by(
         user_id=user.id,
-        subject_id=comment_id).first()
+        object_id=comment_gmr.id
+    ).first()
 
     _log.debug(u'Marking {0} as seen.'.format(notification))
 

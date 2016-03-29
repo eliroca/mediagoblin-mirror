@@ -23,7 +23,8 @@ from six.moves.urllib.parse import urljoin
 
 from mediagoblin import mg_globals as mgg
 from mediagoblin import messages
-from mediagoblin.db.models import MediaEntry, User, MediaComment, AccessToken
+from mediagoblin.db.models import MediaEntry, LocalUser, TextComment, \
+                                  AccessToken, Comment
 from mediagoblin.tools.response import (
     redirect, render_404,
     render_user_banned, json_response)
@@ -106,12 +107,12 @@ def user_has_privilege(privilege_name, allow_admin=True):
 
 
 def active_user_from_url(controller):
-    """Retrieve User() from <user> URL pattern and pass in as url_user=...
+    """Retrieve LocalUser() from <user> URL pattern and pass in as url_user=...
 
     Returns a 404 if no such active user has been found"""
     @wraps(controller)
     def wrapper(request, *args, **kwargs):
-        user = User.query.filter_by(username=request.matchdict['user']).first()
+        user = LocalUser.query.filter_by(username=request.matchdict['user']).first()
         if user is None:
             return render_404(request)
 
@@ -126,7 +127,7 @@ def user_may_delete_media(controller):
     """
     @wraps(controller)
     def wrapper(request, *args, **kwargs):
-        uploader_id = kwargs['media'].uploader
+        uploader_id = kwargs['media'].actor
         if not (request.user.has_privilege(u'admin') or
                 request.user.id == uploader_id):
             raise Forbidden()
@@ -142,7 +143,7 @@ def user_may_alter_collection(controller):
     """
     @wraps(controller)
     def wrapper(request, *args, **kwargs):
-        creator_id = request.db.User.query.filter_by(
+        creator_id = request.db.LocalUser.query.filter_by(
             username=request.matchdict['user']).first().id
         if not (request.user.has_privilege(u'admin') or
                 request.user.id == creator_id):
@@ -177,7 +178,7 @@ def get_user_media_entry(controller):
     """
     @wraps(controller)
     def wrapper(request, *args, **kwargs):
-        user = User.query.filter_by(username=request.matchdict['user']).first()
+        user = LocalUser.query.filter_by(username=request.matchdict['user']).first()
         if not user:
             raise NotFound()
 
@@ -192,7 +193,7 @@ def get_user_media_entry(controller):
                 media = MediaEntry.query.filter_by(
                     id=int(media_slug[3:]),
                     state=u'processed',
-                    uploader=user.id).first()
+                    actor=user.id).first()
             except ValueError:
                 raise NotFound()
         else:
@@ -200,7 +201,7 @@ def get_user_media_entry(controller):
             media = MediaEntry.query.filter_by(
                 slug=media_slug,
                 state=u'processed',
-                uploader=user.id).first()
+                actor=user.id).first()
 
         if not media:
             # Didn't find anything?  Okay, 404.
@@ -217,7 +218,7 @@ def get_user_collection(controller):
     """
     @wraps(controller)
     def wrapper(request, *args, **kwargs):
-        user = request.db.User.query.filter_by(
+        user = request.db.LocalUser.query.filter_by(
             username=request.matchdict['user']).first()
 
         if not user:
@@ -225,7 +226,7 @@ def get_user_collection(controller):
 
         collection = request.db.Collection.query.filter_by(
             slug=request.matchdict['collection'],
-            creator=user.id).first()
+            actor=user.id).first()
 
         # Still no collection?  Okay, 404.
         if not collection:
@@ -242,7 +243,7 @@ def get_user_collection_item(controller):
     """
     @wraps(controller)
     def wrapper(request, *args, **kwargs):
-        user = request.db.User.query.filter_by(
+        user = request.db.LocalUser.query.filter_by(
             username=request.matchdict['user']).first()
 
         if not user:
@@ -274,7 +275,7 @@ def get_media_entry_by_id(controller):
             return render_404(request)
 
         given_username = request.matchdict.get('user')
-        if given_username and (given_username != media.get_uploader.username):
+        if given_username and (given_username != media.get_actor.username):
             return render_404(request)
 
         return controller(request, media=media, *args, **kwargs)
@@ -325,11 +326,11 @@ def allow_reporting(controller):
 
 def get_optional_media_comment_by_id(controller):
     """
-    Pass in a MediaComment based off of a url component. Because of this decor-
-    -ator's use in filing Media or Comment Reports, it has two valid outcomes.
+    Pass in a Comment based off of a url component. Because of this decor-
+    -ator's use in filing Reports, it has two valid outcomes.
 
     :returns        The view function being wrapped with kwarg `comment` set to
-                        the MediaComment who's id is in the URL. If there is a
+                        the Comment who's id is in the URL. If there is a
                         comment id in the URL and if it is valid.
     :returns        The view function being wrapped with kwarg `comment` set to
                         None. If there is no comment id in the URL.
@@ -339,8 +340,9 @@ def get_optional_media_comment_by_id(controller):
     @wraps(controller)
     def wrapper(request, *args, **kwargs):
         if 'comment' in request.matchdict:
-            comment = MediaComment.query.filter_by(
-                    id=request.matchdict['comment']).first()
+            comment = Comment.query.filter_by(
+                    id=request.matchdict['comment']
+            ).first()
 
             if comment is None:
                 return render_404(request)
@@ -407,22 +409,22 @@ def oauth_required(controller):
         request_validator = GMGRequestValidator()
         resource_endpoint = ResourceEndpoint(request_validator)
         valid, r = resource_endpoint.validate_protected_resource_request(
-                uri=request.base_url,
+                uri=request.url,
                 http_method=request.method,
                 body=request.data,
                 headers=dict(request.headers),
                 )
 
         if not valid:
-            error = "Invalid oauth prarameter."
+            error = "Invalid oauth parameter."
             return json_response({"error": error}, status=400)
 
         # Fill user if not already
         token = authorization[u"oauth_token"]
         request.access_token = AccessToken.query.filter_by(token=token).first()
         if request.access_token is not None and request.user is None:
-            user_id = request.access_token.user
-            request.user = User.query.filter_by(id=user_id).first()
+            user_id = request.access_token.actor
+            request.user = LocalUser.query.filter_by(id=user_id).first()
 
         return controller(request, *args, **kwargs)
 

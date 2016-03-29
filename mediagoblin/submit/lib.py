@@ -52,7 +52,7 @@ def new_upload_entry(user):
     Create a new MediaEntry for uploading
     """
     entry = MediaEntry()
-    entry.uploader = user.id
+    entry.actor = user.id
     entry.license = user.license_preference
     return entry
 
@@ -104,9 +104,7 @@ def submit_media(mg_app, user, submitted_file, filename,
                  title=None, description=None,
                  license=None, metadata=None, tags_string=u"",
                  upload_limit=None, max_file_size=None,
-                 callback_url=None,
-                 # If provided we'll do the feed_url update, otherwise ignore
-                 urlgen=None,):
+                 callback_url=None, urlgen=None,):
     """
     Args:
      - mg_app: The MediaGoblinApp instantiated for this process
@@ -124,7 +122,8 @@ def submit_media(mg_app, user, submitted_file, filename,
      - upload_limit: size in megabytes that's the per-user upload limit
      - max_file_size: maximum size each file can be that's uploaded
      - callback_url: possible post-hook to call after submission
-     - urlgen: if provided, used to do the feed_url update
+     - urlgen: if provided, used to do the feed_url update and assign a public
+               ID used in the API (very important).
     """
     if upload_limit and user.uploaded >= upload_limit:
         raise UserPastUploadLimit()
@@ -189,6 +188,11 @@ def submit_media(mg_app, user, submitted_file, filename,
         metadata.save()
 
     if urlgen:
+        # Generate the public_id, this is very importent, especially relating
+        # to deletion, it allows the shell to be accessable post-delete!
+        entry.get_public_id(urlgen)
+
+        # Generate the feed URL
         feed_url = urlgen(
             'mediagoblin.user_pages.atom_feed',
             qualified=True, user=user.username)
@@ -198,7 +202,7 @@ def submit_media(mg_app, user, submitted_file, filename,
     add_comment_subscription(user, entry)
 
     # Create activity
-    create_activity("post", entry, entry.uploader)
+    create_activity("post", entry, entry.actor)
     entry.save()
 
     # Pass off to processing
@@ -277,6 +281,9 @@ def api_upload_request(request, file_data, entry):
     # This will be set later but currently we just don't have enough information
     entry.slug = None
 
+    # This is a MUST.
+    entry.get_public_id(request.urlgen)
+
     queue_file = prepare_queue_task(request.app, entry, file_data.filename)
     with queue_file:
         queue_file.write(request.data)
@@ -297,7 +304,7 @@ def api_add_to_feed(request, entry):
     activity = create_activity(
         verb="post",
         obj=entry,
-        actor=entry.uploader,
+        actor=entry.actor,
         generator=create_generator(request)
     )
     entry.save()

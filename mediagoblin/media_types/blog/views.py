@@ -46,7 +46,7 @@ from mediagoblin.tools.text import (
     cleaned_markdown_conversion)
 
 from mediagoblin.db.util import check_media_slug_used, check_collection_slug_used
-from mediagoblin.db.models import User, Collection, MediaEntry
+from mediagoblin.db.models import User, Collection, MediaEntry, LocalUser
 
 from mediagoblin.notifications import add_comment_subscription
 
@@ -54,7 +54,7 @@ from mediagoblin.notifications import add_comment_subscription
 @require_active_login
 def blog_edit(request):
     """
-    View for editing an existing blog or creating a new blog 
+    View for editing an existing blog or creating a new blog
     if user have not exceeded maximum allowed acount of blogs.
     """
     url_user = request.matchdict.get('user', None)
@@ -143,7 +143,7 @@ def blogpost_create(request):
         blogpost.description = six.text_type(cleaned_markdown_conversion((form.description.data)))
         blogpost.tags =  convert_to_tag_list_of_dicts(form.tags.data)
         blogpost.license = six.text_type(form.license.data) or None
-        blogpost.uploader = request.user.id
+        blogpost.actor = request.user.id
         blogpost.generate_slug()
 
         set_blogpost_state(request, blogpost)
@@ -171,11 +171,11 @@ def blogpost_create(request):
 
 @require_active_login
 def blogpost_edit(request):
-    
+
     blog_slug = request.matchdict.get('blog_slug', None)
     blog_post_slug = request.matchdict.get('blog_post_slug', None)
 
-    blogpost = request.db.MediaEntry.query.filter_by(slug=blog_post_slug, uploader=request.user.id).first()
+    blogpost = request.db.MediaEntry.query.filter_by(slug=blog_post_slug, actor=request.user.id).first()
     blog = get_blog_by_slug(request, blog_slug, author=request.user.id)
 
     if not blogpost or not blog:
@@ -279,7 +279,7 @@ def blog_post_listing(request, page, url_user=None):
          'blog_owner': url_user,
          'blog':blog
         })
-        
+
 
 @require_active_login
 def draft_view(request):
@@ -287,7 +287,7 @@ def draft_view(request):
     blog_post_slug = request.matchdict.get('blog_post_slug', None)
     user = request.matchdict.get('user')
     blog = get_blog_by_slug(request, blog_slug, author=request.user.id)
-    blogpost = request.db.MediaEntry.query.filter_by(state = u'failed', uploader=request.user.id, slug=blog_post_slug).first()
+    blogpost = request.db.MediaEntry.query.filter_by(state = u'failed', actor=request.user.id, slug=blog_post_slug).first()
 
     if not blog or not blogpost:
         return render_404(request)
@@ -298,20 +298,22 @@ def draft_view(request):
         {'blogpost':blogpost,
          'blog': blog
          })
-  
-         
+
+
 @require_active_login
 def blog_delete(request, **kwargs):
     """
-    Deletes a blog and media entries, tags associated with it. 
+    Deletes a blog and media entries, tags associated with it.
     """
     url_user = request.matchdict.get('user')
-    owner_user = request.db.User.query.filter_by(username=url_user).first()
+    owner_user = request.db.LocalUser.query.filter(
+        LocalUser.username==url_user
+    ).first()
 
     blog_slug = request.matchdict.get('blog_slug', None)
     blog = get_blog_by_slug(request, blog_slug, author=owner_user.id)
     if not blog:
-        return render_404(reequest)
+        return render_404(request)
 
     form = blog_forms.ConfirmDeleteForm(request.form)
     if request.user.id == blog.author or request.user.has_privilege(u'admin'):
@@ -346,21 +348,23 @@ def blog_delete(request, **kwargs):
         _("The blog was not deleted because you have no rights."))
         return redirect(request, "mediagoblin.media_types.blog.blog_admin_dashboard",
         user=request.user.username)
-        
-        
+
+
 def blog_about_view(request):
     """
     Page containing blog description and statistics
     """
     blog_slug = request.matchdict.get('blog_slug', None)
     url_user = request.matchdict.get('user', None)
-    
-    user = request.db.User.query.filter_by(username=url_user).first() 
+
+    user = request.db.LocalUser.query.filter(
+        LocalUser.username==url_user
+    ).first()
     blog = get_blog_by_slug(request, blog_slug, author=user.id)
-    
+
     if not user or not blog:
         return render_404(request)
-    
+
     else:
         blog_posts_processed = blog.get_all_blog_posts(u'processed').count()
         return render_to_response(
@@ -370,11 +374,3 @@ def blog_about_view(request):
                 'blog': blog,
                 'blogpost_count': blog_posts_processed
                 })
-        
-    
-    
-
-
-
-
-

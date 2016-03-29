@@ -13,10 +13,9 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 import six
 
-from mediagoblin.db.models import MediaEntry, User
+from mediagoblin.db.models import MediaEntry, User, LocalUser
 from mediagoblin.plugins.archivalook.models import FeaturedMedia
 from mediagoblin.tools.translate import lazy_pass_to_ugettext as _
 from mediagoblin.plugins.archivalook.models import FeaturedMedia
@@ -35,11 +34,12 @@ def get_media_entry_from_uploader_slug(uploader_username, slug):
     :returns media                      A MediaEntry object or None if no entry
                                         matches the specifications.
     """
-    uploader = User.query.filter(
-                User.username == uploader_username).first()
+    uploader = LocalUser.query.filter(
+        LocalUser.username==uploader_username
+    ).first()
     media = MediaEntry.query.filter(
-                MediaEntry.get_uploader == uploader ).filter(
-                MediaEntry.slug == slug).first()
+        MediaEntry.get_actor == uploader ).filter(
+        MediaEntry.slug == slug).first()
     return media
 
 
@@ -141,7 +141,7 @@ def create_featured_media_textbox():
         for feature in feature_list:
             media_entry = feature.media_entry
             output_text += u'/u/{uploader_username}/m/{media_slug}/\n'.format(
-                uploader_username = media_entry.get_uploader.username,
+                uploader_username = media_entry.get_actor.username,
                 media_slug = media_entry.slug)
 
 
@@ -292,4 +292,3 @@ def demote_feature(media_entry):
     elif target_feature.display_type == u'primary':
         target_feature.display_type = u'secondary'
     target_feature.save()
-

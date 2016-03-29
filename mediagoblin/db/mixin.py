@@ -41,6 +41,82 @@ from mediagoblin.tools.text import cleaned_markdown_conversion
 from mediagoblin.tools.url import slugify
 from mediagoblin.tools.translate import pass_to_ugettext as _
 
+class CommentingMixin(object):
+    """
+    Mixin that gives classes methods to get and add the comments on/to it
+
+    This assumes the model has a "comments" class which is a ForeignKey to the
+    Collection model. This will hold a Collection of comments which are
+    associated to this model. It also assumes the model has an "actor"
+    ForeignKey which points to the creator/publisher/etc. of the model.
+
+    NB: This is NOT the mixin for the Comment Model, this is for
+        other models which support commenting.
+    """
+
+    def get_comment_link(self):
+        # Import here to avoid cyclic imports
+        from mediagoblin.db.models import Comment, GenericModelReference
+
+        gmr = GenericModelReference.query.filter_by(
+            obj_pk=self.id,
+            model_type=self.__tablename__
+        ).first()
+
+        if gmr is None:
+            return None
+
+        link = Comment.query.filter_by(comment_id=gmr.id).first()
+        return link
+
+    def get_reply_to(self):
+        link = self.get_comment_link()
+        if link is None or link.target_id is None:
+            return None
+
+        return link.target()
+
+    def soft_delete(self, *args, **kwargs):
+        link = self.get_comment_link()
+        if link is not None:
+            link.delete()
+        super(CommentingMixin, self).soft_delete(*args, **kwargs)
+
+class GeneratePublicIDMixin(object):
+    """
+    Mixin that ensures that a the public_id field is populated.
+
+    The public_id is the ID that is used in the API, this must be globally
+    unique and dereferencable. This will be the URL for the API view of the
+    object. It's used in several places, not only is it used to give out via
+    the API but it's also vital information stored when a soft_deletion occurs
+    on the `Graveyard.public_id` field, this is needed to follow the spec which
+    says we have to be able to provide a shell of an object and return a 410
+    (rather than a 404) when a deleted object has been deleted.
+
+    This requires a the urlgen off the request object (`request.urlgen`) to be
+    provided as it's the ID is a URL.
+    """
+
+    def get_public_id(self, urlgen):
+        # Verify that the class this is on actually has a public_id field...
+        if "public_id" not in self.__table__.columns.keys():
+            raise Exception("Model has no public_id field")
+
+        # Great! the model has a public id, if it's None, let's create one!
+        if self.public_id is None:
+            # We need the internal ID for this so ensure we've been saved.
+            self.save(commit=False)
+
+            # Create the URL
+            self.public_id = urlgen(
+                "mediagoblin.api.object",
+                object_type=self.object_type,
+                id=str(uuid.uuid4()),
+                qualified=True
+            )
+            self.save()
+        return self.public_id
 
 class UserMixin(object):
     object_type = "person"
@@ -52,6 +128,7 @@ class UserMixin(object):
     def url_for_self(self, urlgen, **kwargs):
         """Generate a URL for this User's home page."""
         return urlgen('mediagoblin.user_pages.user_home',
+
                       user=self.username, **kwargs)
 
 
@@ -128,13 +205,13 @@ class GenerateSlugMixin(object):
         self.slug = slug
 
 
-class MediaEntryMixin(GenerateSlugMixin):
+class MediaEntryMixin(GenerateSlugMixin, GeneratePublicIDMixin):
     def check_slug_used(self, slug):
         # import this here due to a cyclic import issue
         # (db.models -> db.mixin -> db.util -> db.models)
         from mediagoblin.db.util import check_media_slug_used
 
-        return check_media_slug_used(self.uploader, slug, self.id)
+        return check_media_slug_used(self.actor, slug, self.id)
 
     @property
     def object_type(self):
@@ -188,7 +265,7 @@ class MediaEntryMixin(GenerateSlugMixin):
 
         Use a slug if we have one, else use our 'id'.
         """
-        uploader = self.get_uploader
+        uploader = self.get_actor
 
         return urlgen(
             'mediagoblin.user_pages.media_home',
@@ -224,6 +301,15 @@ class MediaEntryMixin(GenerateSlugMixin):
             self.media_files[u"original"]
             )
 
+    @property
+    def icon_url(self):
+        '''Return the icon URL (for usage in templates) if it exists'''
+        try:
+            return self._app.staticdirector(
+                    self.media_manager['type_icon'])
+        except AttributeError:
+            return None
+
     @cached_property
     def media_manager(self):
         """Returns the MEDIA_MANAGER of the media's media_type
@@ -244,7 +330,17 @@ class MediaEntryMixin(GenerateSlugMixin):
         Get the exception that's appropriate for this error
         """
         if self.fail_error:
-            return common.import_component(self.fail_error)
+            try:
+                return common.import_component(self.fail_error)
+            except ImportError:
+                # TODO(breton): fail_error should give some hint about why it
+                # failed. fail_error is used as a path to import().
+                # Unfortunately, I didn't know about that and put general error
+                # message there. Maybe it's for the best, because for admin,
+                # we could show even some raw python things. Anyway, this
+                # should be properly resolved. Now we are in a freeze, that's
+                # why I simply catch ImportError.
+                return None
 
     def get_license_data(self):
         """Return license dict for requested license"""
@@ -307,7 +403,7 @@ class MediaEntryMixin(GenerateSlugMixin):
         return exif_short
 
 
-class MediaCommentMixin(object):
+class TextCommentMixin(GeneratePublicIDMixin):
     object_type = "comment"
 
     @property
@@ -319,21 +415,20 @@ class MediaCommentMixin(object):
         return cleaned_markdown_conversion(self.content)
 
     def __unicode__(self):
-        return u'<{klass} #{id} {author} "{comment}">'.format(
+        return u'<{klass} #{id} {actor} "{comment}">'.format(
             klass=self.__class__.__name__,
             id=self.id,
-            author=self.get_author,
+            actor=self.get_actor,
             comment=self.content)
 
     def __repr__(self):
-        return '<{klass} #{id} {author} "{comment}">'.format(
+        return '<{klass} #{id} {actor} "{comment}">'.format(
             klass=self.__class__.__name__,
             id=self.id,
-            author=self.get_author,
+            actor=self.get_actor,
             comment=self.content)
 
-
-class CollectionMixin(GenerateSlugMixin):
+class CollectionMixin(GenerateSlugMixin, GeneratePublicIDMixin):
     object_type = "collection"
 
     def check_slug_used(self, slug):
@@ -341,7 +436,7 @@ class CollectionMixin(GenerateSlugMixin):
         # (db.models -> db.mixin -> db.util -> db.models)
         from mediagoblin.db.util import check_collection_slug_used
 
-        return check_collection_slug_used(self.creator, slug, self.id)
+        return check_collection_slug_used(self.actor, slug, self.id)
 
     @property
     def description_html(self):
@@ -361,7 +456,7 @@ class CollectionMixin(GenerateSlugMixin):
 
         Use a slug if we have one, else use our 'id'.
         """
-        creator = self.get_creator
+        creator = self.get_actor
 
         return urlgen(
             'mediagoblin.user_pages.user_collection',
@@ -369,6 +464,28 @@ class CollectionMixin(GenerateSlugMixin):
             collection=self.slug_or_id,
             **extra_args)
 
+    def add_to_collection(self, obj, content=None, commit=True):
+        """ Adds an object to the collection """
+        # It's here to prevent cyclic imports
+        from mediagoblin.db.models import CollectionItem
+
+        # Need the ID of this collection for this so check we've got one.
+        self.save(commit=False)
+
+        # Create the CollectionItem
+        item = CollectionItem()
+        item.collection = self.id
+        item.get_object = obj
+
+        if content is not None:
+            item.note = content
+
+        self.num_items = self.num_items + 1
+
+        # Save both!
+        self.save(commit=commit)
+        item.save(commit=commit)
+        return item
 
 class CollectionItemMixin(object):
     @property
@@ -379,7 +496,7 @@ class CollectionItemMixin(object):
         """
         return cleaned_markdown_conversion(self.note)
 
-class ActivityMixin(object):
+class ActivityMixin(GeneratePublicIDMixin):
     object_type = "activity"
 
     VALID_VERBS = ["add", "author", "create", "delete", "dislike", "favorite",
@@ -432,13 +549,12 @@ class ActivityMixin(object):
             "audio": _("audio"),
             "person": _("a person"),
         }
-
-        obj = self.get_object
-        target = self.get_target
+        obj = self.object()
+        target = None if self.target_id is None else self.target()
         actor = self.get_actor
         content = verb_to_content.get(self.verb, None)
 
-        if content is None or obj is None:
+        if content is None or self.object is None:
             return
 
         # Decide what to fill the object with
@@ -488,7 +604,7 @@ class ActivityMixin(object):
             "updated": updated.isoformat(),
             "content": self.content,
             "url": self.get_url(request),
-            "object": self.get_object.serialize(request),
+            "object": self.object().serialize(request),
             "objectType": self.object_type,
             "links": {
                 "self": {
@@ -503,9 +619,8 @@ class ActivityMixin(object):
         if self.title:
             obj["title"] = self.title
 
-        target = self.get_target
-        if target is not None:
-            obj["target"] = target.serialize(request)
+        if self.target_id is not None:
+            obj["target"] = self.target().serialize(request)
 
         return obj
 

@@ -24,7 +24,7 @@ from mediagoblin.db.base import Session
 from mediagoblin.media_types import sniff_media
 from mediagoblin.submit.lib import new_upload_entry
 from mediagoblin.submit.task import collect_garbage
-from mediagoblin.db.models import User, MediaEntry, MediaComment
+from mediagoblin.db.models import User, MediaEntry, TextComment, Comment
 from mediagoblin.tests.tools import fixture_add_user, fixture_media_entry
 
 
@@ -46,25 +46,31 @@ def test_user_deletes_other_comments(test_app):
     Session.flush()
 
     # Create all 4 possible comments:
-    for u_id in (user_a.id, user_b.id):
-        for m_id in (media_a.id, media_b.id):
-            cmt = MediaComment()
-            cmt.media_entry = m_id
-            cmt.author = u_id
+    for u in (user_a, user_b):
+        for m in (media_a, media_b):
+            cmt = TextComment()
+            cmt.actor = u.id
             cmt.content = u"Some Comment"
             Session.add(cmt)
+            # think i need this to get the command ID
+            Session.flush()
+
+            link = Comment()
+            link.target = m
+            link.comment = cmt
+            Session.add(link)
 
     Session.flush()
 
     usr_cnt1 = User.query.count()
     med_cnt1 = MediaEntry.query.count()
-    cmt_cnt1 = MediaComment.query.count()
+    cmt_cnt1 = Comment.query.count()
 
     User.query.get(user_a.id).delete(commit=False)
 
     usr_cnt2 = User.query.count()
     med_cnt2 = MediaEntry.query.count()
-    cmt_cnt2 = MediaComment.query.count()
+    cmt_cnt2 = Comment.query.count()
 
     # One user deleted
     assert usr_cnt2 == usr_cnt1 - 1
@@ -77,7 +83,7 @@ def test_user_deletes_other_comments(test_app):
 
     usr_cnt2 = User.query.count()
     med_cnt2 = MediaEntry.query.count()
-    cmt_cnt2 = MediaComment.query.count()
+    cmt_cnt2 = Comment.query.count()
 
     # All users gone
     assert usr_cnt2 == usr_cnt1 - 2
@@ -132,3 +138,34 @@ def test_garbage_collection_task(test_app):
 
     # Now validate the image has been deleted
     assert MediaEntry.query.filter_by(id=entry_id).first() is None
+
+def test_comments_removed_when_graveyarded(test_app):
+    """ Checks comments which are tombstones are removed from collection """
+    user = fixture_add_user()
+    media = fixture_media_entry(
+        uploader=user.id,
+        expunge=False,
+        fake_upload=False
+    )
+    
+    # Add the TextComment
+    comment = TextComment()
+    comment.actor = user.id
+    comment.content = u"This is a comment that will be deleted."
+    comment.save()
+
+    # Add a link for the comment
+    link = Comment()
+    link.target = media
+    link.comment = comment
+    link.save()
+
+    # First double check it's there and all is well...
+    assert Comment.query.filter_by(target_id=link.target_id).first() is not None
+
+    # Now delete the comment.
+    comment.delete()
+
+    # Verify this also deleted the Comment link, ergo there is no comment left.
+    assert Comment.query.filter_by(target_id=link.target_id).first() is None
+ 

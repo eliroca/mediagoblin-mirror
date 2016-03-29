@@ -25,27 +25,128 @@ import datetime
 
 from sqlalchemy import Column, Integer, Unicode, UnicodeText, DateTime, \
         Boolean, ForeignKey, UniqueConstraint, PrimaryKeyConstraint, \
-        SmallInteger, Date
-from sqlalchemy.orm import relationship, backref, with_polymorphic, validates
+        SmallInteger, Date, types
+from sqlalchemy.orm import relationship, backref, with_polymorphic, validates, \
+        class_mapper
 from sqlalchemy.orm.collections import attribute_mapped_collection
+from sqlalchemy.sql import and_
 from sqlalchemy.sql.expression import desc
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.util import memoized_property
 
 from mediagoblin.db.extratypes import (PathTupleWithSlashes, JSONEncoded,
                                        MutationDict)
-from mediagoblin.db.base import Base, DictReadAttrProxy
+from mediagoblin.db.base import Base, DictReadAttrProxy, FakeCursor
 from mediagoblin.db.mixin import UserMixin, MediaEntryMixin, \
-        MediaCommentMixin, CollectionMixin, CollectionItemMixin, \
-        ActivityMixin
+        CollectionMixin, CollectionItemMixin, ActivityMixin, TextCommentMixin, \
+        CommentingMixin
 from mediagoblin.tools.files import delete_media_files
 from mediagoblin.tools.common import import_component
 from mediagoblin.tools.routing import extract_url_arguments
 
 import six
+from six.moves.urllib.parse import urljoin
 from pytz import UTC
 
 _log = logging.getLogger(__name__)
+
+class GenericModelReference(Base):
+    """
+    Represents a relationship to any model that is defined with a integer pk
+    """
+    __tablename__ = "core__generic_model_reference"
+
+    id = Column(Integer, primary_key=True)
+    obj_pk = Column(Integer, nullable=False)
+
+    # This will be the tablename of the model
+    model_type = Column(Unicode, nullable=False)
+
+    # Constrain it so obj_pk and model_type have to be unique
+    # They should be this order as the index is generated, "model_type" will be
+    # the major order as it's put first.
+    __table_args__ = (
+        UniqueConstraint("model_type", "obj_pk"),
+        {})
+
+    def get_object(self):
+        # This can happen if it's yet to be saved
+        if self.model_type is None or self.obj_pk is None:
+            return None
+
+        model = self._get_model_from_type(self.model_type)
+        return model.query.filter_by(id=self.obj_pk).first()
+
+    def set_object(self, obj):
+        model = obj.__class__
+
+        # Check we've been given a object
+        if not issubclass(model, Base):
+            raise ValueError("Only models can be set as using the GMR")
+
+        # Check that the model has an explicit __tablename__ declaration
+        if getattr(model, "__tablename__", None) is None:
+            raise ValueError("Models must have __tablename__ attribute")
+
+        # Check that it's not a composite primary key
+        primary_keys = [key.name for key in class_mapper(model).primary_key]
+        if len(primary_keys) > 1:
+            raise ValueError("Models can not have composite primary keys")
+
+        # Check that the field on the model is a an integer field
+        pk_column = getattr(model, primary_keys[0])
+        if not isinstance(pk_column.type, Integer):
+            raise ValueError("Only models with integer pks can be set")
+
+        if getattr(obj, pk_column.key) is None:
+            obj.save(commit=False)
+
+        self.obj_pk = getattr(obj, pk_column.key)
+        self.model_type = obj.__tablename__
+
+    def _get_model_from_type(self, model_type):
+        """ Gets a model from a tablename (model type) """
+        if getattr(type(self), "_TYPE_MAP", None) is None:
+            # We want to build on the class (not the instance) a map of all the
+            # models by the table name (type) for easy lookup, this is done on
+            # the class so it can be shared between all instances
+
+            # to prevent circular imports do import here
+            registry = dict(Base._decl_class_registry).values()
+            self._TYPE_MAP = dict(
+                ((m.__tablename__, m) for m in registry if hasattr(m, "__tablename__"))
+            )
+            setattr(type(self), "_TYPE_MAP",  self._TYPE_MAP)
+
+        return self.__class__._TYPE_MAP[model_type]
+
+    @classmethod
+    def find_for_obj(cls, obj):
+        """ Finds a GMR for an object or returns None """
+        # Is there one for this already.
+        model = type(obj)
+        pk = getattr(obj, "id")
+
+        gmr = cls.query.filter_by(
+            obj_pk=pk,
+            model_type=model.__tablename__
+        )
+
+        return gmr.first()
+
+    @classmethod
+    def find_or_new(cls, obj):
+        """ Finds an existing GMR or creates a new one for the object """
+        gmr = cls.find_for_obj(obj)
+
+        # If there isn't one already create one
+        if gmr is None:
+            gmr = cls(
+                obj_pk=obj.id,
+                model_type=type(obj).__tablename__
+            )
+
+        return gmr
 
 class Location(Base):
     """ Represents a physical location """
@@ -123,50 +224,60 @@ class Location(Base):
 
 class User(Base, UserMixin):
     """
-    TODO: We should consider moving some rarely used fields
-    into some sort of "shadow" table.
+    Base user that is common amongst LocalUser and RemoteUser.
+
+    This holds all the fields which are common between both the Local and Remote
+    user models.
+
+    NB: ForeignKeys should reference this User model and NOT the LocalUser or
+        RemoteUser models.
     """
     __tablename__ = "core__users"
 
     id = Column(Integer, primary_key=True)
-    username = Column(Unicode, nullable=False, unique=True)
-    # Note: no db uniqueness constraint on email because it's not
-    # reliable (many email systems case insensitive despite against
-    # the RFC) and because it would be a mess to implement at this
-    # point.
-    email = Column(Unicode, nullable=False)
-    pw_hash = Column(Unicode)
-    created = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
-    # Intented to be nullable=False, but migrations would not work for it
-    # set to nullable=True implicitly.
-    wants_comment_notification = Column(Boolean, default=True)
-    wants_notifications = Column(Boolean, default=True)
-    license_preference = Column(Unicode)
     url = Column(Unicode)
-    bio = Column(UnicodeText)  # ??
-    uploaded = Column(Integer, default=0)
-    upload_limit = Column(Integer)
+    bio = Column(UnicodeText)
+    name = Column(Unicode)
+
+    # This is required for the polymorphic inheritance
+    type = Column(Unicode)
+
+    created = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
+    updated = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
+
     location = Column(Integer, ForeignKey("core__locations.id"))
+
+    # Lazy getters
     get_location = relationship("Location", lazy="joined")
 
-    activity = Column(Integer, ForeignKey("core__activity_intermediators.id"))
+    __mapper_args__ = {
+        'polymorphic_identity': 'user',
+        'polymorphic_on': type,
+    }
 
-    ## TODO
-    # plugin data would be in a separate model
+    deletion_mode = Base.SOFT_DELETE
 
-    def __repr__(self):
-        return '<{0} #{1} {2} {3} "{4}">'.format(
-                self.__class__.__name__,
-                self.id,
-                'verified' if self.has_privilege(u'active') else 'non-verified',
-                'admin' if self.has_privilege(u'admin') else 'user',
-                self.username)
+    def soft_delete(self, *args, **kwargs):
+        # Find all the Collections and delete those
+        for collection in Collection.query.filter_by(actor=self.id):
+            collection.delete(**kwargs)
 
-    def delete(self, **kwargs):
+        # Find all the comments and delete those too
+        for comment in TextComment.query.filter_by(actor=self.id):
+            comment.delete(**kwargs)
+
+        # Find all the activities and delete those too
+        for activity in Activity.query.filter_by(actor=self.id):
+            activity.delete(**kwargs)
+
+        super(User, self).soft_delete(*args, **kwargs)
+
+
+    def delete(self, *args, **kwargs):
         """Deletes a User and all related entries/comments/files/..."""
         # Collections get deleted by relationships.
 
-        media_entries = MediaEntry.query.filter(MediaEntry.uploader == self.id)
+        media_entries = MediaEntry.query.filter(MediaEntry.actor == self.id)
         for media in media_entries:
             # TODO: Make sure that "MediaEntry.delete()" also deletes
             # all related files/Comments
@@ -178,8 +289,9 @@ class User(Base, UserMixin):
         clean_orphan_tags(commit=False)
 
         # Delete user, pass through commit=False/True in kwargs
-        super(User, self).delete(**kwargs)
-        _log.info('Deleted user "{0}" account'.format(self.username))
+        username = self.username
+        super(User, self).delete(*args, **kwargs)
+        _log.info('Deleted user "{0}" account'.format(username))
 
     def has_privilege(self, privilege, allow_admin=True):
         """
@@ -212,19 +324,79 @@ class User(Base, UserMixin):
         """
         return UserBan.query.get(self.id) is not None
 
-
     def serialize(self, request):
         published = UTC.localize(self.created)
+        updated = UTC.localize(self.updated)
         user = {
-            "id": "acct:{0}@{1}".format(self.username, request.host),
             "published": published.isoformat(),
-            "preferredUsername": self.username,
-            "displayName": "{0}@{1}".format(self.username, request.host),
+            "updated": updated.isoformat(),
             "objectType": self.object_type,
             "pump_io": {
                 "shared": False,
                 "followed": False,
             },
+        }
+
+        if self.bio:
+            user.update({"summary": self.bio})
+        if self.url:
+            user.update({"url": self.url})
+        if self.location:
+            user.update({"location": self.get_location.serialize(request)})
+
+        return user
+
+    def unserialize(self, data):
+        if "summary" in data:
+            self.bio = data["summary"]
+
+        if "location" in data:
+            Location.create(data, self)
+
+class LocalUser(User):
+    """ This represents a user registered on this instance """
+    __tablename__ = "core__local_users"
+
+    id = Column(Integer, ForeignKey("core__users.id"), primary_key=True)
+    username = Column(Unicode, nullable=False, unique=True)
+    # Note: no db uniqueness constraint on email because it's not
+    # reliable (many email systems case insensitive despite against
+    # the RFC) and because it would be a mess to implement at this
+    # point.
+    email = Column(Unicode, nullable=False)
+    pw_hash = Column(Unicode)
+
+    # Intented to be nullable=False, but migrations would not work for it
+    # set to nullable=True implicitly.
+    wants_comment_notification = Column(Boolean, default=True)
+    wants_notifications = Column(Boolean, default=True)
+    license_preference = Column(Unicode)
+    uploaded = Column(Integer, default=0)
+    upload_limit = Column(Integer)
+
+    __mapper_args__ = {
+        "polymorphic_identity": "user_local",
+    }
+
+    ## TODO
+    # plugin data would be in a separate model
+
+    def __repr__(self):
+        return '<{0} #{1} {2} {3} "{4}">'.format(
+                self.__class__.__name__,
+                self.id,
+                'verified' if self.has_privilege(u'active') else 'non-verified',
+                'admin' if self.has_privilege(u'admin') else 'user',
+                self.username)
+
+    def get_public_id(self, host):
+        return "acct:{0}@{1}".format(self.username, host)
+
+    def serialize(self, request):
+        user = {
+            "id": self.get_public_id(request.host),
+            "preferredUsername": self.username,
+            "displayName": self.get_public_id(request.host).split(":", 1)[1],
             "links": {
                 "self": {
                     "href": request.urlgen(
@@ -250,21 +422,27 @@ class User(Base, UserMixin):
             },
         }
 
-        if self.bio:
-            user.update({"summary": self.bio})
-        if self.url:
-            user.update({"url": self.url})
-        if self.location:
-            user.update({"location": self.get_location.serialize(request)})
-
+        user.update(super(LocalUser, self).serialize(request))
         return user
 
-    def unserialize(self, data):
-        if "summary" in data:
-            self.bio = data["summary"]
+class RemoteUser(User):
+    """ User that is on another (remote) instance """
+    __tablename__ = "core__remote_users"
 
-        if "location" in data:
-            Location.create(data, self)
+    id = Column(Integer, ForeignKey("core__users.id"), primary_key=True)
+    webfinger = Column(Unicode, unique=True)
+
+    __mapper_args__ = {
+        'polymorphic_identity': 'user_remote'
+    }
+
+    def __repr__(self):
+        return "<{0} #{1} {2}>".format(
+            self.__class__.__name__,
+            self.id,
+            self.webfinger
+        )
+
 
 class Client(Base):
     """
@@ -300,7 +478,7 @@ class RequestToken(Base):
     token = Column(Unicode, primary_key=True)
     secret = Column(Unicode, nullable=False)
     client = Column(Unicode, ForeignKey(Client.id))
-    user = Column(Integer, ForeignKey(User.id), nullable=True)
+    actor = Column(Integer, ForeignKey(User.id), nullable=True)
     used = Column(Boolean, default=False)
     authenticated = Column(Boolean, default=False)
     verifier = Column(Unicode, nullable=True)
@@ -318,7 +496,7 @@ class AccessToken(Base):
 
     token = Column(Unicode, nullable=False, primary_key=True)
     secret = Column(Unicode, nullable=False)
-    user = Column(Integer, ForeignKey(User.id))
+    actor = Column(Integer, ForeignKey(User.id))
     request_token = Column(Unicode, ForeignKey(RequestToken.token))
     created = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
     updated = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
@@ -335,18 +513,19 @@ class NonceTimestamp(Base):
     nonce = Column(Unicode, nullable=False, primary_key=True)
     timestamp = Column(DateTime, nullable=False, primary_key=True)
 
-class MediaEntry(Base, MediaEntryMixin):
+class MediaEntry(Base, MediaEntryMixin, CommentingMixin):
     """
     TODO: Consider fetching the media_files using join
     """
     __tablename__ = "core__media_entries"
 
     id = Column(Integer, primary_key=True)
-    uploader = Column(Integer, ForeignKey(User.id), nullable=False, index=True)
+    public_id = Column(Unicode, unique=True, nullable=True)
+    remote = Column(Boolean, default=False)
+
+    actor = Column(Integer, ForeignKey(User.id), nullable=False, index=True)
     title = Column(Unicode, nullable=False)
     slug = Column(Unicode)
-    created = Column(DateTime, nullable=False, default=datetime.datetime.utcnow,
-        index=True)
     description = Column(UnicodeText) # ??
     media_type = Column(Unicode, nullable=False)
     state = Column(Unicode, default=u'unprocessed', nullable=False)
@@ -355,6 +534,10 @@ class MediaEntry(Base, MediaEntryMixin):
     file_size = Column(Integer, default=0)
     location = Column(Integer, ForeignKey("core__locations.id"))
     get_location = relationship("Location", lazy="joined")
+
+    created = Column(DateTime, nullable=False, default=datetime.datetime.utcnow,
+        index=True)
+    updated = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
 
     fail_error = Column(Unicode)
     fail_metadata = Column(JSONEncoded)
@@ -366,10 +549,12 @@ class MediaEntry(Base, MediaEntryMixin):
     queued_task_id = Column(Unicode)
 
     __table_args__ = (
-        UniqueConstraint('uploader', 'slug'),
+        UniqueConstraint('actor', 'slug'),
         {})
 
-    get_uploader = relationship(User)
+    deletion_mode = Base.SOFT_DELETE
+
+    get_actor = relationship(User)
 
     media_files_helper = relationship("MediaFile",
         collection_class=attribute_mapped_collection("name"),
@@ -395,28 +580,41 @@ class MediaEntry(Base, MediaEntryMixin):
         creator=lambda v: MediaTag(name=v["name"], slug=v["slug"])
         )
 
-    collections_helper = relationship("CollectionItem",
-        cascade="all, delete-orphan"
-        )
-    collections = association_proxy("collections_helper", "in_collection")
     media_metadata = Column(MutationDict.as_mutable(JSONEncoded),
         default=MutationDict())
-
-    activity = Column(Integer, ForeignKey("core__activity_intermediators.id"))
 
     ## TODO
     # fail_error
 
-    def get_comments(self, ascending=False):
-        order_col = MediaComment.created
-        if not ascending:
-            order_col = desc(order_col)
-        return self.all_comments.order_by(order_col)
+    @property
+    def collections(self):
+        """ Get any collections that this MediaEntry is in """
+        return list(Collection.query.join(Collection.collection_items).join(
+            CollectionItem.object_helper
+        ).filter(
+            and_(
+                GenericModelReference.model_type == self.__tablename__,
+                GenericModelReference.obj_pk == self.id
+            )
+        ))
 
+    def get_comments(self, ascending=False):
+        query = Comment.query.join(Comment.target_helper).filter(and_(
+            GenericModelReference.obj_pk == self.id,
+            GenericModelReference.model_type == self.__tablename__
+        ))
+
+        if ascending:
+            query = query.order_by(Comment.added.asc())
+        else:
+            query = query.order_by(Comment.added.desc())
+        
+        return query
+ 
     def url_to_prev(self, urlgen):
         """get the next 'newer' entry by this user"""
         media = MediaEntry.query.filter(
-            (MediaEntry.uploader == self.uploader)
+            (MediaEntry.actor == self.actor)
             & (MediaEntry.state == u'processed')
             & (MediaEntry.id > self.id)).order_by(MediaEntry.id).first()
 
@@ -426,7 +624,7 @@ class MediaEntry(Base, MediaEntryMixin):
     def url_to_next(self, urlgen):
         """get the next 'older' entry by this user"""
         media = MediaEntry.query.filter(
-            (MediaEntry.uploader == self.uploader)
+            (MediaEntry.actor == self.actor)
             & (MediaEntry.state == u'processed')
             & (MediaEntry.id < self.id)).order_by(desc(MediaEntry.id)).first()
 
@@ -500,6 +698,13 @@ class MediaEntry(Base, MediaEntryMixin):
                 id=self.id,
                 title=safe_title)
 
+    def soft_delete(self, *args, **kwargs):
+        # Find all of the media comments for this and delete them
+        for comment in self.get_comments():
+            comment.delete(*args, **kwargs)
+
+        super(MediaEntry, self).soft_delete(*args, **kwargs)
+
     def delete(self, del_orphan_tags=True, **kwargs):
         """Delete MediaEntry and all related files/attachments/comments
 
@@ -517,7 +722,7 @@ class MediaEntry(Base, MediaEntryMixin):
         except OSError as error:
             # Returns list of files we failed to delete
             _log.error('No such files from the user "{1}" to delete: '
-                       '{0}'.format(str(error), self.get_uploader))
+                       '{0}'.format(str(error), self.get_actor))
         _log.info('Deleted Media entry id "{0}"'.format(self.id))
         # Related MediaTag's are automatically cleaned, but we might
         # want to clean out unused Tag's too.
@@ -531,25 +736,20 @@ class MediaEntry(Base, MediaEntryMixin):
 
     def serialize(self, request, show_comments=True):
         """ Unserialize MediaEntry to object """
-        href = request.urlgen(
-            "mediagoblin.api.object",
-            object_type=self.object_type,
-            id=self.id,
-            qualified=True
-        )
-        author = self.get_uploader
+        author = self.get_actor
         published = UTC.localize(self.created)
-        updated = UTC.localize(self.created)
+        updated = UTC.localize(self.updated)
+        public_id = self.get_public_id(request.urlgen)
         context = {
-            "id": href,
+            "id": public_id,
             "author": author.serialize(request),
             "objectType": self.object_type,
             "url": self.url_for_self(request.urlgen, qualified=True),
             "image": {
-                "url": request.host_url + self.thumb_url[1:],
+                "url": urljoin(request.host_url, self.thumb_url),
             },
             "fullImage":{
-                "url": request.host_url + self.original_url[1:],
+                "url": urljoin(request.host_url, self.original_url),
             },
             "published": published.isoformat(),
             "updated": updated.isoformat(),
@@ -558,7 +758,7 @@ class MediaEntry(Base, MediaEntryMixin):
             },
             "links": {
                 "self": {
-                    "href": href,
+                    "href": public_id,
                 },
 
             }
@@ -578,7 +778,7 @@ class MediaEntry(Base, MediaEntryMixin):
 
         if show_comments:
             comments = [
-                comment.serialize(request) for comment in self.get_comments()]
+                l.comment().serialize(request) for l in self.get_comments()]
             total = len(comments)
             context["replies"] = {
                 "totalItems": total,
@@ -621,7 +821,7 @@ class MediaEntry(Base, MediaEntryMixin):
             self.license = data["license"]
 
         if "location" in data:
-            Licence.create(data["location"], self)
+            License.create(data["location"], self)
 
         return True
 
@@ -738,15 +938,63 @@ class MediaTag(Base):
         """A dict like view on this object"""
         return DictReadAttrProxy(self)
 
+class Comment(Base):
+    """
+    Link table between a response and another object that can have replies.
+    
+    This acts as a link table between an object and the comments on it, it's
+    done like this so that you can look up all the comments without knowing
+    whhich comments are on an object before hand. Any object can be a comment
+    and more or less any object can accept comments too.
 
-class MediaComment(Base, MediaCommentMixin):
+    Important: This is NOT the old MediaComment table.
+    """
+    __tablename__ = "core__comment_links"
+
+    id = Column(Integer, primary_key=True)
+    
+    # The GMR to the object the comment is on.
+    target_id = Column(
+        Integer,
+        ForeignKey(GenericModelReference.id),
+        nullable=False
+    )
+    target_helper = relationship(
+        GenericModelReference,
+        foreign_keys=[target_id]
+    )
+    target = association_proxy("target_helper", "get_object",
+                                creator=GenericModelReference.find_or_new)
+
+    # The comment object
+    comment_id = Column(
+        Integer,
+        ForeignKey(GenericModelReference.id),
+        nullable=False
+    )
+    comment_helper = relationship(
+        GenericModelReference,
+        foreign_keys=[comment_id]
+    )
+    comment = association_proxy("comment_helper", "get_object",
+                                creator=GenericModelReference.find_or_new)
+
+    # When it was added
+    added = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
+    
+
+class TextComment(Base, TextCommentMixin, CommentingMixin):
+    """
+    A basic text comment, this is a usually short amount of text and nothing else
+    """
+    # This is a legacy from when Comments where just on MediaEntry objects.
     __tablename__ = "core__media_comments"
 
     id = Column(Integer, primary_key=True)
-    media_entry = Column(
-        Integer, ForeignKey(MediaEntry.id), nullable=False, index=True)
-    author = Column(Integer, ForeignKey(User.id), nullable=False)
+    public_id = Column(Unicode, unique=True)
+    actor = Column(Integer, ForeignKey(User.id), nullable=False)
     created = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
+    updated = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
     content = Column(UnicodeText, nullable=False)
     location = Column(Integer, ForeignKey("core__locations.id"))
     get_location = relationship("Location", lazy="joined")
@@ -754,43 +1002,29 @@ class MediaComment(Base, MediaCommentMixin):
     # Cascade: Comments are owned by their creator. So do the full thing.
     # lazy=dynamic: People might post a *lot* of comments,
     #     so make the "posted_comments" a query-like thing.
-    get_author = relationship(User,
+    get_actor = relationship(User,
                               backref=backref("posted_comments",
                                               lazy="dynamic",
                                               cascade="all, delete-orphan"))
-    get_entry = relationship(MediaEntry,
-                             backref=backref("comments",
-                                             lazy="dynamic",
-                                             cascade="all, delete-orphan"))
-
-    # Cascade: Comments are somewhat owned by their MediaEntry.
-    #     So do the full thing.
-    # lazy=dynamic: MediaEntries might have many comments,
-    #     so make the "all_comments" a query-like thing.
-    get_media_entry = relationship(MediaEntry,
-                                   backref=backref("all_comments",
-                                                   lazy="dynamic",
-                                                   cascade="all, delete-orphan"))
-
-
-    activity = Column(Integer, ForeignKey("core__activity_intermediators.id"))
+    deletion_mode = Base.SOFT_DELETE
 
     def serialize(self, request):
         """ Unserialize to python dictionary for API """
-        href = request.urlgen(
-            "mediagoblin.api.object",
-            object_type=self.object_type,
-            id=self.id,
-            qualified=True
-        )
-        media = MediaEntry.query.filter_by(id=self.media_entry).first()
-        author = self.get_author
+        target = self.get_reply_to()
+        # If this is target just.. give them nothing?
+        if target is None:
+            target = {}
+        else:
+            target = target.serialize(request, show_comments=False)        
+
+
+        author = self.get_actor
         published = UTC.localize(self.created)
         context = {
-            "id": href,
+            "id": self.get_public_id(request.urlgen),
             "objectType": self.object_type,
             "content": self.content,
-            "inReplyTo": media.serialize(request, show_comments=False),
+            "inReplyTo": target,
             "author": author.serialize(request),
             "published": published.isoformat(),
             "updated": published.isoformat(),
@@ -803,63 +1037,100 @@ class MediaComment(Base, MediaCommentMixin):
 
     def unserialize(self, data, request):
         """ Takes API objects and unserializes on existing comment """
-        # Handle changing the reply ID
-        if "inReplyTo" in data:
-            # Validate that the ID is correct
-            try:
-                media_id = int(extract_url_arguments(
-                    url=data["inReplyTo"]["id"],
-                    urlmap=request.app.url_map
-                )["id"])
-            except ValueError:
-                return False
-
-            media = MediaEntry.query.filter_by(id=media_id).first()
-            if media is None:
-                return False
-
-            self.media_entry = media.id
-
         if "content" in data:
             self.content = data["content"]
 
         if "location" in data:
             Location.create(data["location"], self)
 
+    
+        # Handle changing the reply ID
+        if "inReplyTo" in data:
+            # Validate that the ID is correct
+            try:
+                id = extract_url_arguments(
+                    url=data["inReplyTo"]["id"],
+                    urlmap=request.app.url_map
+                )["id"]
+            except ValueError:
+                raise False
+
+            public_id = request.urlgen(
+                "mediagoblin.api.object",
+                id=id,
+                object_type=data["inReplyTo"]["objectType"],
+                qualified=True
+            )
+
+            media = MediaEntry.query.filter_by(public_id=public_id).first()
+            if media is None:
+                return False
+
+            # We need an ID for this model.
+            self.save(commit=False)
+
+            # Create the link
+            link = Comment()
+            link.target = media
+            link.comment = self
+            link.save()
+        
         return True
 
+class Collection(Base, CollectionMixin, CommentingMixin):
+    """A representation of a collection of objects.
 
+    This holds a group/collection of objects that could be a user defined album
+    or their inbox, outbox, followers, etc. These are always ordered and accessable
+    via the API and web.
 
-class Collection(Base, CollectionMixin):
-    """An 'album' or 'set' of media by a user.
+    The collection has a number of types which determine what kind of collection
+    it is, for example the users inbox will be of `Collection.INBOX_TYPE` that will
+    be stored on the `Collection.type` field. It's important to set the correct type.
 
     On deletion, contained CollectionItems get automatically reaped via
     SQL cascade"""
     __tablename__ = "core__collections"
 
     id = Column(Integer, primary_key=True)
+    public_id = Column(Unicode, unique=True)
     title = Column(Unicode, nullable=False)
     slug = Column(Unicode)
     created = Column(DateTime, nullable=False, default=datetime.datetime.utcnow,
                      index=True)
+    updated = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
     description = Column(UnicodeText)
-    creator = Column(Integer, ForeignKey(User.id), nullable=False)
+    actor = Column(Integer, ForeignKey(User.id), nullable=False)
+    num_items = Column(Integer, default=0)
+
+    # There are lots of different special types of collections in the pump.io API
+    # for example: followers, following, inbox, outbox, etc. See type constants
+    # below the fields on this model.
+    type = Column(Unicode, nullable=False)
+
+    # Location
     location = Column(Integer, ForeignKey("core__locations.id"))
     get_location = relationship("Location", lazy="joined")
 
-    # TODO: No of items in Collection. Badly named, can we migrate to num_items?
-    items = Column(Integer, default=0)
-
     # Cascade: Collections are owned by their creator. So do the full thing.
-    get_creator = relationship(User,
+    get_actor = relationship(User,
                                backref=backref("collections",
                                                cascade="all, delete-orphan"))
-
-    activity = Column(Integer, ForeignKey("core__activity_intermediators.id"))
-
     __table_args__ = (
-        UniqueConstraint('creator', 'slug'),
+        UniqueConstraint("actor", "slug"),
         {})
+
+    deletion_mode = Base.SOFT_DELETE
+
+    # These are the types, It's strongly suggested if new ones are invented they
+    # are prefixed to ensure they're unique from other types. Any types used in
+    # the main mediagoblin should be prefixed "core-"
+    INBOX_TYPE = "core-inbox"
+    OUTBOX_TYPE = "core-outbox"
+    FOLLOWER_TYPE = "core-followers"
+    FOLLOWING_TYPE = "core-following"
+    COMMENT_TYPE = "core-comments"
+    USER_DEFINED_TYPE = "core-user-defined"
 
     def get_collection_items(self, ascending=False):
         #TODO, is this still needed with self.collection_items being available?
@@ -871,20 +1142,17 @@ class Collection(Base, CollectionMixin):
 
     def __repr__(self):
         safe_title = self.title.encode('ascii', 'replace')
-        return '<{classname} #{id}: {title} by {creator}>'.format(
+        return '<{classname} #{id}: {title} by {actor}>'.format(
             id=self.id,
             classname=self.__class__.__name__,
-            creator=self.creator,
+            actor=self.actor,
             title=safe_title)
 
     def serialize(self, request):
         # Get all serialized output in a list
-        items = []
-        for item in self.get_collection_items():
-            items.append(item.serialize(request))
-
+        items = [i.serialize(request) for i in self.get_collection_items()]
         return {
-            "totalItems": self.items,
+            "totalItems": self.num_items,
             "url": self.url_for_self(request.urlgen, qualified=True),
             "items": items,
         }
@@ -894,23 +1162,36 @@ class CollectionItem(Base, CollectionItemMixin):
     __tablename__ = "core__collection_items"
 
     id = Column(Integer, primary_key=True)
-    media_entry = Column(
-        Integer, ForeignKey(MediaEntry.id), nullable=False, index=True)
+
     collection = Column(Integer, ForeignKey(Collection.id), nullable=False)
     note = Column(UnicodeText, nullable=True)
     added = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
     position = Column(Integer)
-
     # Cascade: CollectionItems are owned by their Collection. So do the full thing.
     in_collection = relationship(Collection,
                                  backref=backref(
                                      "collection_items",
                                      cascade="all, delete-orphan"))
 
-    get_media_entry = relationship(MediaEntry)
+    # Link to the object (could be anything.
+    object_id = Column(
+        Integer,
+        ForeignKey(GenericModelReference.id),
+        nullable=False,
+        index=True
+    )
+    object_helper = relationship(
+        GenericModelReference,
+        foreign_keys=[object_id]
+    )
+    get_object = association_proxy(
+        "object_helper",
+        "get_object",
+        creator=GenericModelReference.find_or_new
+    )
 
     __table_args__ = (
-        UniqueConstraint('collection', 'media_entry'),
+        UniqueConstraint('collection', 'object_id'),
         {})
 
     @property
@@ -919,14 +1200,15 @@ class CollectionItem(Base, CollectionItemMixin):
         return DictReadAttrProxy(self)
 
     def __repr__(self):
-        return '<{classname} #{id}: Entry {entry} in {collection}>'.format(
+        return '<{classname} #{id}: Object {obj} in {collection}>'.format(
             id=self.id,
             classname=self.__class__.__name__,
             collection=self.collection,
-            entry=self.media_entry)
+            obj=self.get_object()
+        )
 
     def serialize(self, request):
-        return self.get_media_entry.serialize(request)
+        return self.get_object().serialize(request)
 
 
 class ProcessingMetaData(Base):
@@ -979,21 +1261,19 @@ class CommentSubscription(Base):
 class Notification(Base):
     __tablename__ = 'core__notifications'
     id = Column(Integer, primary_key=True)
-    type = Column(Unicode)
+
+    object_id = Column(Integer, ForeignKey(GenericModelReference.id))
+    object_helper = relationship(GenericModelReference)
+    obj = association_proxy("object_helper", "get_object",
+                            creator=GenericModelReference.find_or_new)
 
     created = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
-
     user_id = Column(Integer, ForeignKey('core__users.id'), nullable=False,
                      index=True)
     seen = Column(Boolean, default=lambda: False, index=True)
     user = relationship(
         User,
-        backref=backref('notifications', cascade='all, delete-orphan'))
-
-    __mapper_args__ = {
-        'polymorphic_identity': 'notification',
-        'polymorphic_on': type
-    }
+        backref=backref('notifications', cascade='all, delete-orphan')) 
 
     def __repr__(self):
         return '<{klass} #{id}: {user}: {subject} ({seen})>'.format(
@@ -1011,42 +1291,9 @@ class Notification(Base):
             subject=getattr(self, 'subject', None),
             seen='unseen' if not self.seen else 'seen')
 
-
-class CommentNotification(Notification):
-    __tablename__ = 'core__comment_notifications'
-    id = Column(Integer, ForeignKey(Notification.id), primary_key=True)
-
-    subject_id = Column(Integer, ForeignKey(MediaComment.id))
-    subject = relationship(
-        MediaComment,
-        backref=backref('comment_notifications', cascade='all, delete-orphan'))
-
-    __mapper_args__ = {
-        'polymorphic_identity': 'comment_notification'
-    }
-
-
-class ProcessingNotification(Notification):
-    __tablename__ = 'core__processing_notifications'
-
-    id = Column(Integer, ForeignKey(Notification.id), primary_key=True)
-
-    subject_id = Column(Integer, ForeignKey(MediaEntry.id))
-    subject = relationship(
-        MediaEntry,
-        backref=backref('processing_notifications',
-                        cascade='all, delete-orphan'))
-
-    __mapper_args__ = {
-        'polymorphic_identity': 'processing_notification'
-    }
-
-# the with_polymorphic call has been moved to the bottom above MODELS
-# this is because it causes conflicts with relationship calls.
-
-class ReportBase(Base):
+class Report(Base):
     """
-    This is the basic report object which the other reports are based off of.
+    Represents a report that someone might file against Media, Comments, etc.
 
         :keyword    reporter_id         Holds the id of the user who created
                                             the report, as an Integer column.
@@ -1059,8 +1306,6 @@ class ReportBase(Base):
                                             an Integer column.
         :keyword    created             Holds a datetime column of when the re-
                                             -port was filed.
-        :keyword    discriminator       This column distinguishes between the
-                                            different types of reports.
         :keyword    resolver_id         Holds the id of the moderator/admin who
                                             resolved the report.
         :keyword    resolved            Holds the DateTime object which descri-
@@ -1069,8 +1314,11 @@ class ReportBase(Base):
                                             resolver's reasons for resolving
                                             the report this way. Some of this
                                             is auto-generated
+        :keyword    object_id           Holds the ID of the GenericModelReference
+                                            which points to the reported object.
     """
     __tablename__ = 'core__reports'
+    
     id = Column(Integer, primary_key=True)
     reporter_id = Column(Integer, ForeignKey(User.id), nullable=False)
     reporter =  relationship(
@@ -1078,7 +1326,7 @@ class ReportBase(Base):
         backref=backref("reports_filed_by",
             lazy="dynamic",
             cascade="all, delete-orphan"),
-        primaryjoin="User.id==ReportBase.reporter_id")
+        primaryjoin="User.id==Report.reporter_id")
     report_content = Column(UnicodeText)
     reported_user_id = Column(Integer, ForeignKey(User.id), nullable=False)
     reported_user = relationship(
@@ -1086,69 +1334,41 @@ class ReportBase(Base):
         backref=backref("reports_filed_on",
             lazy="dynamic",
             cascade="all, delete-orphan"),
-        primaryjoin="User.id==ReportBase.reported_user_id")
+        primaryjoin="User.id==Report.reported_user_id")
     created = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
-    discriminator = Column('type', Unicode(50))
     resolver_id = Column(Integer, ForeignKey(User.id))
     resolver = relationship(
         User,
         backref=backref("reports_resolved_by",
             lazy="dynamic",
             cascade="all, delete-orphan"),
-        primaryjoin="User.id==ReportBase.resolver_id")
+        primaryjoin="User.id==Report.resolver_id")
 
     resolved = Column(DateTime)
     result = Column(UnicodeText)
-    __mapper_args__ = {'polymorphic_on': discriminator}
-
-    def is_comment_report(self):
-        return self.discriminator=='comment_report'
-
-    def is_media_entry_report(self):
-        return self.discriminator=='media_report'
+    
+    object_id = Column(Integer, ForeignKey(GenericModelReference.id), nullable=True)
+    object_helper = relationship(GenericModelReference)
+    obj = association_proxy("object_helper", "get_object",
+                            creator=GenericModelReference.find_or_new)
 
     def is_archived_report(self):
         return self.resolved is not None
+
+    def is_comment_report(self):
+        if self.object_id is None:
+            return False
+        return isinstance(self.obj(), TextComment)
+
+    def is_media_entry_report(self):
+        if self.object_id is None:
+            return False
+        return isinstance(self.obj(), MediaEntry)
 
     def archive(self,resolver_id, resolved, result):
         self.resolver_id   = resolver_id
         self.resolved   = resolved
         self.result     = result
-
-
-class CommentReport(ReportBase):
-    """
-    Reports that have been filed on comments.
-        :keyword    comment_id          Holds the integer value of the reported
-                                            comment's ID
-    """
-    __tablename__ = 'core__reports_on_comments'
-    __mapper_args__ = {'polymorphic_identity': 'comment_report'}
-
-    id = Column('id',Integer, ForeignKey('core__reports.id'),
-                                                primary_key=True)
-    comment_id = Column(Integer, ForeignKey(MediaComment.id), nullable=True)
-    comment = relationship(
-        MediaComment, backref=backref("reports_filed_on",
-            lazy="dynamic"))
-
-
-class MediaReport(ReportBase):
-    """
-    Reports that have been filed on media entries
-        :keyword    media_entry_id      Holds the integer value of the reported
-                                            media entry's ID
-    """
-    __tablename__ = 'core__reports_on_media'
-    __mapper_args__ = {'polymorphic_identity': 'media_report'}
-
-    id = Column('id',Integer, ForeignKey('core__reports.id'),
-                                                primary_key=True)
-    media_entry_id = Column(Integer, ForeignKey(MediaEntry.id), nullable=True)
-    media_entry = relationship(
-        MediaEntry,
-        backref=backref("reports_filed_on",
-            lazy="dynamic"))
 
 class UserBan(Base):
     """
@@ -1235,6 +1455,8 @@ class Generator(Base):
     updated = Column(DateTime, default=datetime.datetime.utcnow)
     object_type = Column(Unicode, nullable=False)
 
+    deletion_mode = Base.SOFT_DELETE
+
     def __repr__(self):
         return "<{klass} {name}>".format(
             klass=self.__class__.__name__,
@@ -1262,62 +1484,6 @@ class Generator(Base):
         if "displayName" in data:
             self.name = data["displayName"]
 
-
-class ActivityIntermediator(Base):
-    """
-    This is used so that objects/targets can have a foreign key back to this
-    object and activities can a foreign key to this object. This objects to be
-    used multiple times for the activity object or target and also allows for
-    different types of objects to be used as an Activity.
-    """
-    __tablename__ = "core__activity_intermediators"
-
-    id = Column(Integer, primary_key=True)
-    type = Column(Unicode, nullable=False)
-
-    TYPES = {
-        "user": User,
-        "media": MediaEntry,
-        "comment": MediaComment,
-        "collection": Collection,
-    }
-
-    def _find_model(self, obj):
-        """ Finds the model for a given object """
-        for key, model in self.TYPES.items():
-            if isinstance(obj, model):
-                return key, model
-
-        return None, None
-
-    def set(self, obj):
-        """ This sets itself as the activity """
-        key, model = self._find_model(obj)
-        if key is None:
-            raise ValueError("Invalid type of object given")
-
-        self.type = key
-
-        # We need to populate the self.id so we need to save but, we don't
-        # want to save this AI in the database (yet) so commit=False.
-        self.save(commit=False)
-        obj.activity = self.id
-        obj.save()
-
-    def get(self):
-        """ Finds the object for an activity """
-        if self.type is None:
-            return None
-
-        model = self.TYPES[self.type]
-        return model.query.filter_by(activity=self.id).first()
-
-    @validates("type")
-    def validate_type(self, key, value):
-        """ Validate that the type set is a valid type """
-        assert value in self.TYPES
-        return value
-
 class Activity(Base, ActivityMixin):
     """
     This holds all the metadata about an activity such as uploading an image,
@@ -1326,28 +1492,38 @@ class Activity(Base, ActivityMixin):
     __tablename__ = "core__activities"
 
     id = Column(Integer, primary_key=True)
+    public_id = Column(Unicode, unique=True)
     actor = Column(Integer,
                    ForeignKey("core__users.id"),
                    nullable=False)
     published = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
     updated = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
+
     verb = Column(Unicode, nullable=False)
     content = Column(Unicode, nullable=True)
     title = Column(Unicode, nullable=True)
     generator = Column(Integer,
                        ForeignKey("core__generators.id"),
                        nullable=True)
-    object = Column(Integer,
-                    ForeignKey("core__activity_intermediators.id"),
-                    nullable=False)
-    target = Column(Integer,
-                    ForeignKey("core__activity_intermediators.id"),
-                    nullable=True)
+
+    # Create the generic foreign keys for the object
+    object_id = Column(Integer, ForeignKey(GenericModelReference.id), nullable=False)
+    object_helper = relationship(GenericModelReference, foreign_keys=[object_id])
+    object = association_proxy("object_helper", "get_object",
+                                creator=GenericModelReference.find_or_new)
+
+    # Create the generic foreign Key for the target
+    target_id = Column(Integer, ForeignKey(GenericModelReference.id), nullable=True)
+    target_helper = relationship(GenericModelReference, foreign_keys=[target_id])
+    target = association_proxy("target_helper", "get_object",
+                              creator=GenericModelReference.find_or_new)
 
     get_actor = relationship(User,
                              backref=backref("activities",
                                              cascade="all, delete-orphan"))
     get_generator = relationship(Generator)
+
+    deletion_mode = Base.SOFT_DELETE
 
     def __repr__(self):
         if self.content is None:
@@ -1361,62 +1537,54 @@ class Activity(Base, ActivityMixin):
                 content=self.content
             )
 
-    @property
-    def get_object(self):
-        if self.object is None:
-            return None
-
-        ai = ActivityIntermediator.query.filter_by(id=self.object).first()
-        return ai.get()
-
-    def set_object(self, obj):
-        self.object = self._set_model(obj)
-
-    @property
-    def get_target(self):
-        if self.target is None:
-            return None
-
-        ai = ActivityIntermediator.query.filter_by(id=self.target).first()
-        return ai.get()
-
-    def set_target(self, obj):
-        self.target = self._set_model(obj)
-
-    def _set_model(self, obj):
-        # Firstly can we set obj
-        if not hasattr(obj, "activity"):
-            raise ValueError(
-                "{0!r} is unable to be set on activity".format(obj))
-
-        if obj.activity is None:
-            # We need to create a new AI
-            ai = ActivityIntermediator()
-            ai.set(obj)
-            ai.save()
-            return ai.id
-
-        # Okay we should have an existing AI
-        return ActivityIntermediator.query.filter_by(id=obj.activity).first().id
-
     def save(self, set_updated=True, *args, **kwargs):
         if set_updated:
             self.updated = datetime.datetime.now()
         super(Activity, self).save(*args, **kwargs)
 
-with_polymorphic(
-    Notification,
-    [ProcessingNotification, CommentNotification])
+class Graveyard(Base):
+    """ Where models come to die """
+    __tablename__ = "core__graveyard"
 
+    id = Column(Integer, primary_key=True)
+    public_id = Column(Unicode, nullable=True, unique=True)
+
+    deleted = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
+    object_type = Column(Unicode, nullable=False)
+
+    # This could either be a deleted actor or a real actor, this must be
+    # nullable as it we shouldn't have it set for deleted actor
+    actor_id = Column(Integer, ForeignKey(GenericModelReference.id))
+    actor_helper = relationship(GenericModelReference)
+    actor = association_proxy("actor_helper", "get_object",
+                              creator=GenericModelReference.find_or_new)
+
+    def __repr__(self):
+        return "<{klass} deleted {obj_type}>".format(
+            klass=type(self).__name__,
+            obj_type=self.object_type
+        )
+
+    def serialize(self, request):
+        deleted = UTC.localize(self.deleted).isoformat()
+        context = {
+            "id": self.public_id,
+            "objectType": self.object_type,
+            "published": deleted,
+            "updated": deleted,
+            "deleted": deleted,
+        }
+
+        if self.actor_id is not None:
+            context["actor"] = self.actor().serialize(request)
+
+        return context
 MODELS = [
-    User, MediaEntry, Tag, MediaTag, MediaComment, Collection, CollectionItem,
-    MediaFile, FileKeynames, MediaAttachmentFile, ProcessingMetaData,
-    Notification, CommentNotification, ProcessingNotification, Client,
-    CommentSubscription, ReportBase, CommentReport, MediaReport, UserBan,
-	Privilege, PrivilegeUserAssociation,
-    RequestToken, AccessToken, NonceTimestamp,
-    Activity, ActivityIntermediator, Generator,
-    Location]
+    LocalUser, RemoteUser, User, MediaEntry, Tag, MediaTag, Comment, TextComment,
+    Collection, CollectionItem, MediaFile, FileKeynames, MediaAttachmentFile,
+    ProcessingMetaData, Notification, Client, CommentSubscription, Report,
+    UserBan, Privilege, PrivilegeUserAssociation, RequestToken, AccessToken,
+    NonceTimestamp, Activity, Generator, Location, GenericModelReference, Graveyard]
 
 """
  Foundations are the default rows that are created immediately after the tables

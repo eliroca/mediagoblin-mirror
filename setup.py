@@ -42,28 +42,14 @@ def get_version():
 
 pyversion_install_requires = []
 if PY2:
-    pyversion_install_requires.append('argparse')  # only for < 2.7
-    pyversion_install_requires.append('PasteScript')
-    # newer sqlalchemy-migrate requires pbr which BREAKS EVERYTHING AND IS
-    # TERRIBLE AND IS THE END OF ALL THINGS
-    # I'd love to remove this restriction.
-    pyversion_install_requires.append('sqlalchemy-migrate<0.8')
-    # # Annoying.  Please remove once we can!  We only indirectly
-    # # use pbr, and currently it breaks things, presumably till
-    # # their next release.
-    # pyversion_install_requires.append('pbr==0.5.22')
+    pyversion_install_requires.append('sqlalchemy-migrate>=0.9.6')
     pyversion_install_requires.append('mock==1.0.1')  # mock is in the stdlib for 3.3+
     # PyPI version (1.4.2) does not have proper Python 3 support
     pyversion_install_requires.append('ExifRead')
-    pyversion_install_requires.append('PasteScript')
-    # Paste 2.0 is breaking wsgi, see:
-    #  https://bitbucket.org/ianb/paste/issue/4/wsgi-environ-totally-borked
-    pyversion_install_requires.append('Paste<=1.9.9')
-else:
-    pyversion_install_requires.append('gunicorn')
 
 install_requires = [
-    'alembic==0.6.6',
+    'waitress',
+    'alembic>=0.7.5',
     'python-dateutil',
     'wtforms',
     'py-bcrypt',
@@ -74,10 +60,10 @@ install_requires = [
     'kombu',
     'jinja2',
     'Babel>=1.3',
-    'webtest<2',
+    'WebTest>=2.0.18',
     'ConfigObj',
     'Markdown',
-    'sqlalchemy<0.9.0, >0.8.0',
+    'sqlalchemy',
     'itsdangerous',
     'pytz',
     'sphinx',
@@ -86,6 +72,7 @@ install_requires = [
     'unidecode',
     'jsonschema',
     'PasteDeploy',
+    'PasteScript',
     'requests>=2.6.0',
     'pyld',
     # This is optional:
@@ -148,7 +135,6 @@ try:
         "Operating System :: OS Independent",
         "Programming Language :: Python",
         'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.6',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.3',

@@ -57,7 +57,7 @@ Dependencies
 
 MediaGoblin has the following core dependencies:
 
-- Python 2.7
+- Python 2.7 or Python 3.4+
 - `python-lxml <http://lxml.de/>`_
 - `git <http://git-scm.com/>`_
 - `SQLite <http://www.sqlite.org/>`_/`PostgreSQL <http://www.postgresql.org/>`_
@@ -65,7 +65,7 @@ MediaGoblin has the following core dependencies:
 - `virtualenv <http://www.virtualenv.org/>`_
 - `nodejs <https://nodejs.org>`_
 
-On a DEB-based system (e.g Debian, gNewSense, Trisquel, Ubuntu, and
+On a DEB-based system (e.g Debian, gNewSense, Trisquel, *buntu, and
 derivatives) issue the following command::
 
     sudo apt-get install git-core python python-dev python-lxml \
@@ -78,6 +78,11 @@ following command::
     sudo yum install python-paste-deploy python-paste-script \
         git-core python python-devel python-lxml python-imaging \
         python-virtualenv npm automake nginx
+
+(Note: MediaGoblin now officially supports Python 3.  You may instead
+substitute from "python" to "python3" for most package names in the
+Debian instructions and this should cover dependency installation.
+These instructions have not yet been tested on Fedora.)
 
 Configure PostgreSQL
 ~~~~~~~~~~~~~~~~~~~~
@@ -155,7 +160,7 @@ Drop Privileges for MediaGoblin
 MediaGoblin does not require special permissions or elevated
 access to run. As such, the preferred way to run MediaGoblin is to
 create a dedicated, unprivileged system user for the sole purpose of running
-MediaGoblin. Running MediaGoblin processes under an unpriviledged system user
+MediaGoblin. Running MediaGoblin processes under an unprivileged system user
 helps to keep it more secure. 
 
 The following command (entered as root or with sudo) will create a
@@ -199,7 +204,7 @@ Substitute your prefered local deployment path as needed.
 
 Setting up the working directory requires that we first create the directory
 with elevated priviledges, and then assign ownership of the directory
-to the unpriviledged system account.
+to the unprivileged system account.
 
 To do this, enter the following command, changing the defaults to suit your
 particular requirements. On a Debian-based platform you will enter this::
@@ -213,7 +218,7 @@ On an RPM-based distribution, enter this command::
 .. note::
 
     Unless otherwise noted, the remainder of this document assumes that all
-    operations are performed using this unpriviledged account.
+    operations are performed using this unprivileged account.
 
 
 Install MediaGoblin and Virtualenv
@@ -246,6 +251,9 @@ Set up the hacking environment::
 
     $ ./bootstrap.sh && ./configure && make
 
+(Note that if you'd prefer to run MediaGoblin with Python 3, pass in
+`--with-python3` to the `./configure` command.)
+
 Create and set the proper permissions on the ``user_dev`` directory.
 This directory will be used to store uploaded media files::
 
@@ -255,6 +263,11 @@ Assuming you are going to deploy with FastCGI, you should also install
 flup::
 
     $ ./bin/easy_install flup
+
+(Note, if you're running Python 2, which you probably are at this
+point in MediaGoblin's development, you'll need to run:)
+
+    $ ./bin/easy_install flup==1.0.3.dev-20110405
 
 The above provides an in-package install of ``virtualenv``. While this
 is counter to the conventional ``virtualenv`` configuration, it is
@@ -371,7 +384,7 @@ into a directory that will be included in your ``nginx`` configuration
 (e.g. "``/etc/nginx/sites-enabled`` or ``/etc/nginx/conf.d``) with
 one of the following commands.
 
-On a DEB-based system (e.g Debian, gNewSense, Trisquel, Ubuntu, and
+On a DEB-based system (e.g Debian, gNewSense, Trisquel, *buntu, and
 derivatives) issue the following commands::
 
     sudo ln -s /srv/mediagoblin.example.org/nginx.conf /etc/nginx/sites-enabled/

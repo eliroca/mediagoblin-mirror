@@ -16,8 +16,11 @@
 
 from __future__ import print_function
 
+import sys
+
 import six
 
+from mediagoblin.db.models import LocalUser
 from mediagoblin.gmg_commands import util as commands_util
 from mediagoblin import auth
 from mediagoblin import mg_globals
@@ -44,16 +47,17 @@ def adduser(args):
 
     db = mg_globals.database
     users_with_username = \
-        db.User.query.filter_by(
-            username=args.username.lower()
+        db.LocalUser.query.filter(
+            LocalUser.username==args.username.lower()
         ).count()
 
     if users_with_username:
         print(u'Sorry, a user with that name already exists.')
+        sys.exit(1)
 
     else:
         # Create the user
-        entry = db.User()
+        entry = db.LocalUser()
         entry.username = six.text_type(args.username.lower())
         entry.email = six.text_type(args.email)
         entry.pw_hash = auth.gen_password_hash(args.password)
@@ -70,13 +74,14 @@ def adduser(args):
         entry.all_privileges = default_privileges
         entry.save()
 
-        print(u"User created (and email marked as verified)")
+        print(u"User created (and email marked as verified).")
 
 
 def makeadmin_parser_setup(subparser):
     subparser.add_argument(
         'username',
-        help="Username to give admin level")
+        help="Username to give admin level",
+        type=six.text_type)
 
 
 def makeadmin(args):
@@ -84,23 +89,26 @@ def makeadmin(args):
 
     db = mg_globals.database
 
-    user = db.User.query.filter_by(
-        username=six.text_type(args.username.lower())).one()
+    user = db.LocalUser.query.filter(
+        LocalUser.username==args.username.lower()
+    ).first()
     if user:
         user.all_privileges.append(
             db.Privilege.query.filter(
                 db.Privilege.privilege_name==u'admin').one()
         )
         user.save()
-        print(u'The user is now Admin')
+        print(u'The user %s is now an admin.' % args.username)
     else:
-        print(u'The user doesn\'t exist')
+        print(u'The user %s doesn\'t exist.' % args.username)
+        sys.exit(1)
 
 
 def changepw_parser_setup(subparser):
     subparser.add_argument(
         'username',
-        help="Username used to login")
+        help="Username used to login",
+        type=six.text_type)
     subparser.add_argument(
         'password',
         help="Your NEW supersecret word to login")
@@ -111,14 +119,16 @@ def changepw(args):
 
     db = mg_globals.database
 
-    user = db.User.query.filter_by(
-        username=six.text_type(args.username.lower())).one()
+    user = db.LocalUser.query.filter(
+        LocalUser.username==args.username.lower()
+    ).first()
     if user:
         user.pw_hash = auth.gen_password_hash(args.password)
         user.save()
-        print(u'Password successfully changed')
+        print(u'Password successfully changed for user %s.' % args.username)
     else:
-        print(u'The user doesn\'t exist')
+        print(u'The user %s doesn\'t exist.' % args.username)
+        sys.exit(1)
 
 
 def deleteuser_parser_setup(subparser):
@@ -133,9 +143,12 @@ def deleteuser(args):
 
     db = mg_globals.database
 
-    user = db.User.query.filter_by(username=args.username.lower()).first()
+    user = db.LocalUser.query.filter(
+        LocalUser.username==args.username.lower()
+    ).first()
     if user:
         user.delete()
-        print('The user %s has been deleted' % args.username)
+        print('The user %s has been deleted.' % args.username)
     else:
-        print('The user %s doesn\'t exist' % args.username)
+        print('The user %s doesn\'t exist.' % args.username)
+        sys.exit(1)

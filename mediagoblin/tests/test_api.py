@@ -25,7 +25,7 @@ from webtest import AppError
 
 from .resources import GOOD_JPG
 from mediagoblin import mg_globals
-from mediagoblin.db.models import User, MediaEntry, MediaComment
+from mediagoblin.db.models import User, Activity, MediaEntry, TextComment
 from mediagoblin.tools.routing import extract_url_arguments
 from mediagoblin.tests.tools import fixture_add_user
 from mediagoblin.moderation.tools import take_away_privileges
@@ -188,9 +188,8 @@ class TestAPI(object):
         # Lets change the image uploader to be self.other_user, this is easier
         # than uploading the image as someone else as the way self.mocked_oauth_required
         # and self._upload_image.
-        id = int(data["object"]["id"].split("/")[-2])
-        media = MediaEntry.query.filter_by(id=id).first()
-        media.uploader = self.other_user.id
+        media = MediaEntry.query.filter_by(public_id=data["object"]["id"]).first()
+        media.actor = self.other_user.id
         media.save()
 
         # Now lets try and edit the image as self.user, this should produce a 403 error.
@@ -232,14 +231,13 @@ class TestAPI(object):
         image = json.loads(response.body.decode())["object"]
 
         # Check everything has been set on the media correctly
-        id = int(image["id"].split("/")[-2])
-        media = MediaEntry.query.filter_by(id=id).first()
+        media = MediaEntry.query.filter_by(public_id=image["id"]).first()
         assert media.title == title
         assert media.description == description
         assert media.license == license
 
         # Check we're being given back everything we should on an update
-        assert int(image["id"].split("/")[-2]) == media.id
+        assert image["id"] == media.public_id
         assert image["displayName"] == title
         assert image["content"] == description
         assert image["license"] == license
@@ -288,8 +286,7 @@ class TestAPI(object):
             request = test_app.get(object_uri)
 
         image = json.loads(request.body.decode())
-        entry_id = int(image["id"].split("/")[-2])
-        entry = MediaEntry.query.filter_by(id=entry_id).first()
+        entry = MediaEntry.query.filter_by(public_id=image["id"]).first()
 
         assert request.status_code == 200
 
@@ -319,12 +316,11 @@ class TestAPI(object):
         assert response.status_code == 200
 
         # Find the objects in the database
-        media_id = int(data["object"]["id"].split("/")[-2])
-        media = MediaEntry.query.filter_by(id=media_id).first()
-        comment = media.get_comments()[0]
+        media = MediaEntry.query.filter_by(public_id=data["object"]["id"]).first()
+        comment = media.get_comments()[0].comment()
 
         # Tests that it matches in the database
-        assert comment.author == self.user.id
+        assert comment.actor == self.user.id
         assert comment.content == content
 
         # Test that the response is what we should be given
@@ -382,9 +378,8 @@ class TestAPI(object):
         response, comment_data = self._activity_to_feed(test_app, activity)
 
         # change who uploaded the comment as it's easier than changing
-        comment_id = int(comment_data["object"]["id"].split("/")[-2])
-        comment = MediaComment.query.filter_by(id=comment_id).first()
-        comment.author = self.other_user.id
+        comment = TextComment.query.filter_by(public_id=comment_data["object"]["id"]).first()
+        comment.actor = self.other_user.id
         comment.save()
 
         # Update the comment as someone else.
@@ -443,8 +438,8 @@ class TestAPI(object):
 
     def test_read_feed(self, test_app):
         """ Test able to read objects from the feed """
-        response, data = self._upload_image(test_app, GOOD_JPG)
-        response, data = self._post_image_to_feed(test_app, data)
+        response, image_data = self._upload_image(test_app, GOOD_JPG)
+        response, data = self._post_image_to_feed(test_app, image_data)
 
         uri = "/api/user/{0}/feed".format(self.active_user.username)
         with self.mock_oauth():
@@ -463,7 +458,82 @@ class TestAPI(object):
 
             # Check that image i uploaded is there
             assert feed["items"][0]["verb"] == "post"
-            assert feed["items"][0]["actor"]
+            assert feed["items"][0]["id"] == data["id"]
+            assert feed["items"][0]["object"]["objectType"] == "image"
+            assert feed["items"][0]["object"]["id"] == data["object"]["id"]
+
+        default_limit = 20
+        items_count = default_limit * 2
+        for i in range(items_count):
+            response, image_data = self._upload_image(test_app, GOOD_JPG)
+            self._post_image_to_feed(test_app, image_data)
+        items_count += 1  # because there already is one
+
+        #
+        # default returns default_limit items
+        #
+        with self.mock_oauth():
+            response = test_app.get(uri)
+            feed = json.loads(response.body.decode())
+            assert len(feed["items"]) == default_limit
+
+        #
+        # silentely ignore count and offset that that are
+        # not a number
+        #
+        with self.mock_oauth():
+            response = test_app.get(uri + "?count=BAD&offset=WORSE")
+            feed = json.loads(response.body.decode())
+            assert len(feed["items"]) == default_limit
+
+        #
+        # if offset is less than default_limit items
+        # from the end of the feed, return less than
+        # default_limit
+        #
+        with self.mock_oauth():
+            near_the_end = items_count - default_limit / 2
+            response = test_app.get(uri + "?offset=%d" % near_the_end)
+            feed = json.loads(response.body.decode())
+            assert len(feed["items"]) < default_limit
+
+        #
+        # count=5 returns 5 items
+        #
+        with self.mock_oauth():
+            response = test_app.get(uri + "?count=5")
+            feed = json.loads(response.body.decode())
+            assert len(feed["items"]) == 5
+
+    def test_read_another_feed(self, test_app):
+        """ Test able to read objects from someone else's feed """
+        response, data = self._upload_image(test_app, GOOD_JPG)
+        response, data = self._post_image_to_feed(test_app, data)
+
+        # Change the active user to someone else.
+        self.active_user = self.other_user
+
+        # Fetch the feed
+        url = "/api/user/{0}/feed".format(self.user.username)
+        with self.mock_oauth():
+            response = test_app.get(url)
+            feed = json.loads(response.body.decode())
+
+            assert response.status_code == 200
+
+            # Check it has the attributes it ought to.
+            assert "displayName" in feed
+            assert "objectTypes" in feed
+            assert "url" in feed
+            assert "links" in feed
+            assert "author" in feed
+            assert "items" in feed
+
+            # Assert the uploaded image is there
+            assert feed["items"][0]["verb"] == "post"
+            assert feed["items"][0]["id"] == data["id"]
+            assert feed["items"][0]["object"]["objectType"] == "image"
+            assert feed["items"][0]["object"]["id"] == data["object"]["id"]
 
     def test_cant_post_to_someone_elses_feed(self, test_app):
         """ Test that can't post to someone elses feed """
@@ -510,8 +580,7 @@ class TestAPI(object):
         response = self._activity_to_feed(test_app, activity)[1]
 
         # Check the media is no longer in the database
-        media_id = int(object_id.split("/")[-2])
-        media = MediaEntry.query.filter_by(id=media_id).first()
+        media = MediaEntry.query.filter_by(public_id=object_id).first()
 
         assert media is None
 
@@ -552,8 +621,8 @@ class TestAPI(object):
         delete = self._activity_to_feed(test_app, activity)[1]
 
         # Verify the comment no longer exists
-        comment_id = int(comment["object"]["id"].split("/")[-2])
-        assert MediaComment.query.filter_by(id=comment_id).first() is None
+        assert TextComment.query.filter_by(public_id=comment["object"]["id"]).first() is None
+        comment_id = comment["object"]["id"]
 
         # Check we've got a delete activity back
         assert "id" in delete
@@ -593,8 +662,6 @@ class TestAPI(object):
         comment = self._activity_to_feed(test_app, activity)[1]
 
         # Verify the comment reflects the changes
-        comment_id = int(comment["object"]["id"].split("/")[-2])
-        model = MediaComment.query.filter_by(id=comment_id).first()
+        model = TextComment.query.filter_by(public_id=comment["object"]["id"]).first()
 
         assert model.content == activity["object"]["content"]
-

@@ -211,7 +211,7 @@ def request_token(request):
         error = "Invalid client_id"
         return json_response({"error": error}, status=400)
 
-   # make request token and return to client
+    # make request token and return to client
     request_validator = GMGRequestValidator(authorization)
     rv = RequestTokenEndpoint(request_validator)
     tokens = rv.create_request_token(request, authorization)
@@ -255,7 +255,7 @@ def authorize(request):
         verifier = auth_endpoint.create_verifier(orequest, {})
         oauth_request.verifier = verifier["oauth_verifier"]
 
-    oauth_request.user = request.user.id
+    oauth_request.actor = request.user.id
     oauth_request.save()
 
     # find client & build context

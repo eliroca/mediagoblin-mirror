@@ -20,8 +20,7 @@ import six.moves.urllib.parse as urlparse
 
 from mediagoblin.tools import template, mail
 
-from mediagoblin.db.models import Notification, CommentNotification, \
-        CommentSubscription
+from mediagoblin.db.models import Notification, CommentSubscription
 from mediagoblin.db.base import Session
 
 from mediagoblin.notifications import mark_comment_notification_seen
@@ -109,28 +108,41 @@ class TestNotifications:
 
         notification = notifications[0]
 
-        assert type(notification) == CommentNotification
         assert notification.seen == False
         assert notification.user_id == user.id
-        assert notification.subject.get_author.id == self.test_user.id
-        assert notification.subject.content == u'Test comment #42'
+        assert notification.obj().comment().get_actor.id == self.test_user.id
+        assert notification.obj().comment().content == u'Test comment #42'
 
         if wants_email == True:
-            assert mail.EMAIL_TEST_MBOX_INBOX == [
-                {'from': 'notice@mediagoblin.example.org',
-                'message': 'Content-Type: text/plain; \
+            # Why the `or' here?  In Werkzeug 0.11.0 and above
+            # werkzeug stopped showing the port for localhost when
+            # rendering something like this.  As long as we're
+            # supporting pre-0.11.0 we'll keep this `or', but maybe
+            # in the future we can kill it.
+            assert (
+                mail.EMAIL_TEST_MBOX_INBOX == [
+                    {'from': 'notice@mediagoblin.example.org',
+                     'message': 'Content-Type: text/plain; \
 charset="utf-8"\nMIME-Version: 1.0\nContent-Transfer-Encoding: \
 base64\nSubject: GNU MediaGoblin - chris commented on your \
 post\nFrom: notice@mediagoblin.example.org\nTo: \
 otherperson@example.com\n\nSGkgb3RoZXJwZXJzb24sCmNocmlzIGNvbW1lbnRlZCBvbiB5b3VyIHBvc3QgKGh0dHA6Ly9sb2Nh\nbGhvc3Q6ODAvdS9vdGhlcnBlcnNvbi9tL3NvbWUtdGl0bGUvYy8xLyNjb21tZW50KSBhdCBHTlUg\nTWVkaWFHb2JsaW4KClRlc3QgY29tbWVudCAjNDIKCkdOVSBNZWRpYUdvYmxpbg==\n',
-                'to': [u'otherperson@example.com']}]
+                     'to': [u'otherperson@example.com']}]
+                or mail.EMAIL_TEST_MBOX_INBOX == [
+                    {'from': 'notice@mediagoblin.example.org',
+                     'message': 'Content-Type: text/plain; \
+charset="utf-8"\nMIME-Version: 1.0\nContent-Transfer-Encoding: \
+base64\nSubject: GNU MediaGoblin - chris commented on your \
+post\nFrom: notice@mediagoblin.example.org\nTo: \
+otherperson@example.com\n\nSGkgb3RoZXJwZXJzb24sCmNocmlzIGNvbW1lbnRlZCBvbiB5b3VyIHBvc3QgKGh0dHA6Ly9sb2Nh\nbGhvc3QvdS9vdGhlcnBlcnNvbi9tL3NvbWUtdGl0bGUvYy8xLyNjb21tZW50KSBhdCBHTlUgTWVk\naWFHb2JsaW4KClRlc3QgY29tbWVudCAjNDIKCkdOVSBNZWRpYUdvYmxpbg==\n',
+                     'to': [u'otherperson@example.com']}])
         else:
             assert mail.EMAIL_TEST_MBOX_INBOX == []
 
 
         # Save the ids temporarily because of DetachedInstanceError
         notification_id = notification.id
-        comment_id = notification.subject.id
+        comment_id = notification.obj().id
 
         self.logout()
         self.login('otherperson', 'nosreprehto')

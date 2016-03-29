@@ -25,9 +25,9 @@ from paste.deploy import loadapp
 from webtest import TestApp
 
 from mediagoblin import mg_globals
-from mediagoblin.db.models import User, MediaEntry, Collection, MediaComment, \
-    CommentSubscription, CommentNotification, Privilege, CommentReport, Client, \
-    RequestToken, AccessToken, Activity, Generator
+from mediagoblin.db.models import User, LocalUser, MediaEntry, Collection, TextComment, \
+    CommentSubscription, Notification, Privilege, Report, Client, \
+    RequestToken, AccessToken, Activity, Generator, Comment
 from mediagoblin.tools import testing
 from mediagoblin.init.config import read_mediagoblin_config
 from mediagoblin.db.base import Session
@@ -125,6 +125,8 @@ def get_app(request, paste_config=None, mgoblin_config=None):
     app_config = global_config['mediagoblin']
 
     # Run database setup/migrations
+    # @@: The *only* test that doesn't pass if we remove this is in
+    #   test_persona.py... why?
     run_dbupdate(app_config, global_config)
 
     # setup app and return
@@ -176,9 +178,9 @@ def assert_db_meets_expected(db, expected):
 def fixture_add_user(username=u'chris', password=u'toast',
                      privileges=[], wants_comment_notification=True):
     # Reuse existing user or create a new one
-    test_user = User.query.filter_by(username=username).first()
+    test_user = LocalUser.query.filter(LocalUser.username==username).first()
     if test_user is None:
-        test_user = User()
+        test_user = LocalUser()
     test_user.username = username
     test_user.email = username + u'@example.com'
     if password is not None:
@@ -190,8 +192,11 @@ def fixture_add_user(username=u'chris', password=u'toast',
             test_user.all_privileges.append(query.one())
 
     test_user.save()
-    # Reload
-    test_user = User.query.filter_by(username=username).first()
+
+    # Reload - The `with_polymorphic` needs to be there to eagerly load
+    # the attributes on the LocalUser as this can't be done post detachment.
+    user_query = LocalUser.query.with_polymorphic(LocalUser)
+    test_user = user_query.filter(LocalUser.username==username).first()
 
     # ... and detach from session:
     Session.expunge(test_user)
@@ -201,12 +206,12 @@ def fixture_add_user(username=u'chris', password=u'toast',
 
 def fixture_comment_subscription(entry, notify=True, send_email=None):
     if send_email is None:
-        uploader = User.query.filter_by(id=entry.uploader).first()
-        send_email = uploader.wants_comment_notification
+        actor = LocalUser.query.filter_by(id=entry.actor).first()
+        send_email = actor.wants_comment_notification
 
     cs = CommentSubscription(
         media_entry_id=entry.id,
-        user_id=entry.uploader,
+        user_id=entry.actor,
         notify=notify,
         send_email=send_email)
 
@@ -219,14 +224,16 @@ def fixture_comment_subscription(entry, notify=True, send_email=None):
     return cs
 
 
-def fixture_add_comment_notification(entry_id, subject_id, user_id,
+def fixture_add_comment_notification(entry, subject, user,
                                      seen=False):
-    cn = CommentNotification(user_id=user_id,
-                             seen=seen,
-                             subject_id=subject_id)
+    cn = Notification(
+        user_id=user,
+        seen=seen,
+    )
+    cn.obj = subject
     cn.save()
 
-    cn = CommentNotification.query.filter_by(id=cn.id).first()
+    cn = Notification.query.filter_by(id=cn.id).first()
 
     Session.expunge(cn)
 
@@ -251,7 +258,7 @@ def fixture_media_entry(title=u"Some title", slug=None,
     entry = MediaEntry()
     entry.title = title
     entry.slug = slug
-    entry.uploader = uploader
+    entry.actor = uploader
     entry.media_type = u'image'
     entry.state = state
 
@@ -275,15 +282,21 @@ def fixture_media_entry(title=u"Some title", slug=None,
     return entry
 
 
-def fixture_add_collection(name=u"My first Collection", user=None):
+def fixture_add_collection(name=u"My first Collection", user=None,
+                           collection_type=Collection.USER_DEFINED_TYPE):
     if user is None:
         user = fixture_add_user()
-    coll = Collection.query.filter_by(creator=user.id, title=name).first()
+    coll = Collection.query.filter_by(
+        actor=user.id,
+        title=name,
+        type=collection_type
+    ).first()
     if coll is not None:
         return coll
     coll = Collection()
-    coll.creator = user.id
+    coll.actor = user.id
     coll.title = name
+    coll.type = collection_type
     coll.generate_slug()
     coll.save()
 
@@ -300,22 +313,27 @@ def fixture_add_comment(author=None, media_entry=None, comment=None):
         author = fixture_add_user().id
 
     if media_entry is None:
-        media_entry = fixture_media_entry().id
+        media_entry = fixture_media_entry()
 
     if comment is None:
         comment = \
             'Auto-generated test comment by user #{0} on media #{0}'.format(
                 author, media_entry)
 
-    comment = MediaComment(author=author,
-                      media_entry=media_entry,
-                      content=comment)
+    text_comment = TextComment(
+        actor=author,
+        content=comment
+    )
+    text_comment.save()
 
-    comment.save()
+    comment_link = Comment()
+    comment_link.target = media_entry
+    comment_link.comment = text_comment
+    comment_link.save()
 
-    Session.expunge(comment)
+    Session.expunge(comment_link)
 
-    return comment
+    return text_comment
 
 def fixture_add_comment_report(comment=None, reported_user=None,
         reporter=None, created=None, report_content=None):
@@ -335,12 +353,13 @@ def fixture_add_comment_report(comment=None, reported_user=None,
         report_content = \
             'Auto-generated test report'
 
-    comment_report = CommentReport(comment=comment,
-        reported_user = reported_user,
-        reporter = reporter,
-        created = created,
-        report_content=report_content)
-
+    comment_report = Report()
+    comment_report.obj = comment
+    comment_report.reported_user = reported_user
+    comment_report.reporter = reporter
+    comment_report.created = created
+    comment_report.report_content = report_content
+    comment_report.obj = comment
     comment_report.save()
 
     Session.expunge(comment_report)

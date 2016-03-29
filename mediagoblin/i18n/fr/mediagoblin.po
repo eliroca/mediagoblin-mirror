@@ -21,13 +21,14 @@
 # joar <transifex@wandborg.se>, 2011
 # Valentin Villenave <valentin@villenave.net>, 2011
 # buridan <paul.lett@free.fr>, 2015.
+# postblue <postblue+gnu@postblue.info>, 2016.
 msgid ""
 msgstr ""
 "Project-Id-Version: GNU MediaGoblin\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
 "POT-Creation-Date: 2015-01-16 15:13-0600\n"
-"PO-Revision-Date: 2015-04-12 10:38+0000\n"
-"Last-Translator: buridan <paul.lett@free.fr>\n"
+"PO-Revision-Date: 2016-01-11 16:16+0000\n"
+"Last-Translator: postblue <postblue+gnu@postblue.info>\n"
 "Language-Team: French "
 "(http://www.transifex.com/projects/p/mediagoblin/language/fr/)\n"
 "Language: fr\n"
@@ -37,7 +38,7 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 "X-Generator: Pootle 2.5.0\n"
 "Generated-By: Babel 1.3\n"
-"X-POOTLE-MTIME: 1428835135.0\n"
+"X-POOTLE-MTIME: 1452529008.0\n"
 
 #: mediagoblin/decorators.py:304 mediagoblin/plugins/openid/views.py:205
 msgid "Sorry, registration is disabled on this instance."
@@ -45,7 +46,7 @@ msgstr "Désolé, l'inscription n'est pas activée sur ce serveur."
 
 #: mediagoblin/decorators.py:319
 msgid "Sorry, reporting is disabled on this instance."
-msgstr "Désolé, le signalement est désactivé sur ce serveur. "
+msgstr "Désolé, le signalement est désactivé sur ce serveur."
 
 #: mediagoblin/decorators.py:362 mediagoblin/plugins/ldap/views.py:58
 #: mediagoblin/plugins/persona/views.py:79
@@ -85,7 +86,7 @@ msgstr "Votre adresse e-mail a été vérifiée. Vous pouvez maintenant vous ide
 
 #: mediagoblin/auth/views.py:170
 msgid "The verification key or user id is incorrect"
-msgstr "La clé de vérification ou le nom d'utilisateur est incorrect."
+msgstr "La clé de vérification ou le nom d'utilisateur est incorrect"
 
 #: mediagoblin/auth/views.py:188
 msgid "You must be logged in so we know who to send the email to!"
@@ -105,7 +106,7 @@ msgstr "{username} a ajouté {object}"
 
 #: mediagoblin/db/mixin.py:405
 msgid "{username} added {object} to {target}"
-msgstr "{username} a ajouté {object} a {target}"
+msgstr "{username} a ajouté {object} à {target}"
 
 #: mediagoblin/db/mixin.py:407
 msgid "{username} authored {object}"
@@ -125,11 +126,11 @@ msgstr "{username} a détesté {object}"
 
 #: mediagoblin/db/mixin.py:411
 msgid "{username} favorited {object}"
-msgstr "{username} a favorisé {object}"
+msgstr "{username} a enregistré {object} comme favori"
 
 #: mediagoblin/db/mixin.py:412
 msgid "{username} followed {object}"
-msgstr "{username} a suivit {object}"
+msgstr "{username} a suivi {object}"
 
 #: mediagoblin/db/mixin.py:413
 msgid "{username} liked {object}"
@@ -137,11 +138,11 @@ msgstr "{username} a aimé {object}"
 
 #: mediagoblin/db/mixin.py:415
 msgid "{username} posted {object}"
-msgstr "{username} a affiché {object}"
+msgstr "{username} a publié {object}"
 
 #: mediagoblin/db/mixin.py:416
 msgid "{username} posted {object} to {target}"
-msgstr "{username} a affiché {object} a {target}"
+msgstr "{username} a publié {object} dans {target}"
 
 #: mediagoblin/db/mixin.py:418
 msgid "{username} shared {object}"
@@ -149,7 +150,7 @@ msgstr "{username} a partagé {object}"
 
 #: mediagoblin/db/mixin.py:419
 msgid "{username} unfavorited {object}"
-msgstr "{username} a defavorisé {object}"
+msgstr "{username} a retiré {object} de ses favoris"
 
 #: mediagoblin/db/mixin.py:420
 msgid "{username} stopped following {object}"
@@ -237,13 +238,15 @@ msgstr "Référence"
 
 #: mediagoblin/edit/forms.py:43 mediagoblin/edit/forms.py:99
 msgid "The slug can't be empty"
-msgstr "La référence doit être renseignée."
+msgstr "La référence doit être renseignée"
 
 #: mediagoblin/edit/forms.py:44
 msgid ""
 "The title part of this media's address. You usually don't need to change "
 "this."
-msgstr "Le texte utilisé dans l'URL de ce média. Vous n'avez généralement pas besoin de le modifier. "
+msgstr ""
+"Le texte utilisé dans l'URL de ce média. Vous n'avez généralement pas besoin "
+"de le modifier."
 
 #: mediagoblin/edit/forms.py:48 mediagoblin/media_types/blog/forms.py:29
 #: mediagoblin/submit/forms.py:50
@@ -442,7 +445,7 @@ msgstr "Chemin vers le fichier CSV contenant les métadonnées."
 
 #: mediagoblin/gmg_commands/batchaddmedia.py:54
 msgid "Don't process eagerly, pass off to celery"
-msgstr ""
+msgstr "Ne pas traiter avec impatience, passer à celery"
 
 #: mediagoblin/gmg_commands/batchaddmedia.py:69
 msgid "Sorry, no user by username '{username}' exists"
@@ -472,6 +475,10 @@ msgid ""
 "Be sure to look at the Media Processing Panel on your website to be sure it\n"
 "uploaded successfully."
 msgstr ""
+"{filename} soumis avec succès !\n"
+"Regarder le panneau de traitement des médias pour vérifier qu'il a "
+"correctement\n"
+"été téléchargé."
 
 #: mediagoblin/gmg_commands/batchaddmedia.py:166
 msgid "FAIL: This file is larger than the upload limits for this site."
@@ -517,7 +524,7 @@ msgstr "Youhou, c'est envoyé !"
 
 #: mediagoblin/media_types/blog/views.py:200
 msgid "Woohoo! edited blogpost is submitted"
-msgstr ""
+msgstr "Woohoo! L'article de blog édité a été soumis"
 
 #: mediagoblin/media_types/blog/views.py:322
 msgid "You deleted the Blog."
@@ -635,7 +642,7 @@ msgstr "Créer un blog"
 
 #: mediagoblin/media_types/blog/templates/mediagoblin/blog/url_to_dashboard.html:20
 msgid " Blog Dashboard "
-msgstr ""
+msgstr "Tableau de bord du blog"
 
 #: mediagoblin/media_types/pdf/processing.py:142
 msgid "unoconv failing to run, check log file"
@@ -787,7 +794,7 @@ msgstr "Tertiaire"
 
 #: mediagoblin/plugins/archivalook/tools.py:135
 msgid "-----------{display_type}-Features---------------------------\n"
-msgstr ""
+msgstr "-----------{display_type}-Fonctionalités---------------------------\n"
 
 #: mediagoblin/plugins/archivalook/templates/archivalook/feature.html:33
 msgid "How does this work?"
@@ -809,6 +816,21 @@ msgid ""
 "      displayed on the front page.\n"
 "    "
 msgstr ""
+"\n"
+"      Allez à la page du média que vous voulez mettre en avant. Copiez son "
+"URL et\n"
+"      collez la dans une nouvelle ligne dans la boîte de texte ci-dessus. Il "
+"doit n'y avoir\n"
+"      qu'un seule URL par ligne. L'URL que vous collez dans la boîte de "
+"texte devrait être\n"
+"      sous l'entête décrivant son importance (qu'elle soit Primaire, "
+"Secondaire ou\n"
+"      Tertiaire). Une fois que tous les médias que vous voulez mettre en "
+"avant sont\n"
+"      dans la boîte de texte, cliquez sur le bouton Soumettre la requête, et "
+"votre média\n"
+"      devrait apparaître en première page.\n"
+"    "
 
 #: mediagoblin/plugins/archivalook/templates/archivalook/feature.html:48
 msgid "Is there another way to manage featured media?"

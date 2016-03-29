@@ -14,13 +14,21 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import print_function
+
 import datetime
 import uuid
 
 import six
 
-if six.PY2:
+try:
     import migrate
+except ImportError:
+    # Apparently sqlalchemy-migrate is not installed, so we assume
+    # we must not need it
+    # TODO: Better error handling here, or require sqlalchemy-migrate
+    print("sqlalchemy-migrate not found... assuming we don't need it")
+    print("I hope you aren't running the legacy migrations!")
 
 import pytz
 import dateutil.tz
@@ -32,11 +40,14 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import and_
 from sqlalchemy.schema import UniqueConstraint
 
+from mediagoblin import oauth
+from mediagoblin.tools import crypto
 from mediagoblin.db.extratypes import JSONEncoded, MutationDict
 from mediagoblin.db.migration_tools import (
-    RegisterMigration, inspect_table, replace_table_hack)
-from mediagoblin.db.models import (MediaEntry, Collection, MediaComment, User,
-    Privilege, Generator)
+    RegisterMigration, inspect_table, replace_table_hack, model_iteration_hack)
+from mediagoblin.db.models import (MediaEntry, Collection, Comment, User,
+                                   Privilege, Generator, LocalUser, Location,
+                                   Client, RequestToken, AccessToken)
 from mediagoblin.db.extratypes import JSONEncoded, MutationDict
 
 
@@ -350,7 +361,7 @@ class CommentNotification_v0(Notification_v0):
     __tablename__ = 'core__comment_notifications'
     id = Column(Integer, ForeignKey(Notification_v0.id), primary_key=True)
 
-    subject_id = Column(Integer, ForeignKey(MediaComment.id))
+    subject_id = Column(Integer, ForeignKey(Comment.id))
 
 
 class ProcessingNotification_v0(Notification_v0):
@@ -539,7 +550,7 @@ class CommentReport_v0(ReportBase_v0):
 
     id = Column('id',Integer, ForeignKey('core__reports.id'),
                                                 primary_key=True)
-    comment_id = Column(Integer, ForeignKey(MediaComment.id), nullable=True)
+    comment_id = Column(Integer, ForeignKey(Comment.id), nullable=True)
 
 
 class MediaReport_v0(ReportBase_v0):
@@ -910,6 +921,14 @@ class ActivityIntermediator_R0(declarative_base()):
     id = Column(Integer, primary_key=True)
     type = Column(Unicode, nullable=False)
 
+    # These are needed for migration 29
+    TABLENAMES = {
+        "user": "core__users",
+        "media": "core__media_entries",
+        "comment": "core__media_comments",
+        "collection": "core__collections",
+    }
+
 class Activity_R0(declarative_base()):
     __tablename__ = "core__activities"
     id = Column(Integer, primary_key=True)
@@ -926,6 +945,7 @@ class Activity_R0(declarative_base()):
     target = Column(Integer,
                     ForeignKey(ActivityIntermediator_R0.id),
                     nullable=True)
+
 
 @RegisterMigration(24, MIGRATIONS)
 def activity_migration(db):
@@ -1249,3 +1269,962 @@ def datetime_to_utc(db):
 
     # Commit this to the database
     db.commit()
+
+##
+# Migrations to handle migrating from activity specific foreign key to the
+# new GenericForeignKey implementations. They have been split up to improve
+# readability and minimise errors
+##
+
+class GenericModelReference_V0(declarative_base()):
+    __tablename__ = "core__generic_model_reference"
+
+    id = Column(Integer, primary_key=True)
+    obj_pk = Column(Integer, nullable=False)
+    model_type = Column(Unicode, nullable=False)
+
+@RegisterMigration(27, MIGRATIONS)
+def create_generic_model_reference(db):
+    """ Creates the Generic Model Reference table """
+    GenericModelReference_V0.__table__.create(db.bind)
+    db.commit()
+
+@RegisterMigration(28, MIGRATIONS)
+def add_foreign_key_fields(db):
+    """
+    Add the fields for GenericForeignKey to the model under temporary name,
+    this is so that later a data migration can occur. They will be renamed to
+    the origional names.
+    """
+    metadata = MetaData(bind=db.bind)
+    activity_table = inspect_table(metadata, "core__activities")
+
+    # Create column and add to model.
+    object_column = Column("temp_object", Integer, ForeignKey(GenericModelReference_V0.id))
+    object_column.create(activity_table)
+
+    target_column = Column("temp_target", Integer, ForeignKey(GenericModelReference_V0.id))
+    target_column.create(activity_table)
+
+    # Commit this to the database
+    db.commit()
+
+@RegisterMigration(29, MIGRATIONS)
+def migrate_data_foreign_keys(db):
+    """
+    This will migrate the data from the old object and target attributes which
+    use the old ActivityIntermediator to the new temparay fields which use the
+    new GenericForeignKey.
+    """
+
+    metadata = MetaData(bind=db.bind)
+    activity_table = inspect_table(metadata, "core__activities")
+    ai_table = inspect_table(metadata, "core__activity_intermediators")
+    gmr_table = inspect_table(metadata, "core__generic_model_reference")
+
+    # Iterate through all activities doing the migration per activity.
+    for activity in model_iteration_hack(db, activity_table.select()):
+        # First do the "Activity.object" migration to "Activity.temp_object"
+        # I need to get the object from the Activity, I can't use the old
+        # Activity.get_object as we're in a migration.
+        object_ai = db.execute(ai_table.select(
+            ai_table.c.id==activity.object
+        )).first()
+
+        object_ai_type = ActivityIntermediator_R0.TABLENAMES[object_ai.type]
+        object_ai_table = inspect_table(metadata, object_ai_type)
+
+        activity_object = db.execute(object_ai_table.select(
+            object_ai_table.c.activity==object_ai.id
+        )).first()
+
+        # If the object the activity is referecing doesn't revolve, then we
+        # should skip it, it should be deleted when the AI table is deleted.
+        if activity_object is None:
+            continue
+
+        # now we need to create the GenericModelReference
+        object_gmr = db.execute(gmr_table.insert().values(
+            obj_pk=activity_object.id,
+            model_type=object_ai_type
+        ))
+
+        # Now set the ID of the GenericModelReference in the GenericForignKey
+        db.execute(activity_table.update().values(
+            temp_object=object_gmr.inserted_primary_key[0]
+        ))
+
+        # Now do same process for "Activity.target" to "Activity.temp_target"
+        # not all Activities have a target so if it doesn't just skip the rest
+        # of this.
+        if activity.target is None:
+            continue
+
+        # Now get the target for the activity.
+        target_ai = db.execute(ai_table.select(
+            ai_table.c.id==activity.target
+        )).first()
+
+        target_ai_type = ActivityIntermediator_R0.TABLENAMES[target_ai.type]
+        target_ai_table = inspect_table(metadata, target_ai_type)
+
+        activity_target = db.execute(target_ai_table.select(
+            target_ai_table.c.activity==target_ai.id
+        )).first()
+
+        # It's quite possible that the target, alike the object could also have
+        # been deleted, if so we should just skip it
+        if activity_target is None:
+            continue
+
+        # We now want to create the new target GenericModelReference
+        target_gmr = db.execute(gmr_table.insert().values(
+            obj_pk=activity_target.id,
+            model_type=target_ai_type
+        ))
+
+        # Now set the ID of the GenericModelReference in the GenericForignKey
+        db.execute(activity_table.update().values(
+            temp_object=target_gmr.inserted_primary_key[0]
+        ))
+
+        # Commit to the database. We're doing it here rather than outside the
+        # loop because if the server has a lot of data this can cause problems
+        db.commit()
+
+@RegisterMigration(30, MIGRATIONS)
+def rename_and_remove_object_and_target(db):
+    """
+    Renames the new Activity.object and Activity.target fields and removes the
+    old ones.
+    """
+    metadata = MetaData(bind=db.bind)
+    activity_table = inspect_table(metadata, "core__activities")
+
+    # Firstly lets remove the old fields.
+    old_object_column = activity_table.columns["object"]
+    old_target_column = activity_table.columns["target"]
+
+    # Drop the tables.
+    old_object_column.drop()
+    old_target_column.drop()
+
+    # Now get the new columns.
+    new_object_column = activity_table.columns["temp_object"]
+    new_target_column = activity_table.columns["temp_target"]
+
+    # rename them to the old names.
+    new_object_column.alter(name="object_id")
+    new_target_column.alter(name="target_id")
+
+    # Commit the changes to the database.
+    db.commit()
+
+@RegisterMigration(31, MIGRATIONS)
+def remove_activityintermediator(db):
+    """
+    This removes the old specific ActivityIntermediator model which has been
+    superseeded by the GenericForeignKey field.
+    """
+    metadata = MetaData(bind=db.bind)
+
+    # Remove the columns which reference the AI
+    collection_table = inspect_table(metadata, "core__collections")
+    collection_ai_column = collection_table.columns["activity"]
+    collection_ai_column.drop()
+
+    media_entry_table = inspect_table(metadata, "core__media_entries")
+    media_entry_ai_column = media_entry_table.columns["activity"]
+    media_entry_ai_column.drop()
+
+    comments_table = inspect_table(metadata, "core__media_comments")
+    comments_ai_column = comments_table.columns["activity"]
+    comments_ai_column.drop()
+
+    user_table = inspect_table(metadata, "core__users")
+    user_ai_column = user_table.columns["activity"]
+    user_ai_column.drop()
+
+    # Drop the table
+    ai_table = inspect_table(metadata, "core__activity_intermediators")
+    ai_table.drop()
+
+    # Commit the changes
+    db.commit()
+
+##
+# Migrations for converting the User model into a Local and Remote User
+# setup.
+##
+
+class LocalUser_V0(declarative_base()):
+    __tablename__ = "core__local_users"
+
+    id = Column(Integer, ForeignKey(User.id), primary_key=True)
+    username = Column(Unicode, nullable=False, unique=True)
+    email = Column(Unicode, nullable=False)
+    pw_hash = Column(Unicode)
+
+    wants_comment_notification = Column(Boolean, default=True)
+    wants_notifications = Column(Boolean, default=True)
+    license_preference = Column(Unicode)
+    uploaded = Column(Integer, default=0)
+    upload_limit = Column(Integer)
+
+class RemoteUser_V0(declarative_base()):
+    __tablename__ = "core__remote_users"
+
+    id = Column(Integer, ForeignKey(User.id), primary_key=True)
+    webfinger = Column(Unicode, unique=True)
+
+@RegisterMigration(32, MIGRATIONS)
+def federation_user_create_tables(db):
+    """
+    Create all the tables
+    """
+    # Create tables needed
+    LocalUser_V0.__table__.create(db.bind)
+    RemoteUser_V0.__table__.create(db.bind)
+    db.commit()
+
+    metadata = MetaData(bind=db.bind)
+    user_table = inspect_table(metadata, "core__users")
+
+    # Create the fields
+    updated_column = Column(
+        "updated",
+        DateTime,
+        default=datetime.datetime.utcnow
+    )
+    updated_column.create(user_table)
+
+    type_column = Column(
+        "type",
+        Unicode
+    )
+    type_column.create(user_table)
+
+    name_column = Column(
+        "name",
+        Unicode
+    )
+    name_column.create(user_table)
+
+    db.commit()
+
+@RegisterMigration(33, MIGRATIONS)
+def federation_user_migrate_data(db):
+    """
+    Migrate the data over to the new user models
+    """
+    metadata = MetaData(bind=db.bind)
+
+    user_table = inspect_table(metadata, "core__users")
+    local_user_table = inspect_table(metadata, "core__local_users")
+
+    for user in model_iteration_hack(db, user_table.select()):
+        db.execute(local_user_table.insert().values(
+            id=user.id,
+            username=user.username,
+            email=user.email,
+            pw_hash=user.pw_hash,
+            wants_comment_notification=user.wants_comment_notification,
+            wants_notifications=user.wants_notifications,
+            license_preference=user.license_preference,
+            uploaded=user.uploaded,
+            upload_limit=user.upload_limit
+        ))
+
+        db.execute(user_table.update().where(user_table.c.id==user.id).values(
+            updated=user.created,
+            type=LocalUser.__mapper_args__["polymorphic_identity"]
+        ))
+
+        db.commit()
+
+class User_vR2(declarative_base()):
+    __tablename__ = "rename__users"
+
+    id = Column(Integer, primary_key=True)
+    url = Column(Unicode)
+    bio = Column(UnicodeText)
+    name = Column(Unicode)
+    type = Column(Unicode)
+    created = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
+    updated = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
+    location = Column(Integer, ForeignKey(Location.id))
+
+@RegisterMigration(34, MIGRATIONS)
+def federation_remove_fields(db):
+    """
+    This removes the fields from User model which aren't shared
+    """
+    metadata = MetaData(bind=db.bind)
+
+    user_table = inspect_table(metadata, "core__users")
+
+    # Remove the columns moved to LocalUser from User
+    username_column = user_table.columns["username"]
+    username_column.drop()
+
+    email_column = user_table.columns["email"]
+    email_column.drop()
+
+    pw_hash_column = user_table.columns["pw_hash"]
+    pw_hash_column.drop()
+
+    license_preference_column = user_table.columns["license_preference"]
+    license_preference_column.drop()
+
+    uploaded_column = user_table.columns["uploaded"]
+    uploaded_column.drop()
+
+    upload_limit_column = user_table.columns["upload_limit"]
+    upload_limit_column.drop()
+
+    # SQLLite can't drop booleans -.-
+    if db.bind.url.drivername == 'sqlite':
+        # Create the new hacky table
+        User_vR2.__table__.create(db.bind)
+        db.commit()
+        new_user_table = inspect_table(metadata, "rename__users")
+        replace_table_hack(db, user_table, new_user_table)
+    else:
+        wcn_column = user_table.columns["wants_comment_notification"]
+        wcn_column.drop()
+
+        wants_notifications_column = user_table.columns["wants_notifications"]
+        wants_notifications_column.drop()
+
+    db.commit()
+
+@RegisterMigration(35, MIGRATIONS)
+def federation_media_entry(db):
+    metadata = MetaData(bind=db.bind)
+    media_entry_table = inspect_table(metadata, "core__media_entries")
+
+    # Add new fields
+    public_id_column = Column(
+        "public_id",
+        Unicode,
+        unique=True,
+        nullable=True
+    )
+    public_id_column.create(
+        media_entry_table,
+        unique_name="media_public_id"
+    )
+
+    remote_column = Column(
+        "remote",
+        Boolean,
+        default=False
+    )
+    remote_column.create(media_entry_table)
+
+    updated_column = Column(
+        "updated",
+        DateTime,
+        default=datetime.datetime.utcnow,
+    )
+    updated_column.create(media_entry_table)
+    db.commit()
+
+    # Data migration
+    for entry in model_iteration_hack(db, media_entry_table.select()):
+        db.execute(media_entry_table.update().values(
+            updated=entry.created,
+            remote=False
+        ))
+
+        db.commit()
+
+@RegisterMigration(36, MIGRATIONS)
+def create_oauth1_dummies(db):
+    """
+    Creates a dummy client, request and access tokens.
+
+    This is used when invalid data is submitted but real clients and
+    access tokens. The use of dummy objects prevents timing attacks.
+    """
+    metadata = MetaData(bind=db.bind)
+    client_table = inspect_table(metadata, "core__clients")
+    request_token_table = inspect_table(metadata, "core__request_tokens")
+    access_token_table = inspect_table(metadata, "core__access_tokens")
+
+    # Whilst we don't rely on the secret key being unique or unknown to prevent
+    # unauthorized clients from using it to authenticate, we still as an extra
+    # layer of protection created a cryptographically secure key individual to
+    # each instance that should never be able to be known.
+    client_secret = crypto.random_string(50)
+    request_token_secret = crypto.random_string(50)
+    request_token_verifier = crypto.random_string(50)
+    access_token_secret = crypto.random_string(50)
+
+    # Dummy created/updated datetime object
+    epoc_datetime = datetime.datetime.fromtimestamp(0)
+
+    # Create the dummy Client
+    db.execute(client_table.insert().values(
+        id=oauth.DUMMY_CLIENT_ID,
+        secret=client_secret,
+        application_type="dummy",
+        created=epoc_datetime,
+        updated=epoc_datetime
+    ))
+
+    # Create the dummy RequestToken
+    db.execute(request_token_table.insert().values(
+        token=oauth.DUMMY_REQUEST_TOKEN,
+        secret=request_token_secret,
+        client=oauth.DUMMY_CLIENT_ID,
+        verifier=request_token_verifier,
+        created=epoc_datetime,
+        updated=epoc_datetime,
+        callback="oob"
+    ))
+
+    # Create the dummy AccessToken
+    db.execute(access_token_table.insert().values(
+        token=oauth.DUMMY_ACCESS_TOKEN,
+        secret=access_token_secret,
+        request_token=oauth.DUMMY_REQUEST_TOKEN,
+        created=epoc_datetime,
+        updated=epoc_datetime
+    ))
+
+    # Commit the changes
+    db.commit()
+
+@RegisterMigration(37, MIGRATIONS)
+def federation_collection_schema(db):
+    """ Converts the Collection and CollectionItem """
+    metadata = MetaData(bind=db.bind)
+    collection_table = inspect_table(metadata, "core__collections")
+    collection_items_table = inspect_table(metadata, "core__collection_items")
+    media_entry_table = inspect_table(metadata, "core__media_entries")
+    gmr_table = inspect_table(metadata, "core__generic_model_reference")
+
+    ##
+    # Collection Table
+    ##
+
+    # Add the fields onto the Collection model, we need to set these as
+    # not null to avoid DB integreity errors. We will add the not null
+    # constraint later.
+    public_id_column = Column(
+        "public_id",
+        Unicode,
+        unique=True
+    )
+    public_id_column.create(
+        collection_table,
+        unique_name="collection_public_id")
+
+    updated_column = Column(
+        "updated",
+        DateTime,
+        default=datetime.datetime.utcnow
+    )
+    updated_column.create(collection_table)
+
+    type_column = Column(
+        "type",
+        Unicode,
+    )
+    type_column.create(collection_table)
+
+    db.commit()
+
+    # Iterate over the items and set the updated and type fields
+    for collection in db.execute(collection_table.select()):
+        db.execute(collection_table.update().where(
+            collection_table.c.id==collection.id
+        ).values(
+            updated=collection.created,
+            type="core-user-defined"
+        ))
+
+    db.commit()
+
+    # Add the not null constraint onto the fields
+    updated_column = collection_table.columns["updated"]
+    updated_column.alter(nullable=False)
+
+    type_column = collection_table.columns["type"]
+    type_column.alter(nullable=False)
+
+    db.commit()
+
+    # Rename the "items" to "num_items" as per the TODO
+    num_items_field = collection_table.columns["items"]
+    num_items_field.alter(name="num_items")
+    db.commit()
+
+    ##
+    # CollectionItem
+    ##
+    # Adding the object ID column, this again will have not null added later.
+    object_id = Column(
+        "object_id",
+        Integer,
+        ForeignKey(GenericModelReference_V0.id),
+    )
+    object_id.create(
+        collection_items_table,
+    )
+
+    db.commit()
+
+    # Iterate through and convert the Media reference to object_id
+    for item in db.execute(collection_items_table.select()):
+        # Check if there is a GMR for the MediaEntry
+        object_gmr = db.execute(gmr_table.select(
+            and_(
+                gmr_table.c.obj_pk == item.media_entry,
+                gmr_table.c.model_type == "core__media_entries"
+            )
+        )).first()
+
+        if object_gmr:
+            object_gmr = object_gmr[0]
+        else:
+            # Create a GenericModelReference
+            object_gmr = db.execute(gmr_table.insert().values(
+                obj_pk=item.media_entry,
+                model_type="core__media_entries"
+            )).inserted_primary_key[0]
+
+        # Now set the object_id column to the ID of the GMR
+        db.execute(collection_items_table.update().where(
+            collection_items_table.c.id==item.id
+        ).values(
+            object_id=object_gmr
+        ))
+
+    db.commit()
+
+    # Add not null constraint
+    object_id = collection_items_table.columns["object_id"]
+    object_id.alter(nullable=False)
+
+    db.commit()
+
+    # Now remove the old media_entry column
+    media_entry_column = collection_items_table.columns["media_entry"]
+    media_entry_column.drop()
+
+    db.commit()
+
+@RegisterMigration(38, MIGRATIONS)
+def federation_actor(db):
+    """ Renames refereces to the user to actor """
+    metadata = MetaData(bind=db.bind)
+
+    # RequestToken: user -> actor
+    request_token_table = inspect_table(metadata, "core__request_tokens")
+    rt_user_column = request_token_table.columns["user"]
+    rt_user_column.alter(name="actor")
+
+    # AccessToken: user -> actor
+    access_token_table = inspect_table(metadata, "core__access_tokens")
+    at_user_column = access_token_table.columns["user"]
+    at_user_column.alter(name="actor")
+
+    # MediaEntry: uploader -> actor
+    media_entry_table = inspect_table(metadata, "core__media_entries")
+    me_user_column = media_entry_table.columns["uploader"]
+    me_user_column.alter(name="actor")
+
+    # MediaComment: author -> actor
+    media_comment_table = inspect_table(metadata, "core__media_comments")
+    mc_user_column = media_comment_table.columns["author"]
+    mc_user_column.alter(name="actor")
+
+    # Collection: creator -> actor
+    collection_table = inspect_table(metadata, "core__collections")
+    mc_user_column = collection_table.columns["creator"]
+    mc_user_column.alter(name="actor")
+
+    # commit changes to db.
+    db.commit()
+
+class Graveyard_V0(declarative_base()):
+    """ Where models come to die """
+    __tablename__ = "core__graveyard"
+
+    id = Column(Integer, primary_key=True)
+    public_id = Column(Unicode, nullable=True, unique=True)
+
+    deleted = Column(DateTime, nullable=False)
+    object_type = Column(Unicode, nullable=False)
+
+    actor_id = Column(Integer, ForeignKey(GenericModelReference_V0.id))
+
+@RegisterMigration(39, MIGRATIONS)
+def federation_graveyard(db):
+    """ Introduces soft deletion to models
+
+    This adds a Graveyard model which is used to copy (soft-)deleted models to.
+    """
+    metadata = MetaData(bind=db.bind)
+
+    # Create the graveyard table
+    Graveyard_V0.__table__.create(db.bind)
+
+    # Commit changes to the db
+    db.commit()
+
+@RegisterMigration(40, MIGRATIONS)
+def add_public_id(db):
+    metadata = MetaData(bind=db.bind)
+
+    # Get the table
+    activity_table = inspect_table(metadata, "core__activities")
+    activity_public_id = Column(
+        "public_id",
+        Unicode,
+        unique=True,
+        nullable=True
+    )
+    activity_public_id.create(
+        activity_table,
+        unique_name="activity_public_id"
+    )
+
+    # Commit this.
+    db.commit()
+
+class Comment_V0(declarative_base()):
+    __tablename__ = "core__comment_links"
+
+    id = Column(Integer, primary_key=True)
+    target_id = Column(
+        Integer,
+        ForeignKey(GenericModelReference_V0.id),
+        nullable=False
+    )
+    comment_id = Column(
+        Integer,
+        ForeignKey(GenericModelReference_V0.id),
+        nullable=False
+    )
+    added = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
+ 
+
+@RegisterMigration(41, MIGRATIONS)
+def federation_comments(db):
+    """
+    This reworks the MediaComent to be a more generic Comment model.
+    """
+    metadata = MetaData(bind=db.bind)
+    textcomment_table = inspect_table(metadata, "core__media_comments")
+    gmr_table = inspect_table(metadata, "core__generic_model_reference")
+
+    # First of all add the public_id field to the TextComment table
+    comment_public_id_column = Column(
+        "public_id",
+        Unicode,
+        unique=True
+    )
+    comment_public_id_column.create(
+        textcomment_table,
+        unique_name="public_id_unique"
+    )
+
+    comment_updated_column = Column(
+        "updated",
+        DateTime,
+    )
+    comment_updated_column.create(textcomment_table)
+
+
+    # First create the Comment link table.
+    Comment_V0.__table__.create(db.bind)
+    db.commit()
+
+    # now look up the comment table 
+    comment_table = inspect_table(metadata, "core__comment_links")
+
+    # Itierate over all the comments and add them to the link table.
+    for comment in db.execute(textcomment_table.select()):
+        # Check if there is a GMR to the comment.
+        comment_gmr = db.execute(gmr_table.select().where(and_(
+            gmr_table.c.obj_pk == comment.id,
+            gmr_table.c.model_type == "core__media_comments"
+        ))).first()
+
+        if comment_gmr:
+            comment_gmr = comment_gmr[0]
+        else:
+            comment_gmr = db.execute(gmr_table.insert().values(
+                obj_pk=comment.id,
+                model_type="core__media_comments"
+            )).inserted_primary_key[0]
+
+        # Get or create the GMR for the media entry
+        entry_gmr = db.execute(gmr_table.select().where(and_(
+            gmr_table.c.obj_pk == comment.media_entry,
+            gmr_table.c.model_type == "core__media_entries"
+        ))).first()
+
+        if entry_gmr:
+            entry_gmr = entry_gmr[0]
+        else:
+            entry_gmr = db.execute(gmr_table.insert().values(
+                obj_pk=comment.media_entry,
+                model_type="core__media_entries"
+            )).inserted_primary_key[0] 
+
+        # Add the comment link.
+        db.execute(comment_table.insert().values(
+            target_id=entry_gmr,
+            comment_id=comment_gmr,
+            added=datetime.datetime.utcnow()
+        ))
+
+        # Add the data to the updated field
+        db.execute(textcomment_table.update().where(
+            textcomment_table.c.id == comment.id
+        ).values(
+            updated=comment.created
+        ))
+    db.commit()
+    
+    # Add not null constraint
+    textcomment_update_column = textcomment_table.columns["updated"]
+    textcomment_update_column.alter(nullable=False)
+
+    # Remove the unused fields on the TextComment model
+    comment_media_entry_column = textcomment_table.columns["media_entry"]
+    comment_media_entry_column.drop()
+    db.commit()
+
+@RegisterMigration(42, MIGRATIONS)
+def consolidate_reports(db):
+    """ Consolidates the report tables into just one """
+    metadata = MetaData(bind=db.bind)
+
+    report_table = inspect_table(metadata, "core__reports")
+    comment_report_table = inspect_table(metadata, "core__reports_on_comments")
+    media_report_table = inspect_table(metadata, "core__reports_on_media")
+    gmr_table = inspect_table(metadata, "core__generic_model_reference")
+
+    # Add the GMR object field onto the base report table
+    report_object_id_column = Column(
+        "object_id",
+        Integer,
+        ForeignKey(GenericModelReference_V0.id),
+        nullable=True,
+    )
+    report_object_id_column.create(report_table)
+    db.commit()
+
+    # Iterate through the reports in the comment table and merge them in.
+    for comment_report in db.execute(comment_report_table.select()):
+        # If the comment is None it's been deleted, we should skip
+        if comment_report.comment_id is None:
+            continue
+
+        # Find a GMR for this if one exists.
+        crgmr = db.execute(gmr_table.select().where(and_(
+            gmr_table.c.obj_pk == comment_report.comment_id,
+            gmr_table.c.model_type == "core__media_comments"
+        ))).first()
+
+        if crgmr:
+            crgmr = crgmr[0]
+        else:
+            crgmr = db.execute(gmr_table.insert().values(
+                obj_pk=comment_report.comment_id,
+                model_type="core__media_comments"
+            )).inserted_primary_key[0]
+
+        # Great now we can save this back onto the (base) report.
+        db.execute(report_table.update().where(
+            report_table.c.id == comment_report.id
+        ).values(
+            object_id=crgmr
+        ))
+
+    # Iterate through the Media Reports and do the save as above.
+    for media_report in db.execute(media_report_table.select()):
+        # If the media report is None then it's been deleted nd we should skip
+        if media_report.media_entry_id is None:
+            continue
+
+        # Find Mr. GMR :)
+        mrgmr = db.execute(gmr_table.select().where(and_(
+            gmr_table.c.obj_pk == media_report.media_entry_id,
+            gmr_table.c.model_type == "core__media_entries"
+        ))).first()
+
+        if mrgmr:
+            mrgmr = mrgmr[0]
+        else:
+            mrgmr = db.execute(gmr_table.insert().values(
+                obj_pk=media_report.media_entry_id,
+                model_type="core__media_entries"
+            )).inserted_primary_key[0]
+
+        # Save back on to the base.
+        db.execute(report_table.update().where(
+            report_table.c.id == media_report.id
+        ).values(
+            object_id=mrgmr
+        ))
+
+    db.commit()
+
+    # Now we can remove the fields we don't need anymore
+    report_type = report_table.columns["type"]
+    report_type.drop()
+
+    # Drop both MediaReports and CommentTable.
+    comment_report_table.drop()
+    media_report_table.drop()
+
+    # Commit we're done.
+    db.commit()
+
+@RegisterMigration(43, MIGRATIONS)
+def consolidate_notification(db):
+    """ Consolidates the notification models into one """
+    metadata = MetaData(bind=db.bind)
+    notification_table = inspect_table(metadata, "core__notifications")
+    cn_table = inspect_table(metadata, "core__comment_notifications")
+    cp_table = inspect_table(metadata, "core__processing_notifications")
+    gmr_table = inspect_table(metadata, "core__generic_model_reference")
+
+    # Add fields needed
+    notification_object_id_column = Column(
+        "object_id",
+        Integer,
+        ForeignKey(GenericModelReference_V0.id)
+    )
+    notification_object_id_column.create(notification_table)
+    db.commit()
+
+    # Iterate over comments and move to notification base table.
+    for comment_notification in db.execute(cn_table.select()):
+        # Find the GMR.
+        cngmr = db.execute(gmr_table.select().where(and_(
+            gmr_table.c.obj_pk == comment_notification.subject_id,
+            gmr_table.c.model_type == "core__media_comments"
+        ))).first()
+
+        if cngmr:
+            cngmr = cngmr[0]
+        else:
+            cngmr = db.execute(gmr_table.insert().values(
+                obj_pk=comment_notification.subject_id,
+                model_type="core__media_comments"
+            )).inserted_primary_key[0]
+
+        # Save back on notification
+        db.execute(notification_table.update().where(
+            notification_table.c.id == comment_notification.id
+        ).values(
+            object_id=cngmr
+        ))
+    db.commit()
+
+    # Do the same for processing notifications
+    for processing_notification in db.execute(cp_table.select()):
+        cpgmr = db.execute(gmr_table.select().where(and_(
+            gmr_table.c.obj_pk == processing_notification.subject_id,
+            gmr_table.c.model_type == "core__processing_notifications"
+        ))).first()
+
+        if cpgmr:
+            cpgmr = cpgmr[0]
+        else:
+            cpgmr = db.execute(gmr_table.insert().values(
+                obj_pk=processing_notification.subject_id,
+                model_type="core__processing_notifications"
+            )).inserted_primary_key[0]
+
+        db.execute(notification_table.update().where(
+            notification_table.c.id == processing_notification.id
+        ).values(
+            object_id=cpgmr
+        ))
+    db.commit()
+
+    # Add the not null constraint
+    notification_object_id = notification_table.columns["object_id"]
+    notification_object_id.alter(nullable=False)
+
+    # Now drop the fields we don't need
+    notification_type_column = notification_table.columns["type"]
+    notification_type_column.drop()
+
+    # Drop the tables we no longer need
+    cp_table.drop()
+    cn_table.drop()
+
+    db.commit()
+
+@RegisterMigration(44, MIGRATIONS)
+def activity_cleanup(db):
+    """
+    This cleans up activities which are broken and have no graveyard object as
+    well as removing the not null constraint on Report.object_id as that can
+    be null when action has been taken to delete the reported content.
+
+    Some of this has been changed in previous migrations so we need to check
+    if there is anything to be done, there might not be. It was fixed as part
+    of the #5369 fix. Some past migrations could have broken on some people so
+    needed to be fixed then however for some they would have run fine.
+    """
+    metadata = MetaData(bind=db.bind)
+    report_table = inspect_table(metadata, "core__reports")
+    activity_table = inspect_table(metadata, "core__activities")
+    gmr_table = inspect_table(metadata, "core__generic_model_reference")
+
+    # Remove not null on Report.object_id
+    object_id_column = report_table.columns["object_id"]
+    if not object_id_column.nullable:
+        object_id_column.alter(nullable=False)
+    db.commit()
+
+    # Go through each activity and verify the object and if a target is
+    # specified both exist.
+    for activity in db.execute(activity_table.select()):
+        # Get the GMR 
+        obj_gmr = db.execute(gmr_table.select().where(
+            gmr_table.c.id == activity.object_id,
+        )).first()
+
+        # Get the object the GMR points to, might be null.
+        obj_table = inspect_table(metadata, obj_gmr.model_type)
+        obj = db.execute(obj_table.select().where(
+            obj_table.c.id == obj_gmr.obj_pk
+        )).first()
+
+        if obj is None:
+            # Okay we need to delete the activity and move to the next
+            db.execute(activity_table.delete().where(
+                activity_table.c.id == activity.id
+            ))
+            continue
+
+        # If there is a target then check that too, if not that's fine
+        if activity.target_id == None:
+            continue
+
+        # Okay check the target is valid
+        target_gmr = db.execute(gmr_table.select().where(
+            gmr_table.c.id == activity.target_id
+        )).first()
+
+        target_table = inspect_table(metadata, target_gmr.model_type)
+        target = db.execute(target_table.select().where(
+            target_table.c.id == target_gmr.obj_pk
+        )).first()
+
+        # If it doesn't exist, delete the activity.
+        if target is None:
+            db.execute(activity_table.delete().where(
+                activity_table.c.id == activity.id
+            ))
