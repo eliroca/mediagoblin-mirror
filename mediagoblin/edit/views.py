@@ -1,4 +1,4 @@
-# GNU MediaGoblin -- federated, autonomous media hosting
+
 # Copyright (C) 2011, 2012 MediaGoblin contributors.  See AUTHORS.
 #
 # This program is free software: you can redistribute it and/or modify
@@ -66,7 +66,7 @@ def edit_media(request, media):
         license=media.license)
 
     form = forms.EditForm(
-        request.form,
+        request.method=='POST' and request.form or None,
         **defaults)
 
     if request.method == 'POST' and form.validate():
@@ -208,7 +208,8 @@ def edit_profile(request, url_user=None):
     else:
         location = user.get_location.name
 
-    form = forms.EditProfileForm(request.form,
+    form = forms.EditProfileForm(
+        request.method == 'POST' and request.form or None,
         url=user.url,
         bio=user.bio,
         location=location)
@@ -224,6 +225,8 @@ def edit_profile(request, url_user=None):
             location = user.get_location
             location.name = six.text_type(form.location.data)
             location.save()
+        else:
+            user.location = None
 
         user.save()
 
@@ -248,7 +251,8 @@ EMAIL_VERIFICATION_TEMPLATE = (
 @require_active_login
 def edit_account(request):
     user = request.user
-    form = forms.EditAccountForm(request.form,
+    form = forms.EditAccountForm(
+        request.method == 'POST' and request.form or None,
         wants_comment_notification=user.wants_comment_notification,
         license_preference=user.license_preference,
         wants_notifications=user.wants_notifications)
@@ -344,7 +348,7 @@ def edit_collection(request, collection):
         description=collection.description)
 
     form = forms.EditCollectionForm(
-        request.form,
+        request.method == 'POST' and request.form or None,
         **defaults)
 
     if request.method == 'POST' and form.validate():
@@ -436,7 +440,8 @@ def verify_email(request):
 
 def change_email(request):
     """ View to change the user's email """
-    form = forms.ChangeEmailForm(request.form)
+    form = forms.ChangeEmailForm(
+        request.method == 'POST' and request.form or None)
     user = request.user
 
     # If no password authentication, no need to enter a password
@@ -489,7 +494,8 @@ def change_email(request):
 @require_active_login
 @get_media_entry_by_id
 def edit_metadata(request, media):
-    form = forms.EditMetaDataForm(request.form)
+    form = forms.EditMetaDataForm(
+        request.method == 'POST' and request.form or None)
     if request.method == "POST" and form.validate():
         metadata_dict = dict([(row['identifier'],row['value'])
                             for row in form.media_metadata.data])
