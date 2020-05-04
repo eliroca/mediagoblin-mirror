@@ -56,7 +56,7 @@ dnl # * x.y.dev  - dev
 dnl 
 dnl # see http://www.python.org/dev/peps/pep-0386/
 
-AC_INIT([mediagoblin], [0.9.0], [cwebber@gnu.org])
+AC_INIT([mediagoblin], [0.10.dev], [cwebber@gnu.org])
 
 
 dnl----
@@ -87,7 +87,7 @@ dnl----
 AC_ARG_WITH([python3],
 	[AS_HELP_STRING([--with-python3], [Set up to use Python 3 by default.])],
 	[],
-	[with_python3=no])
+	[with_python3=yes])
 AS_IF([test "x$with_python3" != xno],
         AC_CHECK_PROGS([PYTHON], [python3], [none])
         AC_SUBST([USE_PYTHON3], [true])

@@ -20,6 +20,8 @@ from os.path import splitext
 
 import six
 
+from celery import chord
+
 from werkzeug.utils import secure_filename
 from werkzeug.datastructures import FileStorage
 
@@ -27,11 +29,12 @@ from mediagoblin import mg_globals
 from mediagoblin.tools.response import json_response
 from mediagoblin.tools.text import convert_to_tag_list_of_dicts
 from mediagoblin.tools.federation import create_activity, create_generator
-from mediagoblin.db.models import MediaEntry, ProcessingMetaData
-from mediagoblin.processing import mark_entry_failed
+from mediagoblin.db.models import Collection, MediaEntry, ProcessingMetaData
+from mediagoblin.processing import mark_entry_failed, get_entry_and_processing_manager
 from mediagoblin.processing.task import ProcessMedia
 from mediagoblin.notifications import add_comment_subscription
 from mediagoblin.media_types import sniff_media
+from mediagoblin.user_pages.lib import add_media_to_collection
 
 
 _log = logging.getLogger(__name__)
@@ -101,9 +104,8 @@ class UserPastUploadLimit(UploadLimitError):
 
 
 def submit_media(mg_app, user, submitted_file, filename,
-                 title=None, description=None,
+                 title=None, description=None, collection_slug=None,
                  license=None, metadata=None, tags_string=u"",
-                 upload_limit=None, max_file_size=None,
                  callback_url=None, urlgen=None,):
     """
     Args:
@@ -116,15 +118,15 @@ def submit_media(mg_app, user, submitted_file, filename,
        one on disk being referenced by submitted_file.
      - title: title for this media entry
      - description: description for this media entry
+     - collection_slug: collection for this media entry
      - license: license for this media entry
      - tags_string: comma separated string of tags to be associated
        with this entry
-     - upload_limit: size in megabytes that's the per-user upload limit
-     - max_file_size: maximum size each file can be that's uploaded
      - callback_url: possible post-hook to call after submission
      - urlgen: if provided, used to do the feed_url update and assign a public
                ID used in the API (very important).
     """
+    upload_limit, max_file_size = get_upload_file_limits(user)
     if upload_limit and user.uploaded >= upload_limit:
         raise UserPastUploadLimit()
 
@@ -205,6 +207,13 @@ def submit_media(mg_app, user, submitted_file, filename,
     create_activity("post", entry, entry.actor)
     entry.save()
 
+    # add to collection
+    if collection_slug:
+        collection = Collection.query.filter_by(slug=collection_slug,
+                                                actor=user.id).first()
+        if collection:
+            add_media_to_collection(collection, entry)
+
     # Pass off to processing
     #
     # (... don't change entry after this point to avoid race
@@ -255,10 +264,17 @@ def run_process_media(entry, feed_url=None,
     :param reprocess_action: What particular action should be run.
     :param reprocess_info: A dict containing all of the necessary reprocessing
         info for the given media_type"""
+
+    entry, manager = get_entry_and_processing_manager(entry.id)
+
     try:
-        ProcessMedia().apply_async(
-            [entry.id, feed_url, reprocess_action, reprocess_info], {},
-            task_id=entry.queued_task_id)
+        wf = manager.workflow(entry, feed_url, reprocess_action, reprocess_info)
+        if wf is None:
+            ProcessMedia().apply_async(
+                [entry.id, feed_url, reprocess_action, reprocess_info], {},
+                task_id=entry.queued_task_id)
+        else:
+            chord(wf[0])(wf[1])
     except BaseException as exc:
         # The purpose of this section is because when running in "lazy"
         # or always-eager-with-exceptions-propagated celery mode that

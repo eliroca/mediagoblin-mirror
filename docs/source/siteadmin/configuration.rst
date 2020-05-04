@@ -39,12 +39,12 @@ paste.ini
   <http://pythonpaste.org/script/>`_).  It also sets up some
   middleware that you can mostly ignore, except to configure
   sessions... more on that later.  If you are adding a different
-  Python server other than fastcgi / plain HTTP, you might configure
-  it here.  You probably won't need to change this file very much.
+  Python server other than Waitress / plain HTTP, you might configure it
+  here.  You probably won't need to change this file very much.
 
 
 There's one more file that you certainly won't change unless you're
-making coding contributions to mediagoblin, but which can be useful to
+making coding contributions to MediaGoblin, but which can be useful to
 read and reference:
 
 mediagoblin/config_spec.ini
@@ -53,30 +53,6 @@ mediagoblin/config_spec.ini
   good place to look for documentation... or to find that hidden
   option that we didn't tell you about. :)
 
-
-Making local copies
-===================
-
-Let's assume you're doing the virtualenv setup described elsewhere in this
-manual, and you need to make local tweaks to the config files. How do you do 
-that? Let's see.
-
-To make changes to mediagoblin.ini ::
-
-    cp mediagoblin.ini mediagoblin_local.ini
-
-To make changes to paste.ini ::
-
-    cp paste.ini paste_local.ini
-
-From here you should be able to make direct adjustments to the files,
-and most of the commands described elsewhere in this manual will "notice"
-your local config files and use those instead of the non-local version.
-
-.. note::
-
-   Note that all commands provide a way to pass in a specific config
-   file also, usually by a ``-cf`` flag.
 
 
 Common changes
@@ -104,10 +80,12 @@ If you have more custom SMTP settings, you also have the following
 options at your disposal, which are all optional, and do exactly what
 they sound like.
 
-- email_smtp_host
-- email_smtp_port
-- email_smtp_user
-- email_smtp_pass
+- ``email_smtp_host``
+- ``email_smtp_port``
+- ``email_smtp_user``
+- ``email_smtp_pass``
+- ``email_smtp_use_ssl`` (default is ``False``)
+- ``email_smtp_force_starttls`` (default is ``False``)
 
 Changing data directory
 -----------------------
@@ -128,7 +106,7 @@ If you use ``lazyserver.sh`` you need to change the ``paste.ini`` file::
     [app:mediagoblin]
     /mgoblin_media = /var/mediagoblin/user_data
 
-If you use nginx you need to change the config::
+If you use Nginx you need to change the config::
 
      # Instance specific media:
      location /mgoblin_media/ {

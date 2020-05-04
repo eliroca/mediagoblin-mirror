@@ -34,7 +34,7 @@ from mediagoblin.edit.lib import may_edit_media
 from mediagoblin.decorators import (require_active_login, active_user_from_url,
                             get_media_entry_by_id, user_may_alter_collection,
                             get_user_collection, user_has_privilege,
-                            user_not_banned)
+                            user_not_banned, user_may_delete_media)
 from mediagoblin.tools.crypto import get_timed_signer_url
 from mediagoblin.tools.metadata import (compact_and_validate, DEFAULT_CHECKER,
                                         DEFAULT_SCHEMA)
@@ -55,6 +55,10 @@ import mimetypes
 @get_media_entry_by_id
 @require_active_login
 def edit_media(request, media):
+    # If media is not processed, return NotFound.
+    if not media.state == u'processed':
+        return render_404(request)
+
     if not may_edit_media(request, media):
         raise Forbidden("User may not edit this media")
 
@@ -94,7 +98,8 @@ def edit_media(request, media):
             and media.actor != request.user.id \
             and request.method != 'POST':
         messages.add_message(
-            request, messages.WARNING,
+            request,
+            messages.WARNING,
             _("You are editing another user's media. Proceed with caution."))
 
     return render_to_response(
@@ -114,6 +119,10 @@ UNSAFE_MIMETYPES = [
 @get_media_entry_by_id
 @require_active_login
 def edit_attachments(request, media):
+    # If media is not processed, return NotFound.
+    if not media.state == u'processed':
+        return render_404(request)
+
     if mg_globals.app_config['allow_attachments']:
         form = forms.EditAttachmentsForm()
 
@@ -164,10 +173,11 @@ def edit_attachments(request, media):
             media.save()
 
             messages.add_message(
-                request, messages.SUCCESS,
-                _("You added the attachment %s!") \
-                    % (form.attachment_name.data
-                       or request.files['attachment_file'].filename))
+                request,
+                messages.SUCCESS,
+                _("You added the attachment %s!") %
+                    (form.attachment_name.data or
+                     request.files['attachment_file'].filename))
 
             return redirect(request,
                             location=media.url_for_self(request.urlgen))
@@ -197,7 +207,8 @@ def edit_profile(request, url_user=None):
         # No need to warn again if admin just submitted an edited profile
         if request.method != 'POST':
             messages.add_message(
-                request, messages.WARNING,
+                request,
+                messages.WARNING,
                 _("You are editing a user's profile. Proceed with caution."))
 
     user = url_user
@@ -230,9 +241,10 @@ def edit_profile(request, url_user=None):
 
         user.save()
 
-        messages.add_message(request,
-                             messages.SUCCESS,
-                             _("Profile changes saved"))
+        messages.add_message(
+            request,
+            messages.SUCCESS,
+            _("Profile changes saved"))
         return redirect(request,
                        'mediagoblin.user_pages.user_home',
                         user=user.username)
@@ -264,9 +276,10 @@ def edit_account(request):
         user.license_preference = form.license_preference.data
 
         user.save()
-        messages.add_message(request,
-                             messages.SUCCESS,
-                             _("Account settings saved"))
+        messages.add_message(
+            request,
+            messages.SUCCESS,
+            _("Account settings saved"))
         return redirect(request,
                         'mediagoblin.user_pages.user_home',
                         user=user.username)
@@ -328,7 +341,8 @@ def delete_account(request):
 
         else: # Did not check the confirmation box...
             messages.add_message(
-                request, messages.WARNING,
+                request,
+                messages.WARNING,
                 _('You need to confirm the deletion of your account.'))
 
     # No POST submission or not confirmed, just show page
@@ -364,8 +378,9 @@ def edit_collection(request, collection):
 
         if existing_collection and existing_collection.id != collection.id:
             messages.add_message(
-                request, messages.ERROR,
-                _('You already have a collection called "%s"!') % \
+                request,
+                messages.ERROR,
+                _('You already have a collection called "%s"!') %
                     form.title.data)
         elif slug_used:
             form.slug.errors.append(
@@ -383,8 +398,10 @@ def edit_collection(request, collection):
             and collection.actor != request.user.id \
             and request.method != 'POST':
         messages.add_message(
-            request, messages.WARNING,
-            _("You are editing another user's collection. Proceed with caution."))
+            request,
+            messages.WARNING,
+            _("You are editing another user's collection. "
+              "Proceed with caution."))
 
     return render_to_response(
         request,
@@ -438,6 +455,7 @@ def verify_email(request):
         user=user.username)
 
 
+@require_active_login
 def change_email(request):
     """ View to change the user's email """
     form = forms.ChangeEmailForm(
@@ -494,6 +512,10 @@ def change_email(request):
 @require_active_login
 @get_media_entry_by_id
 def edit_metadata(request, media):
+    # If media is not processed, return NotFound.
+    if not media.state == u'processed':
+        return render_404(request)
+
     form = forms.EditMetaDataForm(
         request.method == 'POST' and request.form or None)
     if request.method == "POST" and form.validate():

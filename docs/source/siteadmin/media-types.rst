@@ -19,10 +19,10 @@ Media Types
 
 In the future, there will be all sorts of media types you can enable,
 but in the meanwhile there are six additional media types: video, audio,
-raw image, ascii art, STL/3d models, PDF and Document.
+raw image, ASCII art, STL/3D models, PDF and Document.
 
 First, you should probably read ":doc:`configuration`" to make sure
-you know how to modify the mediagoblin config file.
+you know how to modify the MediaGoblin config file.
 
 Enabling Media Types
 ====================
@@ -30,26 +30,30 @@ Enabling Media Types
 .. note::
     Media types are now plugins
 
-Media types are enabled in your mediagoblin configuration file, typically it is
-created by copying ``mediagoblin.ini`` to ``mediagoblin_local.ini`` and then
-applying your changes to ``mediagoblin_local.ini``. If you don't already have a
-``mediagoblin_local.ini``, create one in the way described.
+Media types are enabled in your MediaGoblin configuration file.
 
-Most media types have additional dependencies that you will have to install.
-You will find descriptions on how to satisfy the requirements of each media type
-on this page.
+Most media types require **additional dependencies** that you will have to install. You
+will find descriptions on how to satisfy the requirements of each media type
+below.
 
 To enable a media type, add the the media type under the ``[plugins]`` section
-in you ``mediagoblin_local.ini``. For example, if your system supported image
+in you ``mediagoblin.ini``. For example, if your system supported image
 and video media types, then it would look like this::
 
     [plugins]
     [[mediagoblin.media_types.image]]
     [[mediagoblin.media_types.video]]
 
-Note that after enabling new media types, you must run dbupdate like so::
+Note that after enabling new media types, you must run dbupdate. If you have
+deployed MediaGoblin as an unprivileged user as described in
+":doc:`production-deployments`", you'll first need to switch to this account::
 
-    ./bin/gmg dbupdate
+    sudo su mediagoblin --shell=/bin/bash
+    $ cd /srv/mediagoblin.example.org/mediagoblin
+
+Now run dbupdate::
+
+    $ ./bin/gmg dbupdate
 
 If you are running an active site, depending on your server
 configuration, you may need to stop it first (and it's certainly a
@@ -78,175 +82,162 @@ instance the ``video`` media type configuration can be found in
 ``mediagoblin/media_types/video/config_spec.ini``.
 
 
-Video
+Audio
 =====
 
-To enable video, first install gstreamer and the python-gstreamer
-bindings (as well as whatever gstremaer extensions you want,
-good/bad/ugly).  On Debianoid systems
+To enable audio, install the GStreamer and python-gstreamer bindings (as well
+as whatever GStreamer plugins you want, good/bad/ugly):
 
 .. code-block:: bash
 
-    sudo apt-get install python-gi python3-gi \
-        gstreamer1.0-tools \
-        gir1.2-gstreamer-1.0 \
-        gir1.2-gst-plugins-base-1.0 \
-        gstreamer1.0-plugins-good \
-        gstreamer1.0-plugins-ugly \
-        gstreamer1.0-plugins-bad \
-        gstreamer1.0-libav \
-        python-gst-1.0
+    # Debian and co.
+    sudo apt install python3-gst-1.0 gstreamer1.0-plugins-{base,bad,good,ugly} \
+    gstreamer1.0-libav
 
-
-Add ``[[mediagoblin.media_types.video]]`` under the ``[plugins]`` section in
-your ``mediagoblin_local.ini`` and restart MediaGoblin.
-
-Run
-
-.. code-block:: bash
-
-    ./bin/gmg dbupdate
-
-Now you should be able to submit videos, and mediagoblin should
-transcode them.
+    # Fedora and co.
+    sudo dnf install gstreamer1-plugins-{base,bad-free,good,ugly-free}
 
 .. note::
 
+   MediaGoblin previously generated spectrograms for uploaded audio. This
+   feature has been removed due to incompatibility with Python 3. We may
+   consider re-adding this feature in the future.
+
+Add ``[[mediagoblin.media_types.audio]]`` under the ``[plugins]`` section in your
+``mediagoblin.ini`` and update MediaGoblin::
+
+    $ ./bin/gmg dbupdate
+
+Restart MediaGoblin (and Celery if applicable). You should now be able to upload
+and listen to audio files!
+
+
+Video
+=====
+
+To enable video, first install GStreamer and the python-gstreamer
+bindings (as well as whatever GStreamer extensions you want,
+good/bad/ugly):
+
+.. code-block:: bash
+
+    # Debian and co.
+    sudo apt install python3-gi gstreamer1.0-tools gir1.2-gstreamer-1.0 \
+    gir1.2-gst-plugins-base-1.0 gstreamer1.0-plugins-{good,bad,ugly} \
+    gstreamer1.0-libav python3-gst-1.0
+
+.. note::
+
+   We unfortunately do not have working installation instructions for Fedora and
+   co. Some incomplete information is available on the `Hacking Howto wiki page <http://wiki.mediagoblin.org/HackingHowto#Fedora_.2F_RedHat.28.3F.29_.2F_CentOS>`_
+    
+Add ``[[mediagoblin.media_types.video]]`` under the ``[plugins]`` section in
+your ``mediagoblin.ini`` and restart MediaGoblin.
+
+Run::
+
+    $ ./bin/gmg dbupdate
+
+Restart MediaGoblin (and Celery if applicable). Now you should be able to submit
+videos, and MediaGoblin should transcode them.
+
+.. note::
+
+   You will likely need to increase the ``client_max_body_size`` setting in
+   Nginx to upload larger videos.
+   
    You almost certainly want to separate Celery from the normal
    paste process or your users will probably find that their connections
    time out as the video transcodes.  To set that up, check out the
    ":doc:`production-deployments`" section of this manual.
 
 
-Audio
-=====
-
-To enable audio, install the gstreamer and python-gstreamer bindings (as well
-as whatever gstreamer plugins you want, good/bad/ugly), scipy and numpy are
-also needed for the audio spectrograms.
-To install these on Debianoid systems, run::
-
-    sudo apt-get install python-gst-1.0 gstreamer1.0-plugins-{base,bad,good,ugly} \
-    gstreamer1.0-libav python-numpy python-scipy libsndfile1-dev libasound2-dev
-
-.. note::
-    scikits.audiolab will display a warning every time it's imported if you do
-    not compile it with alsa support. Alsa support is not necessary for the GNU
-    MediaGoblin application.
-
-Then install ``scikits.audiolab`` for the spectrograms::
-
-    ./bin/pip install scikits.audiolab
-
-Add ``[[mediagoblin.media_types.audio]]`` under the ``[plugins]`` section in your
-``mediagoblin_local.ini`` and restart MediaGoblin.
-
-Run
-
-.. code-block:: bash
-
-    ./bin/gmg dbupdate
-
-You should now be able to upload and listen to audio files!
-
-
 Raw image
 =========
 
-To enable raw image you need to install pyexiv2.  On Debianoid systems
+To enable raw image you need to install pyexiv2::
 
-.. code-block:: bash
-
-    sudo apt-get install python-pyexiv2
+    # Debian and co.
+    sudo apt install python3-pyexiv2
 
 Add ``[[mediagoblin.media_types.raw_image]]`` under the ``[plugins]``
-section in your ``mediagoblin_local.ini`` and restart MediaGoblin.
+section in your ``mediagoblin.ini`` and restart MediaGoblin.
 
-Run
+Run::
 
-.. code-block:: bash
+    $ ./bin/gmg dbupdate
 
-    ./bin/gmg dbupdate
-
-Now you should be able to submit raw images, and mediagoblin should
-extract the JPEG preview from them.
+Restart MediaGoblin (and Celery if applicable). Now you should be able to submit
+raw images, and MediaGoblin should extract the JPEG preview from them.
 
 
-Ascii art
+ASCII art
 =========
 
-To enable ascii art support, first install the
+To enable ASCII art support, first install the
 `chardet <http://pypi.python.org/pypi/chardet>`_
-library, which is necessary for creating thumbnails of ascii art
+library, which is necessary for creating thumbnails of ASCII art::
 
-.. code-block:: bash
-
-    ./bin/easy_install chardet
+    $ ./bin/easy_install chardet
 
 
-Next, modify (and possibly copy over from ``mediagoblin.ini``) your
-``mediagoblin_local.ini``.  In the ``[plugins]`` section, add
+Next, modify your ``mediagoblin.ini``.  In the ``[plugins]`` section, add
 ``[[mediagoblin.media_types.ascii]]``.
 
-Run
+Run::
 
-.. code-block:: bash
+    $ ./bin/gmg dbupdate
 
-    ./bin/gmg dbupdate
+Restart MediaGoblin (and Celery if applicable). Now any .txt file you uploaded
+will be processed as ASCII art!
 
-Now any .txt file you uploaded will be processed as ascii art!
 
-
-STL / 3d model support
+STL / 3D model support
 ======================
 
-To enable the "STL" 3d model support plugin, first make sure you have
-a recentish `Blender <http://blender.org>`_ installed and available on
+To enable the "STL" 3D model support plugin, first make sure you have
+a recent `Blender <http://blender.org>`_ installed and available on
 your execution path.  This feature has been tested with Blender 2.63.
 It may work on some earlier versions, but that is not guaranteed (and
 is surely not to work prior to Blender 2.5X).
 
 Add ``[[mediagoblin.media_types.stl]]`` under the ``[plugins]`` section in your
-``mediagoblin_local.ini`` and restart MediaGoblin.
+``mediagoblin.ini`` and restart MediaGoblin.
 
-Run
+Run::
 
-.. code-block:: bash
+    $ ./bin/gmg dbupdate
 
-    ./bin/gmg dbupdate
+Restart MediaGoblin (and Celery if applicable). You should now be able to upload
+.obj and .stl files and MediaGoblin will be able to present them to your wide
+audience of admirers!
 
-You should now be able to upload .obj and .stl files and MediaGoblin
-will be able to present them to your wide audience of admirers!
 
 PDF and Document
 ================
 
 To enable the "PDF and Document" support plugin, you need:
 
-1. pdftocairo and pdfinfo for pdf only support.
+1. pdftocairo and pdfinfo for PDF only support.
 
-2. unoconv with headless support to support converting libreoffice supported
+2. unoconv with headless support to support converting LibreOffice supported
    documents as well, such as doc/ppt/xls/odf/odg/odp and more.
    For the full list see mediagoblin/media_types/pdf/processing.py,
    unoconv_supported.
 
 All executables must be on your execution path.
 
-To install this on Fedora:
+To install this on Fedora::
 
-.. code-block:: bash
+    sudo dnf install poppler-utils unoconv libreoffice-headless
 
-    sudo yum install -y poppler-utils unoconv libreoffice-headless
-
-Note: You can leave out unoconv and libreoffice-headless if you want only pdf
+Note: You can leave out unoconv and libreoffice-headless if you want only PDF
 support. This will result in a much smaller list of dependencies.
 
-pdf.js relies on git submodules, so be sure you have fetched them:
+pdf.js relies on git submodules, so be sure you have fetched them::
 
-.. code-block:: bash
-
-    git submodule init
-    git submodule update
+    $ git submodule init
+    $ git submodule update
 
 This feature has been tested on Fedora with:
  poppler-utils-0.20.2-9.fc18.x86_64
@@ -256,13 +247,11 @@ This feature has been tested on Fedora with:
 It may work on some earlier versions, but that is not guaranteed.
 
 Add ``[[mediagoblin.media_types.pdf]]`` under the ``[plugins]`` section in your
-``mediagoblin_local.ini`` and restart MediaGoblin.
+``mediagoblin.ini`` and restart MediaGoblin.
 
-Run
+Run::
 
-.. code-block:: bash
-
-    ./bin/gmg dbupdate
+    $ ./bin/gmg dbupdate
 
 
 Blog (HIGHLY EXPERIMENTAL)
@@ -271,7 +260,7 @@ Blog (HIGHLY EXPERIMENTAL)
 MediaGoblin has a blog media type, which you might notice by looking
 through the docs!  However, it is *highly experimental*.  We have not
 security reviewed this, and it acts in a way that is not like normal
-blogs (the blogposts are themselves media types!).
+blogs (the blog posts are themselves media types!).
 
 So you can play with this, but it is not necessarily recommended yet
 for production use! :)

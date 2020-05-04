@@ -20,8 +20,6 @@ try:
 except ImportError:
     import Image
 
-from mediagoblin.media_types.audio import audioprocessing
-
 _log = logging.getLogger(__name__)
 
 CPU_COUNT = 2  # Just assuming for now
@@ -45,14 +43,17 @@ gi.require_version('Gst', '1.0')
 from gi.repository import GObject, Gst
 Gst.init(None)
 
-import numpy
 
-
-class AudioThumbnailer(object):
+# TODO: Now unused - remove.
+class Python2AudioThumbnailer(object):
     def __init__(self):
         _log.info('Initializing {0}'.format(self.__class__.__name__))
 
     def spectrogram(self, src, dst, **kw):
+        import numpy
+        # This third-party bundled module is Python 2-only.
+        from mediagoblin.media_types.audio import audioprocessing
+
         width = kw['width']
         height = int(kw.get('height', float(width) * 0.3))
         fft_size = kw.get('fft_size', 2048)
@@ -109,6 +110,31 @@ class AudioThumbnailer(object):
         th.thumbnail(thumb_size, Image.ANTIALIAS)
 
         th.save(dst)
+
+
+class DummyAudioThumbnailer(Python2AudioThumbnailer):
+    """A thumbnailer that just outputs a stock image.
+
+    The Python package used for audio spectrograms, "scikits.audiolab", does not
+    support Python 3 and is a constant source of problems for people installing
+    MediaGoblin. Until the feature is rewritten, this thumbnailer class simply
+    provides a generic image.
+
+    TODO: Consider Python 3 compatible interfaces to libsndfile, such as
+    https://pypi.python.org/pypi/PySoundFile/0.9.0.post1 as discussed here
+    https://issues.mediagoblin.org/ticket/5467#comment:6
+
+    """
+    def spectrogram(self, src, dst, **kw):
+        # Using PIL here in case someone wants to swap out the image for a PNG.
+        # This will convert to JPEG, where simply copying the file won't.
+        img = Image.open('mediagoblin/static/images/media_thumbs/video.jpg')
+        img.save(dst)
+
+
+# Due to recurring problems with spectrograms under Python 2, and the fact we're
+# soon dropping Python 2 support, we're disabling spectrogram thumbnails. See #5594.
+AudioThumbnailer = DummyAudioThumbnailer
 
 
 class AudioTranscoder(object):

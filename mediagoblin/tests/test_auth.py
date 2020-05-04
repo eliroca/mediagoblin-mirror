@@ -1,4 +1,3 @@
-
 # GNU MediaGoblin -- federated, autonomous media hosting
 # Copyright (C) 2011, 2012 MediaGoblin contributors.  See AUTHORS.
 #
@@ -102,7 +101,7 @@ def test_register_views(test_app):
             'password': 'iamsohappy',
             'email': 'easter@egg.com'})
 
-    ## At this point there should on user in the database
+    ## At this point there should be one user in the database
     assert User.query.count() == 1
 
     # Successful register
@@ -372,6 +371,53 @@ def test_authentication_views(test_app):
     # Username should no longer be uppercased; it should be lowercased
     assert not form.username.data == u'ANDREW'
     assert form.username.data == u'andrew'
+
+    # Successful login with short user
+    # --------------------------------
+    short_user = fixture_add_user(username=u'me', password=u'sho')
+    template.clear_test_template_context()
+    response = test_app.post(
+        '/auth/login/', {
+            'username': u'me',
+            'password': 'sho'})
+
+    # User should be redirected
+    response.follow()
+
+    assert urlparse.urlsplit(response.location)[2] == '/'
+    assert 'mediagoblin/root.html' in template.TEMPLATE_TEST_CONTEXT
+
+    # Make sure user is in the session
+    context = template.TEMPLATE_TEST_CONTEXT['mediagoblin/root.html']
+    session = context['request'].session
+    assert session['user_id'] == six.text_type(short_user.id)
+
+    # Must logout
+    template.clear_test_template_context()
+    response = test_app.get('/auth/logout/')
+
+    # Successful login with long user
+    # ----------------
+    long_user = fixture_add_user(
+        username=u'realllylonguser@reallylongdomain.com.co', password=u'sho')
+    template.clear_test_template_context()
+    response = test_app.post(
+        '/auth/login/', {
+            'username': u'realllylonguser@reallylongdomain.com.co',
+            'password': 'sho'})
+
+    # User should be redirected
+    response.follow()
+    assert urlparse.urlsplit(response.location)[2] == '/'
+    assert 'mediagoblin/root.html' in template.TEMPLATE_TEST_CONTEXT
+
+    # Make sure user is in the session
+    context = template.TEMPLATE_TEST_CONTEXT['mediagoblin/root.html']
+    session = context['request'].session
+    assert session['user_id'] == six.text_type(long_user.id)
+
+    template.clear_test_template_context()
+    response = test_app.get('/auth/logout/')
 
 @pytest.fixture()
 def authentication_disabled_app(request):

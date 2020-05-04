@@ -1,0 +1,33 @@
+# A docker-compose recipe for MediaGoblin hacking.
+#
+# Tested on Trisquel 8 and Guix System. Currently runs Python 3 and works for
+# images, audio and video.
+#
+# To run the system:
+#
+#   docker-compose up  # or
+#   docker-compose up --build  # to build the images
+#
+# To get a shell or Python interpreter inside a temporary container:
+#
+#   docker-compose run --rm web /bin/bash
+#   docker-compose run --rm web /opt/mediagoblin/bin/python
+
+version: '3'
+
+services:
+  web:
+    build:
+      # We need to spell this out due to having multiple Dockerfiles.
+      #
+      # TODO: It's possible to `docker build -` to not provide any build context
+      # at all. Is this possible in docker-compose?
+      context: .
+      dockerfile: Dockerfile-debian-python3-sqlite
+    volumes:
+      # Permissions need to be aligned between host and container for this to work. See
+      # Dockerfile for details.
+      - ./mediagoblin:/opt/mediagoblin/mediagoblin
+      - ./user_dev:/opt/mediagoblin/user_dev
+    ports:
+      - "6543:6543"

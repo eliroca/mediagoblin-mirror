@@ -17,9 +17,10 @@
 from mediagoblin import mg_globals
 from mediagoblin.db.models import MediaEntry
 from mediagoblin.db.util import media_entries_for_tag_slug
+from mediagoblin.decorators import uses_pagination
+from mediagoblin.plugins.api.tools import get_media_file_paths
 from mediagoblin.tools.pagination import Pagination
 from mediagoblin.tools.response import render_to_response
-from mediagoblin.decorators import uses_pagination
 
 from werkzeug.contrib.atom import AtomFeed
 
@@ -72,28 +73,31 @@ def atom_feed(request):
     tag_slug = request.matchdict.get(u'tag')
     feed_title = "MediaGoblin Feed"
     if tag_slug:
-        cursor = media_entries_for_tag_slug(request.db, tag_slug)
+        feed_title += " for tag '%s'" % tag_slug
         link = request.urlgen('mediagoblin.listings.tags_listing',
                               qualified=True, tag=tag_slug )
-        feed_title += "for tag '%s'" % tag_slug
+        cursor = media_entries_for_tag_slug(request.db, tag_slug)
     else: # all recent item feed
-        cursor = MediaEntry.query.filter_by(state=u'processed')
+        feed_title += " for all recent items"
         link = request.urlgen('index', qualified=True)
-        feed_title += "for all recent items"
+        cursor = MediaEntry.query.filter_by(state=u'processed')
+    cursor = cursor.order_by(MediaEntry.created.desc())
+    cursor = cursor.limit(ATOM_DEFAULT_NR_OF_UPDATED_ITEMS)
 
-    atomlinks = [
-        {'href': link,
-         'rel': 'alternate',
-         'type': 'text/html'}]
+
+    """
+    ATOM feed id is a tag URI (see http://en.wikipedia.org/wiki/Tag_URI)
+    """
+    atomlinks = [{
+        'href': link,
+        'rel': 'alternate',
+        'type': 'text/html'}]
 
     if mg_globals.app_config["push_urls"]:
         for push_url in mg_globals.app_config["push_urls"]:
             atomlinks.append({
                 'rel': 'hub',
                 'href': push_url})
-
-    cursor = cursor.order_by(MediaEntry.created.desc())
-    cursor = cursor.limit(ATOM_DEFAULT_NR_OF_UPDATED_ITEMS)
 
     feed = AtomFeed(
         feed_title,
@@ -102,19 +106,30 @@ def atom_feed(request):
         links=atomlinks)
 
     for entry in cursor:
-        feed.add(entry.get('title'),
-            entry.description_html,
-            id=entry.url_for_self(request.urlgen,qualified=True),
+        # Include a thumbnail image in content.
+        file_urls = get_media_file_paths(entry.media_files, request.urlgen)
+        if 'thumb' in file_urls:
+            content = u'<img src="{thumb}" alt='' /> {desc}'.format(
+                thumb=file_urls['thumb'], desc=entry.description_html)
+        else:
+            content = entry.description_html
+
+        feed.add(
+            entry.get('title'),
+            content,
+            id=entry.url_for_self(request.urlgen, qualified=True),
             content_type='html',
-            author={'name': entry.get_actor.username,
+            author={
+                'name': entry.get_actor.username,
                 'uri': request.urlgen(
                     'mediagoblin.user_pages.user_home',
-                    qualified=True, user=entry.get_actor.username)},
+                    qualified=True,
+                    user=entry.get_actor.username)},
             updated=entry.get('created'),
             links=[{
-                'href':entry.url_for_self(
-                   request.urlgen,
-                   qualified=True),
+                'href': entry.url_for_self(
+                    request.urlgen,
+                    qualified=True),
                 'rel': 'alternate',
                 'type': 'text/html'}])
 

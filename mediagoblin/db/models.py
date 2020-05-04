@@ -25,7 +25,7 @@ import datetime
 
 from sqlalchemy import Column, Integer, Unicode, UnicodeText, DateTime, \
         Boolean, ForeignKey, UniqueConstraint, PrimaryKeyConstraint, \
-        SmallInteger, Date, types
+        SmallInteger, Date, types, Float
 from sqlalchemy.orm import relationship, backref, with_polymorphic, validates, \
         class_mapper
 from sqlalchemy.orm.collections import attribute_mapped_collection
@@ -43,6 +43,7 @@ from mediagoblin.db.mixin import UserMixin, MediaEntryMixin, \
 from mediagoblin.tools.files import delete_media_files
 from mediagoblin.tools.common import import_component
 from mediagoblin.tools.routing import extract_url_arguments
+from mediagoblin.tools.text import convert_to_tag_list_of_dicts
 
 import six
 from six.moves.urllib.parse import urljoin
@@ -542,7 +543,8 @@ class MediaEntry(Base, MediaEntryMixin, CommentingMixin):
     fail_error = Column(Unicode)
     fail_metadata = Column(JSONEncoded)
 
-    transcoding_progress = Column(SmallInteger)
+    transcoding_progress = Column(Float, default=0)
+    main_transcoding_progress = Column(Float, default=0)
 
     queued_media_file = Column(PathTupleWithSlashes)
 
@@ -573,6 +575,15 @@ class MediaEntry(Base, MediaEntryMixin, CommentingMixin):
             name=v["name"], filepath=v["filepath"])
         )
 
+    subtitle_files_helper = relationship("MediaSubtitleFile",
+        cascade="all, delete-orphan",
+        order_by="MediaSubtitleFile.created"
+        )
+    subtitle_files = association_proxy("subtitle_files_helper", "dict_view",
+        creator=lambda v: MediaSubtitleFile(
+            name=v["name"], filepath=v["filepath"])
+        )
+
     tags_helper = relationship("MediaTag",
         cascade="all, delete-orphan" # should be automatically deleted
         )
@@ -585,6 +596,16 @@ class MediaEntry(Base, MediaEntryMixin, CommentingMixin):
 
     ## TODO
     # fail_error
+
+    @property
+    def get_uploader(self):
+        # for compatibility
+        return self.get_actor
+
+    @property
+    def uploader(self):
+        # for compatibility
+        return self.actor
 
     @property
     def collections(self):
@@ -608,9 +629,9 @@ class MediaEntry(Base, MediaEntryMixin, CommentingMixin):
             query = query.order_by(Comment.added.asc())
         else:
             query = query.order_by(Comment.added.desc())
-        
+
         return query
- 
+
     def url_to_prev(self, urlgen):
         """get the next 'newer' entry by this user"""
         media = MediaEntry.query.filter(
@@ -760,7 +781,6 @@ class MediaEntry(Base, MediaEntryMixin, CommentingMixin):
                 "self": {
                     "href": public_id,
                 },
-
             }
         }
 
@@ -775,6 +795,12 @@ class MediaEntry(Base, MediaEntryMixin, CommentingMixin):
 
         if self.location:
             context["location"] = self.get_location.serialize(request)
+
+        # Always show tags, even if empty list
+        if self.tags:
+            context["tags"] = [tag['name'] for tag in self.tags]
+        else:
+            context["tags"] = []
 
         if show_comments:
             comments = [
@@ -822,6 +848,9 @@ class MediaEntry(Base, MediaEntryMixin, CommentingMixin):
 
         if "location" in data:
             License.create(data["location"], self)
+
+        if "tags" in data:
+            self.tags = convert_to_tag_list_of_dicts(', '.join(data["tags"]))
 
         return True
 
@@ -874,6 +903,22 @@ class MediaFile(Base):
 
 class MediaAttachmentFile(Base):
     __tablename__ = "core__attachment_files"
+
+    id = Column(Integer, primary_key=True)
+    media_entry = Column(
+        Integer, ForeignKey(MediaEntry.id),
+        nullable=False)
+    name = Column(Unicode, nullable=False)
+    filepath = Column(PathTupleWithSlashes)
+    created = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
+
+    @property
+    def dict_view(self):
+        """A dict like view on this object"""
+        return DictReadAttrProxy(self)
+
+class MediaSubtitleFile(Base):
+    __tablename__ = "core__subtitle_files"
 
     id = Column(Integer, primary_key=True)
     media_entry = Column(
@@ -941,7 +986,7 @@ class MediaTag(Base):
 class Comment(Base):
     """
     Link table between a response and another object that can have replies.
-    
+
     This acts as a link table between an object and the comments on it, it's
     done like this so that you can look up all the comments without knowing
     whhich comments are on an object before hand. Any object can be a comment
@@ -952,7 +997,7 @@ class Comment(Base):
     __tablename__ = "core__comment_links"
 
     id = Column(Integer, primary_key=True)
-    
+
     # The GMR to the object the comment is on.
     target_id = Column(
         Integer,
@@ -981,7 +1026,25 @@ class Comment(Base):
 
     # When it was added
     added = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
-    
+
+    @property
+    def get_author(self):
+        # for compatibility
+        return self.comment().get_actor  # noqa
+
+    def __getattr__(self, attr):
+        if attr.startswith('_'):
+            # if attr starts with '_', then it's probably some internal
+            # sqlalchemy variable. Since __getattr__ is called when
+            # non-existing attributes are being accessed, we should not try to
+            # fetch it from self.comment()
+            raise AttributeError
+        try:
+            _log.debug('Old attr is being accessed: {0}'.format(attr))
+            return getattr(self.comment(), attr)  # noqa
+        except Exception as e:
+            _log.error(e)
+            raise
 
 class TextComment(Base, TextCommentMixin, CommentingMixin):
     """
@@ -1015,7 +1078,7 @@ class TextComment(Base, TextCommentMixin, CommentingMixin):
         if target is None:
             target = {}
         else:
-            target = target.serialize(request, show_comments=False)        
+            target = target.serialize(request, show_comments=False)
 
 
         author = self.get_actor
@@ -1043,7 +1106,7 @@ class TextComment(Base, TextCommentMixin, CommentingMixin):
         if "location" in data:
             Location.create(data["location"], self)
 
-    
+
         # Handle changing the reply ID
         if "inReplyTo" in data:
             # Validate that the ID is correct
@@ -1074,7 +1137,7 @@ class TextComment(Base, TextCommentMixin, CommentingMixin):
             link.target = media
             link.comment = self
             link.save()
-        
+
         return True
 
 class Collection(Base, CollectionMixin, CommentingMixin):
@@ -1273,7 +1336,7 @@ class Notification(Base):
     seen = Column(Boolean, default=lambda: False, index=True)
     user = relationship(
         User,
-        backref=backref('notifications', cascade='all, delete-orphan')) 
+        backref=backref('notifications', cascade='all, delete-orphan'))
 
     def __repr__(self):
         return '<{klass} #{id}: {user}: {subject} ({seen})>'.format(
@@ -1318,7 +1381,7 @@ class Report(Base):
                                             which points to the reported object.
     """
     __tablename__ = 'core__reports'
-    
+
     id = Column(Integer, primary_key=True)
     reporter_id = Column(Integer, ForeignKey(User.id), nullable=False)
     reporter =  relationship(
@@ -1346,7 +1409,7 @@ class Report(Base):
 
     resolved = Column(DateTime)
     result = Column(UnicodeText)
-    
+
     object_id = Column(Integer, ForeignKey(GenericModelReference.id), nullable=True)
     object_helper = relationship(GenericModelReference)
     obj = association_proxy("object_helper", "get_object",
@@ -1581,7 +1644,7 @@ class Graveyard(Base):
         return context
 MODELS = [
     LocalUser, RemoteUser, User, MediaEntry, Tag, MediaTag, Comment, TextComment,
-    Collection, CollectionItem, MediaFile, FileKeynames, MediaAttachmentFile,
+    Collection, CollectionItem, MediaFile, FileKeynames, MediaAttachmentFile, MediaSubtitleFile,
     ProcessingMetaData, Notification, Client, CommentSubscription, Report,
     UserBan, Privilege, PrivilegeUserAssociation, RequestToken, AccessToken,
     NonceTimestamp, Activity, Generator, Location, GenericModelReference, Graveyard]

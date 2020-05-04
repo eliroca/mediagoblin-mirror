@@ -1,6 +1,6 @@
 .. MediaGoblin Documentation
 
-   Written in 2011, 2012, 2013 by MediaGoblin contributors
+   Written in 2011, 2012, 2013, 2020 by MediaGoblin contributors
 
    To the extent possible under law, the author(s) have dedicated all
    copyright and related and neighboring rights to this software to
@@ -17,20 +17,20 @@
 Deploying MediaGoblin
 =====================
 
-GNU MediaGoblin is fairly new, and so at the time of writing there aren't
-easy package-manager-friendly methods to install it. However, doing a basic
-install isn't too complex in and of itself. Following this deployment guide
-will take you step-by-step through setting up your own instance of MediaGoblin.
+This deployment guide will take you step-by-step through
+setting up your own instance of MediaGoblin.
 
-Of course, when it comes to setting up web applications like MediaGoblin,
-there's an almost infinite way to deploy things, so for now, we'll keep it
-simple with some assumptions. We recommend a setup that combines MediaGoblin +
-virtualenv + fastcgi + nginx on a .deb- or .rpm-based GNU/Linux distro.
+MediaGoblin most likely isn't yet available from your operating
+system's package manage, however, a basic install isn't too complex in
+and of itself. We recommend a setup that combines
+MediaGoblin, virtualenv, Waitress and Nginx on a .deb or .rpm-based
+GNU/Linux distribution.
 
-Other deployment options (e.g., deploying on FreeBSD, Arch Linux, using
-Apache, etc.) are possible, though! If you'd prefer a different deployment
-approach, see our
-`Deployment wiki page <http://wiki.mediagoblin.org/Deployment>`_.
+Experts may of course choose other deployment options, including
+Apache. See our `Deployment wiki page
+<http://wiki.mediagoblin.org/Deployment>`_ for for more details.
+Please note that we are not able to provide support for these
+alternative deployment options.
 
 .. note::
 
@@ -57,90 +57,104 @@ Dependencies
 
 MediaGoblin has the following core dependencies:
 
-- Python 2.7 or Python 3.4+
-- `python-lxml <http://lxml.de/>`_
+- Python 3.4+ (Python 2.7 is supported, but not recommended)
+- `python3-lxml <http://lxml.de/>`_
 - `git <http://git-scm.com/>`_
 - `SQLite <http://www.sqlite.org/>`_/`PostgreSQL <http://www.postgresql.org/>`_
 - `Python Imaging Library <http://www.pythonware.com/products/pil/>`_  (PIL)
 - `virtualenv <http://www.virtualenv.org/>`_
-- `nodejs <https://nodejs.org>`_
+- `Node.js <https://nodejs.org>`_
 
-On a DEB-based system (e.g Debian, gNewSense, Trisquel, *buntu, and
-derivatives) issue the following command::
+These instructions have been tested on Debian 10, CentOS 8 and
+Fedora 31. These instructions should approximately translate to recent
+Debian derivatives such as Ubuntu 18.04 and Trisquel 8, and to relatives of
+Fedora such as CentOS 8.
 
-    sudo apt-get install git-core python python-dev python-lxml \
-        python-imaging python-virtualenv npm nodejs-legacy automake \
-        nginx
+Issue the following commands:
 
-On a RPM-based system (e.g. Fedora, RedHat, and derivatives) issue the
-following command::
+.. code-block:: bash
 
-    sudo yum install python-paste-deploy python-paste-script \
-        git-core python python-devel python-lxml python-imaging \
-        python-virtualenv npm automake nginx
+    # Debian 10
+    sudo apt update
+    sudo apt install automake git nodejs npm python3-dev python3-gi \
+    python3-gst-1.0 python3-lxml python3-pil virtualenv
 
-(Note: MediaGoblin now officially supports Python 3.  You may instead
-substitute from "python" to "python3" for most package names in the
-Debian instructions and this should cover dependency installation.
-These instructions have not yet been tested on Fedora.)
+    # Fedora 31
+    sudo dnf install automake gcc git-core make nodejs npm python3-devel \
+    python3-lxml python3-pillow virtualenv
+
+.. note::
+
+   MediaGoblin now uses Python 3 by default. To use Python 2, you may
+   instead substitute from "python3" to "python" for most package
+   names in the Debian instructions and this should cover dependency
+   installation. Python 2 installation has not been tested on Fedora.
+
+For a production deployment, you'll also need Nginx as frontend web
+server and RabbitMQ to store the media processing queue::
+
+    # Debian
+    sudo apt install nginx-light rabbitmq-server
+
+    # Fedora
+    sudo dnf install nginx rabbitmq-server
+
+..
+   .. note::
+
+      You might have to enable additional repositories under Fedora
+      because rabbitmq-server might be not included in official
+      repositories. That looks like this for CentOS::
+
+        sudo dnf config-manager --set-enabled centos-rabbitmq-38
+        sudo dnf config-manager --set-enabled PowerTools
+        sudo dnf install rabbitmq-server
+        sudo systemctl enable rabbitmq-server.service
+        # TODO: Celery repeatedly disconnects from RabbitMQ on CentOS 8.
+
+      As an alternative, you can try installing redis-server and
+      configure it as celery broker.
 
 Configure PostgreSQL
 ~~~~~~~~~~~~~~~~~~~~
 
 .. note::
 
-   MediaGoblin currently supports PostgreSQL and SQLite. The default is a
-   local SQLite database. This will "just work" for small deployments.
+   MediaGoblin currently supports PostgreSQL and SQLite. The default
+   is a local SQLite database. This will "just work" for small
+   deployments. For medium to large deployments we recommend
+   PostgreSQL. If you don't want/need PostgreSQL, skip this section.
 
-   For medium to large deployments we recommend PostgreSQL.
+These are the packages needed for PostgreSQL::
 
-   If you don't want/need postgres, skip this section.
+    # Debian
+    sudo apt install postgresql python3-psycopg2
 
-These are the packages needed for Debian Jessie (stable)::
+    # Fedora
+    sudo dnf install postgresql postgresql-server python3-psycopg2
 
-    sudo apt-get install postgresql postgresql-client python-psycopg2
-
-These are the packages needed for an RPM-based system::
-
-    sudo yum install postgresql postgresql-server python-psycopg2
-
-An rpm-based system also requires that you initialize and start the
-PostgresSQL database with a few commands. The following commands are
+Fedora also requires that you initialize and start the
+PostgreSQL database with a few commands. The following commands are
 not needed on a Debian-based platform, however::
 
+    # Feora
     sudo /usr/bin/postgresql-setup initdb
     sudo systemctl enable postgresql
     sudo systemctl start postgresql
 
 The installation process will create a new *system* user named ``postgres``,
-which will have privilegies sufficient to manage the database. We will create a
-new database user with restricted privilegies and a new database owned by our
+which will have privileges sufficient to manage the database. We will create a
+new database user with restricted privileges and a new database owned by our
 restricted database user for our MediaGoblin instance.
 
 In this example, the database user will be ``mediagoblin`` and the database
-name will be ``mediagoblin`` too.
+name will be ``mediagoblin`` too. We'll first at the user::
 
-We'll add these entities by first switching to the *postgres* account::
-
-    sudo su - postgres
-
-This will change your prompt to a shell prompt, such as *-bash-4.2$*. Enter
-the following *createuser* and *createdb* commands at that prompt. We'll
-create the *mediagoblin* database user first::
-
-    # this command and the one that follows are run as the ``postgres`` user:
-    createuser -A -D mediagoblin
+    sudo --login --user=postgres createuser --no-createdb mediagoblin
 
 Then we'll create the database where all of our MediaGoblin data will be stored::
 
-    createdb -E UNICODE -O mediagoblin mediagoblin
-
-where the first ``mediagoblin`` is the database owner and the second
-``mediagoblin`` is the database name.
-
-Type ``exit`` to exit from the 'postgres' user account.::
-
-    exit
+    sudo --login --user=postgres createdb --encoding=UTF8 --owner=mediagoblin mediagoblin
 
 .. caution:: Where is the password?
 
@@ -163,34 +177,37 @@ create a dedicated, unprivileged system user for the sole purpose of running
 MediaGoblin. Running MediaGoblin processes under an unprivileged system user
 helps to keep it more secure. 
 
-The following command (entered as root or with sudo) will create a
-system account with a username of ``mediagoblin``. You may choose a different
-username if you wish.
+The following command will create a system account with a username of
+``mediagoblin``.
 
 If you are using a Debian-based system, enter this command::
 
-    sudo useradd -c "GNU MediaGoblin system account" -d /var/lib/mediagoblin -m -r -g www-data mediagoblin
+    # Debian
+    sudo useradd --system --create-home --home-dir /var/lib/qmediagoblin \
+    --group www-data --comment 'GNU MediaGoblin system account' mediagoblin
 
-If you are using an RPM-based system, enter this command::
-
-    sudo useradd -c "GNU MediaGoblin system account" -d /var/lib/mediagoblin -m -r -g nginx mediagoblin
+    # Fedora
+    sudo useradd --system --create-home --home-dir /var/lib/mediagoblin \
+    --group nginx --comment 'GNU MediaGoblin system account' mediagoblin
 
 This will create a ``mediagoblin`` user and assign it to a group that is
 associated with the web server. This will ensure that the web server can
-read the media files (images, videos, etc.) that users upload.
+read the media files that users upload (images, videos, etc.)
 
-We will also create a ``mediagoblin`` group and associate the mediagoblin
-user with that group, as well::
+Many operating systems will automatically create a group
+``mediagoblin`` to go with the new user ``mediagoblin``, but just to
+be sure::
   
-    sudo groupadd mediagoblin && sudo usermod --append -G mediagoblin mediagoblin
+    sudo groupadd --force mediagoblin
+    sudo usermod --append --groups mediagoblin mediagoblin
        
 No password will be assigned to this account, and you will not be able
 to log in as this user. To switch to this account, enter::
 
-    sudo su mediagoblin -s /bin/bash
+    sudo su mediagoblin --shell=/bin/bash
 
 To return to your regular user account after using the system account, type
-``exit``.
+``exit`` or ``Ctrl-d``.
 
 .. _create-mediagoblin-directory:
 
@@ -200,25 +217,22 @@ Create a MediaGoblin Directory
 You should create a working directory for MediaGoblin. This document
 assumes your local git repository will be located at 
 ``/srv/mediagoblin.example.org/mediagoblin/``.
-Substitute your prefered local deployment path as needed.
+Substitute your preferred local deployment path as needed.
 
 Setting up the working directory requires that we first create the directory
-with elevated priviledges, and then assign ownership of the directory
+with elevated privileges, and then assign ownership of the directory
 to the unprivileged system account.
 
-To do this, enter the following command, changing the defaults to suit your
-particular requirements. On a Debian-based platform you will enter this::
+To do this, enter the following commands, changing the defaults to suit your
+particular requirements::
 
-    sudo mkdir -p /srv/mediagoblin.example.org && sudo chown -hR mediagoblin:www-data /srv/mediagoblin.example.org
+    # Debian
+    sudo mkdir --parents /srv/mediagoblin.example.org
+    sudo chown --no-dereference --recursive mediagoblin:www-data /srv/mediagoblin.example.org
 
-On an RPM-based distribution, enter this command::
-
-    sudo mkdir -p /srv/mediagoblin.example.org && sudo chown -hR mediagoblin:nginx /srv/mediagoblin.example.org
-
-.. note::
-
-    Unless otherwise noted, the remainder of this document assumes that all
-    operations are performed using this unprivileged account.
+    # Fedora
+    sudo mkdir --parents /srv/mediagoblin.example.org
+    sudo chown --no-dereference --recursive mediagoblin:nginx /srv/mediagoblin.example.org
 
 
 Install MediaGoblin and Virtualenv
@@ -228,75 +242,46 @@ We will now switch to our 'mediagoblin' system account, and then set up
 our MediaGoblin source code repository and its necessary services.
 You should modify these commands to suit your own environment.
 
-Change to the MediaGoblin directory that you just created::
+Switch to the ``mediagoblin`` unprivileged user and change to the
+MediaGoblin directory that you just created::
 
-    sudo su mediagoblin -s /bin/bash  # to change to the 'mediagoblin' account
+    sudo su mediagoblin --shell=/bin/bash
     $ cd /srv/mediagoblin.example.org
-
-Clone the MediaGoblin repository and set up the git submodules::
-
-    $ git clone git://git.savannah.gnu.org/mediagoblin.git -b stable
-    $ cd mediagoblin
-    $ git submodule init && git submodule update
 
 .. note::
 
-   The MediaGoblin repository used to be on gitorious.org, but since
-   gitorious.org shut down, we had to move.  We are presently on
-   Savannah.  You may need to update your git repository location::
+    Unless otherwise noted, the remainder of this document assumes that all
+    operations are performed using the unprivileged ``mediagoblin``
+    account, indicated by the ``$`` prefix.
 
-    $ git remote set-url origin git://git.savannah.gnu.org/mediagoblin.git
+Clone the MediaGoblin repository and set up the git submodules::
 
-Set up the hacking environment::
+    $ git clone --depth=1 https://git.savannah.gnu.org/git/mediagoblin.git \
+      --branch stable --recursive
+    $ cd mediagoblin
 
-    $ ./bootstrap.sh && ./configure && make
+Set up the environment::
 
-(Note that if you'd prefer to run MediaGoblin with Python 3, pass in
-`--with-python3` to the `./configure` command.)
+    $ ./bootstrap.sh
+    $ VIRTUALENV_FLAGS='--system-site-packages' ./configure
+    $ make
+
+.. note::
+
+   If you'd prefer to run MediaGoblin with Python 2, pass in
+   ``--without-python3`` to the ``./configure`` command.
 
 Create and set the proper permissions on the ``user_dev`` directory.
 This directory will be used to store uploaded media files::
 
-    $ mkdir user_dev && chmod 750 user_dev
-
-Assuming you are going to deploy with FastCGI, you should also install
-flup::
-
-    $ ./bin/easy_install flup
-
-(Note, if you're running Python 2, which you probably are at this
-point in MediaGoblin's development, you'll need to run:)
-
-    $ ./bin/easy_install flup==1.0.3.dev-20110405
-
-The above provides an in-package install of ``virtualenv``. While this
-is counter to the conventional ``virtualenv`` configuration, it is
-more reliable and considerably easier to configure and illustrate. If
-you're familiar with Python packaging you may consider deploying with
-your preferred method.
-
-.. note::
-
-   What if you don't want an in-package ``virtualenv``?  Maybe you
-   have your own ``virtualenv``, or you are building a MediaGoblin
-   package for a distribution.  There's no need necessarily for the
-   virtualenv produced by ``./configure && make`` by default other
-   than attempting to simplify work for developers and people
-   deploying by hiding all the virtualenv and bower complexity.
-
-   If you want to install all of MediaGoblin's libraries
-   independently, that's totally fine!  You can pass the flag
-   ``--without-virtualenv`` which will skip this step.   
-   But you will need to install all those libraries manually and make
-   sure they are on your ``PYTHONPATH`` yourself!  (You can still use
-   ``python setup.py develop`` to install some of those libraries,
-   but note that no ``./bin/python`` will be set up for you via this
-   method, since no virtualenv is set up for you!)
+    $ mkdir --mode=2750 user_dev
 
 This concludes the initial configuration of the MediaGoblin 
 environment. In the future, when you update your
 codebase, you should also run::
 
+    sudo su mediagoblin --shell=/bin/bash
+    $ cd /srv/mediagoblin.example.org
     $ git submodule update && ./bin/python setup.py develop --upgrade && ./bin/gmg dbupdate
 
 .. note::
@@ -313,31 +298,30 @@ Deploy MediaGoblin Services
 Edit site configuration
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-A few basic properties must be set before MediaGoblin will work. First
-make a copy of ``mediagoblin.ini`` and ``paste.ini`` for editing so the original
-config files aren't lost (you likely won't need to edit the paste configuration,
-but we'll make a local copy of it just in case)::
+Edit ``mediagoblin.ini`` and update ``email_sender_address`` to the
+address you wish to be used as the sender for system-generated emails.
 
-    $ cp -av mediagoblin.ini mediagoblin_local.ini && cp -av paste.ini paste_local.ini
+.. note::
 
-Then edit mediagoblin_local.ini:
- - Set ``email_sender_address`` to the address you wish to be used as
-   the sender for system-generated emails
- - Edit ``direct_remote_path``, ``base_dir``, and ``base_url`` if
-   your mediagoblin directory is not the root directory of your
-   vhost.
+   If you're changing the MediaGoblin directories or URL prefix, you
+   may need to edit ``direct_remote_path``, ``base_dir``, and
+   ``base_url``.
 
+.. note::
+
+   The default config is stored in ``mediagoblin.example.ini`` in case
+   you ever need it.
 
 Configure MediaGoblin to use the PostgreSQL database
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If you are using postgres, edit the ``[mediagoblin]`` section in your
-``mediagoblin_local.ini`` and put in::
+If you are using PostgreSQL, edit the ``[mediagoblin]`` section in your
+``mediagoblin.ini`` and remove the ``#`` prefix on the line containing::
 
     sql_engine = postgresql:///mediagoblin
 
-if you are running the MediaGoblin application as the same 'user' as the
-database owner.
+This assumes you are running the MediaGoblin application under the
+same system account and database account; both ``mediagoblin``.
 
 
 Update database data structures
@@ -350,6 +334,16 @@ Before you start using the database, you need to run::
 to populate the database with the MediaGoblin data structures.
 
 
+Create an admin account
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Create a MediaGoblin account with full administration access. Provide
+your own email address and enter a secure password when prompted::
+
+    $ ./bin/gmg adduser --username you --email you@example.com
+    $ ./bin/gmg makeadmin you
+
+
 Test the Server
 ~~~~~~~~~~~~~~~
 
@@ -359,46 +353,45 @@ test the deployment with the following command::
     $ ./lazyserver.sh --server-name=broadcast
 
 You should be able to connect to the machine on port 6543 in your
-browser to confirm that the service is operable.
+browser to confirm that the service is operable. You should also be
+able to log in with the admin username and password.
 
-The next series of commands will need to be run as a priviledged user. Type
-exit to return to the root/sudo account.::
+Type ``Ctrl-c`` to exit the above server test.
 
-    exit
+The next series of commands will need to be run as a privileged user.
+To return to your regular user account after using the system account,
+type ``exit`` or ``Ctrl-d``.
 
 .. _webserver-config:
 
 
-FastCGI and nginx
-~~~~~~~~~~~~~~~~~
+Waitress and Nginx
+~~~~~~~~~~~~~~~~~~
 
-This configuration example will use nginx, however, you may
-use any webserver of your choice as long as it supports the FastCGI
-protocol. If you do not already have a web server, consider nginx, as
-the configuration files may be more clear than the
+This configuration example will use Nginx, however, you may use any
+webserver of your choice. If you do not already have a web server,
+consider Nginx, as the configuration files may be more clear than the
 alternatives.
 
 Create a configuration file at
 ``/srv/mediagoblin.example.org/nginx.conf`` and create a symbolic link
 into a directory that will be included in your ``nginx`` configuration
-(e.g. "``/etc/nginx/sites-enabled`` or ``/etc/nginx/conf.d``) with
-one of the following commands.
-
-On a DEB-based system (e.g Debian, gNewSense, Trisquel, *buntu, and
-derivatives) issue the following commands::
-
-    sudo ln -s /srv/mediagoblin.example.org/nginx.conf /etc/nginx/sites-enabled/
-    sudo systemctl enable nginx
-
-On a RPM-based system (e.g. Fedora, RedHat, and derivatives) issue the
+(e.g. "``/etc/nginx/sites-enabled`` or ``/etc/nginx/conf.d``) with the
 following commands::
 
-    sudo ln -s /srv/mediagoblin.example.org/nginx.conf /etc/nginx/conf.d/
+    # Debian
+    sudo ln --symbolic /srv/mediagoblin.example.org/nginx.conf /etc/nginx/sites-enabled/mediagoblin.conf
+    sudo rm --force /etc/nginx/sites-enabled/default
     sudo systemctl enable nginx
 
-You can modify these commands and locations depending on your preferences and
-the existing configuration of your nginx instance. The contents of
-this ``nginx.conf`` file should be modeled on the following::
+    # Fedora
+    sudo ln -s /srv/mediagoblin.example.org/nginx.conf /etc/nginx/conf.d/mediagoblin.conf
+    sudo systemctl enable nginx
+
+You can modify these commands and locations depending on your
+preferences and the existing configuration of your Nginx instance. The
+contents of this ``/srv/mediagoblin.example.org/nginx.conf`` file
+should be modeled on the following::
 
     server {
      #################################################
@@ -452,15 +445,9 @@ this ``nginx.conf`` file should be modeled on the following::
         alias /srv/mediagoblin.example.org/mediagoblin/user_dev/plugin_static/;
      }
 
-     # Mounting MediaGoblin itself via FastCGI.
+     # Forward requests to the MediaGoblin app server.
      location / {
-        fastcgi_pass 127.0.0.1:26543;
-        include /etc/nginx/fastcgi_params;
-
-        # our understanding vs nginx's handling of script_name vs
-        # path_info don't match :)
-        fastcgi_param PATH_INFO $fastcgi_script_name;
-        fastcgi_param SCRIPT_NAME "";
+        proxy_pass http://127.0.0.1:6543;
      }
     }
 
@@ -479,25 +466,148 @@ process. This approach is faster and requires less memory.
 Nginx is now configured to serve the MediaGoblin application. Perform a quick
 test to ensure that this configuration works::
 
-    nginx -t
+    sudo nginx -t
 
-If you encounter any errors, review your nginx configuration files, and try to
-resolve them. If you do not encounter any errors, you can start your nginx
-server with one of the following commands (depending on your environment)::
+If you encounter any errors, review your Nginx configuration files, and try to
+resolve them. If you do not encounter any errors, you can start your Nginx
+server (may vary depending on your operating system)::
 
-    sudo /etc/init.d/nginx restart
-    sudo /etc/rc.d/nginx restart
     sudo systemctl restart nginx
 
-Now start MediaGoblin. Use the following command sequence as an
-example::
+Now start MediaGoblin to test your Nginx configuration::
 
-    cd /srv/mediagoblin.example.org/mediagoblin/
-    su mediagoblin -s /bin/bash
-    ./lazyserver.sh --server-name=fcgi fcgi_host=127.0.0.1 fcgi_port=26543
+    sudo su mediagoblin --shell=/bin/bash
+    $ cd /srv/mediagoblin.example.org/mediagoblin/
+    $ ./lazyserver.sh --server-name=main
 
-Visit the site you've set up in your browser by visiting
-<http://mediagoblin.example.org>. You should see MediaGoblin!
+You should be able to connect to the machine on port 80 in your
+browser to confirm that the service is operable. If this is the
+machine in front of you, visit <http://localhost/> or if it is a
+remote server visit the URL or IP address provided to you by your
+hosting provider. You should see MediaGoblin; this time via Nginx!
+
+Try logging in and uploading an image. If after uploading you see any
+"Forbidden" errors from Nginx or your image doesn't show up, you may
+need to update the permissions on the new directories MediaGoblin has
+created::
+
+    # Debian
+    sudo chown --no-dereference --recursive mediagoblin:www-data /srv/mediagoblin.example.org
+
+    # Fedora
+    sudo chown --no-dereference --recursive mediagoblin:nginx /srv/mediagoblin.example.org
+
+.. note::
+   
+   If you see an Nginx placeholder page, you may need to remove the
+   Nginx default configuration, or explictly set a ``server_name``
+   directive in the Nginx config.
+
+Type ``Ctrl-c`` to exit the above server test and ``exit`` or
+``Ctrl-d`` to exit the mediagoblin shell.
+
+
+.. _create-log-file-dir:
+
+Create the directory for your log file:
+---------------------------------------
+
+Production logs for the MediaGoblin application are kept in the
+``/var/log/mediagoblin`` directory.  Create the directory and give it the
+proper permissions::
+
+    sudo mkdir --parents /var/log/mediagoblin
+    sudo chown --no-dereference --recursive mediagoblin:mediagoblin /var/log/mediagoblin
+
+
+.. _systemd-service-files:
+
+Run MediaGoblin as a system service
+-----------------------------------
+
+To ensure MediaGoblin is automatically started and restarted in case of
+problems, we need to run it as a system service. If your operating system uses
+Systemd, you can use Systemd ``service files`` to manage both the Celery and
+Paste processes.
+
+Place the following service files in the ``/etc/systemd/system/``
+directory. The first file should be named
+``mediagoblin-celeryd.service``. Be sure to modify it to suit your
+environment's setup:
+
+.. code-block:: bash
+
+    # Set the WorkingDirectory and Environment values to match your environment.
+    [Unit]
+    Description=MediaGoblin Celeryd
+
+    [Service]
+    User=mediagoblin
+    Group=mediagoblin
+    Type=simple
+    WorkingDirectory=/srv/mediagoblin.example.org/mediagoblin
+    Environment=MEDIAGOBLIN_CONFIG=/srv/mediagoblin.example.org/mediagoblin/mediagoblin.ini \
+                CELERY_CONFIG_MODULE=mediagoblin.init.celery.from_celery
+    ExecStart=/srv/mediagoblin.example.org/mediagoblin/bin/celery worker \
+                --logfile=/var/log/mediagoblin/celery.log \
+                --loglevel=INFO
+
+    [Install]
+    WantedBy=multi-user.target
+
+
+The second file should be named ``mediagoblin-paster.service``:
+
+.. code-block:: bash
+
+    # Set the WorkingDirectory and Environment values to match your environment.
+    [Unit]
+    Description=Mediagoblin
+
+    [Service]
+    Type=simple
+    User=mediagoblin
+    Group=mediagoblin
+    Environment=CELERY_ALWAYS_EAGER=false
+    WorkingDirectory=/srv/mediagoblin.example.org/mediagoblin
+    ExecStart=/srv/mediagoblin.example.org/mediagoblin/bin/paster serve \
+                /srv/mediagoblin.example.org/mediagoblin/paste.ini \
+                --log-file=/var/log/mediagoblin/mediagoblin.log \
+                --server-name=main
+
+    [Install]
+    WantedBy=multi-user.target
+
+
+Enable these processes to start at boot by entering::
+
+    sudo systemctl enable mediagoblin-celeryd.service && sudo systemctl enable mediagoblin-paster.service
+
+
+Start the processes for the current session with::
+
+    sudo systemctl start mediagoblin-celeryd.service
+    sudo systemctl start mediagoblin-paster.service
+
+
+If either command above gives you an error, you can investigate the cause of
+the error by entering either of::
+
+    sudo systemctl status mediagoblin-celeryd.service
+    sudo systemctl status mediagoblin-paster.service
+
+The above ``systemctl status`` command is also useful if you ever want to
+confirm that a process is still running. If you make any changes to the service
+files, you can reload the service files by entering::
+
+    sudo systemctl daemon-reload
+
+After entering that command, you can attempt to start the Celery or Paste
+processes again using ``restart`` instead of ``start``.
+
+Assuming the above was successful, you should now have a MediaGoblin
+server that will continue to operate, even after being restarted.
+Great job!
 
 .. note::
 
@@ -505,50 +615,12 @@ Visit the site you've set up in your browser by visiting
    smaller deployments. However, for larger production deployments
    with larger processing requirements, see the
    ":doc:`production-deployments`" documentation.
-   
 
-Apache
-~~~~~~
+.. note::
 
-Instructions and scripts for running MediaGoblin on an Apache server
-can be found on the `MediaGoblin wiki <http://wiki.mediagoblin.org/Deployment>`_.
-
-
-Should I Keep Open Registration Enabled?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Unfortunately, in this current release of MediaGoblin we are suffering
-from spammers registering to public instances en masse.  As such, you
-may want to either:
-
-a) Disable registration on your instance and just make
-   accounts for people you know and trust (eg via the `gmg adduser`
-   command).  You can disable registration in your mediagoblin.ini
-   like so::
-
-     [mediagoblin]
-     allow_registration = false
-
-b) Enable a captcha plugin.  But unfortunately, though some captcha
-   plugins exist, for various reasons we do not have any general
-   recommendations we can make at this point.
-
-We hope to have a better solution to this situation shortly.  We
-apologize for the inconvenience in the meanwhile.
-
-
-Security Considerations
-~~~~~~~~~~~~~~~~~~~~~~~
-
-.. warning::
-
-   The directory ``user_dev/crypto/`` contains some very
-   sensitive files.
-   Especially the ``itsdangeroussecret.bin`` is very important
-   for session security. Make sure not to leak its contents anywhere.
-   If the contents gets leaked nevertheless, delete your file
-   and restart the server, so that it creates a new secret key.
-   All previous sessions will be invalidated.
+   This configuration supports upload of images only, but MediaGoblin
+   also supports other types of media, such as audio, video, PDFs and
+   3D models. For details, see ":doc:`media-types`".
 
 ..
    Local variables:
