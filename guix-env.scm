@@ -41,14 +41,13 @@
 ;;;   use guix -l guix-env.scm
 ;;;
 ;;; To set things up for the first time, you'll also need to run:
-;;;   git submodule init
-;;;   git submodule update
+;;;   git submodule update --init
 ;;;   ./bootstrap.sh
-;;;   ./configure --with-python3 --without-virtualenv
+;;;   ./configure --without-virtualenv
 ;;;   make
-;;;   python3 -m venv --system-site-packages . && bin/python setup.py develop  --no-deps
+;;;   python3 -m venv --system-site-packages . && bin/python setup.py develop --no-deps
 ;;;   bin/python -m pip install --force-reinstall PasteScript # workaround
-;;;   bin/python -m pip install 'werkzeug<1.0.0' # workaround
+;;;   bin/python -m pip install 'werkzeug<1.0.0' # workaround (also disabled below)
 ;;;   bin/python -m pip install 'email-validator' # email-validator
 ;;;
 ;;; ... wait whaaat, what's that venv line?!  I thought you said this
@@ -66,6 +65,11 @@
 ;;;   bin/gmg adduser --username admin --password a --email admin@example.com
 ;;;   ./lazyserver.sh <-- won't work
 ;;;   CELERY_ALWAYS_EAGER=true ./bin/paster serve paste.ini --reload
+;;;
+;;; WORKAROUND: I have an incompatible newer Werkzeug installed in my profile,
+;;; so to run MediaGoblin I need to:
+;;;
+;;;   PYTHONPATH=lib/python3.8/site-packages:$PYTHONPATH CELERY_ALWAYS_EAGER=true ./bin/paster serve paste-vanilla.ini --reload
 ;;;
 ;;; So anyway, now you can do:
 ;;;  PYTHONPATH="${PYTHONPATH}:$(pwd)" ./runtests.sh
@@ -187,7 +191,6 @@
        ("python-pytz" ,python-pytz)
        ("python-requests" ,python-requests)
        ("python-setuptools" ,python-setuptools)
-       ("python-six" ,python-six)
        ("python-sphinx" ,python-sphinx)
        ("python-docutils" ,python-docutils)
        ("python-sqlalchemy" ,python-sqlalchemy)

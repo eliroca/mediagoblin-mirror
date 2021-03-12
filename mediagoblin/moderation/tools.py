@@ -14,8 +14,6 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import six
-
 from mediagoblin import mg_globals
 from mediagoblin.db.models import User, Privilege, UserBan, LocalUser
 from mediagoblin.db.base import Session
@@ -30,24 +28,24 @@ def take_punitive_actions(request, form, report, user):
 
     # The bulk of this action is running through all of the different
     # punitive actions that a moderator could take.
-    if u'takeaway' in form.action_to_resolve.data:
+    if 'takeaway' in form.action_to_resolve.data:
         for privilege_name in form.take_away_privileges.data:
             take_away_privileges(user.username, privilege_name)
             form.resolution_content.data += \
-                _(u"\n{mod} took away {user}\'s {privilege} privileges.").format(
+                _("\n{mod} took away {user}\'s {privilege} privileges.").format(
                     mod=request.user.username,
                     user=user.username,
                     privilege=privilege_name)
 
     # If the moderator elects to ban the user, a new instance of user_ban
     # will be created.
-    if u'userban' in form.action_to_resolve.data:
+    if 'userban' in form.action_to_resolve.data:
         user_ban = ban_user(form.targeted_user.data,
             expiration_date=form.user_banned_until.data,
             reason=form.why_user_was_banned.data)
         Session.add(user_ban)
         form.resolution_content.data += \
-            _(u"\n{mod} banned user {user} {expiration_date}.").format(
+            _("\n{mod} banned user {user} {expiration_date}.").format(
                 mod=request.user.username,
                 user=user.username,
                 expiration_date = (
@@ -59,26 +57,26 @@ def take_punitive_actions(request, form, report, user):
 
     # If the moderator elects to send a warning message. An email will be
     # sent to the email address given at sign up
-    if u'sendmessage' in form.action_to_resolve.data:
+    if 'sendmessage' in form.action_to_resolve.data:
         message_body = form.message_to_user.data
         form.resolution_content.data += \
-            _(u"\n{mod} sent a warning email to the {user}.").format(
+            _("\n{mod} sent a warning email to the {user}.").format(
                 mod=request.user.username,
                 user=user.username)
 
-    if u'delete' in form.action_to_resolve.data and \
+    if 'delete' in form.action_to_resolve.data and \
         report.is_comment_report():
             deleted_comment = report.obj()
             deleted_comment.delete()
             form.resolution_content.data += \
-                _(u"\n{mod} deleted the comment.").format(
+                _("\n{mod} deleted the comment.").format(
                     mod=request.user.username)
-    elif u'delete' in form.action_to_resolve.data and \
+    elif 'delete' in form.action_to_resolve.data and \
         report.is_media_entry_report():
             deleted_media = report.obj()
             deleted_media.delete()
             form.resolution_content.data += \
-                _(u"\n{mod} deleted the media entry.").format(
+                _("\n{mod} deleted the media entry.").format(
                     mod=request.user.username)
     report.archive(
         resolver_id=request.user.id,
@@ -216,7 +214,7 @@ def parse_report_panel_settings(form):
         filters['reported_user_id'] = form.reported_user.data
         filters['reporter_id'] = form.reporter.data
 
-    filters = dict((k, v)
-        for k, v in six.iteritems(filters) if v)
+    filters = {k: v
+        for k, v in filters.items() if v}
 
     return filters

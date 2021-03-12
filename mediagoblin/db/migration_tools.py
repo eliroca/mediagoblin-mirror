@@ -14,7 +14,6 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import unicode_literals
 
 import logging
 import os
@@ -36,7 +35,7 @@ class TableAlreadyExists(Exception):
     pass
 
 
-class MigrationManager(object):
+class MigrationManager:
     """
     Migration handling tool.
 
@@ -148,7 +147,7 @@ class MigrationManager(object):
             # Maybe in the future just print out a "Yikes!" or something?
             if model.__table__.exists(self.session.bind):
                 raise TableAlreadyExists(
-                    u"Intended to create table '%s' but it already exists" %
+                    "Intended to create table '%s' but it already exists" %
                     model.__table__.name)
 
         self.migration_model.metadata.create_all(
@@ -171,26 +170,26 @@ class MigrationManager(object):
         """
         if self.database_current_migration is None:
             self.printer(
-                    u'~> Woulda initialized: %s\n' % self.name_for_printing())
-            return u'inited'
+                    '~> Woulda initialized: %s\n' % self.name_for_printing())
+            return 'inited'
 
         migrations_to_run = self.migrations_to_run()
         if migrations_to_run:
             self.printer(
-                u'~> Woulda updated %s:\n' % self.name_for_printing())
+                '~> Woulda updated %s:\n' % self.name_for_printing())
 
             for migration_number, migration_func in migrations_to_run():
                 self.printer(
-                    u'   + Would update %s, "%s"\n' % (
+                    '   + Would update {}, "{}"\n'.format(
                         migration_number, migration_func.func_name))
 
-            return u'migrated'
+            return 'migrated'
 
     def name_for_printing(self):
-        if self.name == u'__main__':
-            return u"main mediagoblin tables"
+        if self.name == '__main__':
+            return "main mediagoblin tables"
         else:
-            return u'plugin "%s"' % self.name
+            return 'plugin "%s"' % self.name
 
     def init_or_migrate(self):
         """
@@ -213,36 +212,36 @@ class MigrationManager(object):
         #  - print / inform the user
         #  - return 'inited'
         if migration_number is None:
-            self.printer(u"-> Initializing %s... " % self.name_for_printing())
+            self.printer("-> Initializing %s... " % self.name_for_printing())
 
             self.init_tables()
             # auto-set at latest migration number
             self.create_new_migration_record()
-            self.printer(u"done.\n")
+            self.printer("done.\n")
             self.set_current_migration()
-            return u'inited'
+            return 'inited'
 
         # Run migrations, if appropriate.
         migrations_to_run = self.migrations_to_run()
         if migrations_to_run:
             self.printer(
-                u'-> Updating %s:\n' % self.name_for_printing())
+                '-> Updating %s:\n' % self.name_for_printing())
             for migration_number, migration_func in migrations_to_run:
                 self.printer(
-                    u'   + Running migration %s, "%s"... ' % (
+                    '   + Running migration {}, "{}"... '.format(
                         migration_number, migration_func.__name__))
                 migration_func(self.session)
                 self.set_current_migration(migration_number)
                 self.printer('done.\n')
 
-            return u'migrated'
+            return 'migrated'
 
         # Otherwise return None.  Well it would do this anyway, but
         # for clarity... ;)
         return None
 
 
-class RegisterMigration(object):
+class RegisterMigration:
     """
     Tool for registering migrations
 
@@ -348,9 +347,9 @@ def populate_table_foundations(session, foundations, name,
     Create the table foundations (default rows) as layed out in FOUNDATIONS
         in mediagoblin.db.models
     """
-    printer(u'Laying foundations for %s:\n' % name)
+    printer('Laying foundations for %s:\n' % name)
     for Model, rows in foundations.items():
-        printer(u'   + Laying foundations for %s table\n' %
+        printer('   + Laying foundations for %s table\n' %
             (Model.__name__))
         for parameters in rows:
             new_row = Model(**parameters)

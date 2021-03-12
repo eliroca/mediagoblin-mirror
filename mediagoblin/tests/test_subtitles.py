@@ -25,12 +25,12 @@ from mediagoblin.plugins.subtitles.tools import open_subtitle, save_subtitle
 # Checking if the subtitle entry is working
 
 def test_add_subtitle_entry(test_app):
-    user_a = fixture_add_user(u"test_user")
+    user_a = fixture_add_user("test_user")
 
     media = fixture_media_entry(uploader=user_a.id, save=False, expunge=False)
     media.subtitle_files.append(dict(
-            name=u"some name",
-            filepath=[u"does", u"not", u"exist"],
+            name="some name",
+            filepath=["does", "not", "exist"],
             ))
     Session.add(media)
     Session.flush()
@@ -54,12 +54,12 @@ def test_read_write_file(test_app):
 # Checking the customize exceptions
 
 def test_customize_subtitle(test_app):
-    user_a = fixture_add_user(u"test_user")
+    user_a = fixture_add_user("test_user")
 
     media = fixture_media_entry(uploader=user_a.id, save=False, expunge=False)
     media.subtitle_files.append(dict(
-            name=u"some name",
-            filepath=[u"does", u"not", u"exist"],
+            name="some name",
+            filepath=["does", "not", "exist"],
             ))
     Session.add(media)
     Session.flush()

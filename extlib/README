@@ -114,8 +114,7 @@ FAQ
     Use it just like a snapshotted extlib directory. When a new clone of mediagoblin
     is made you need to run
 
-     git submodule init
-     git submodule update
+     git submodule update --init
 
     As noted in HackingHowto
 

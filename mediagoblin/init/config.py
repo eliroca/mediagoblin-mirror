@@ -149,7 +149,7 @@ def read_mediagoblin_config(config_path, config_spec_path=CONFIG_SPEC_PATH):
     return config, validation_result
 
 
-REPORT_HEADER = u"""\
+REPORT_HEADER = """\
 There were validation problems loading this config file:
 --------------------------------------------------------
 """
@@ -173,17 +173,17 @@ def generate_validation_report(config, validation_result):
         if key is not None:
             section_list.append(key)
         else:
-            section_list.append(u'[missing section]')
+            section_list.append('[missing section]')
 
-        section_string = u':'.join(section_list)
+        section_string = ':'.join(section_list)
 
         if error == False:
             # We don't care about missing values for now.
             continue
 
-        report.append(u"%s = %s" % (section_string, error))
+        report.append("{} = {}".format(section_string, error))
 
     if report:
-        return REPORT_HEADER + u"\n".join(report)
+        return REPORT_HEADER + "\n".join(report)
     else:
         return None

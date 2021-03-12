@@ -14,8 +14,6 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import six
-
 from mediagoblin import messages
 import mediagoblin.mg_globals as mg_globals
 
@@ -37,7 +35,7 @@ from mediagoblin.user_pages.lib import add_media_to_collection
 
 
 @require_active_login
-@user_has_privilege(u'uploader')
+@user_has_privilege('uploader')
 def submit_start(request):
     """
     First view for submitting a file.
@@ -65,16 +63,16 @@ def submit_start(request):
     if request.method == 'POST' and submit_form.validate():
         if not check_file_field(request, 'file'):
             submit_form.file.errors.append(
-                _(u'You must provide a file.'))
+                _('You must provide a file.'))
         else:
             try:
                 media = submit_media(
                     mg_app=request.app, user=request.user,
                     submitted_file=request.files['file'],
                     filename=request.files['file'].filename,
-                    title=six.text_type(submit_form.title.data),
-                    description=six.text_type(submit_form.description.data),
-                    license=six.text_type(submit_form.license.data) or None,
+                    title=str(submit_form.title.data),
+                    description=str(submit_form.description.data),
+                    license=str(submit_form.license.data) or None,
                     tags_string=submit_form.tags.data,
                     urlgen=request.urlgen)
 
@@ -97,7 +95,7 @@ def submit_start(request):
             # Handle upload limit issues
             except FileUploadLimit:
                 submit_form.file.errors.append(
-                    _(u'Sorry, the file size is too big.'))
+                    _('Sorry, the file size is too big.'))
             except UserUploadLimit:
                 submit_form.file.errors.append(
                     _('Sorry, uploading this file will put you over your'
@@ -131,8 +129,8 @@ def add_collection(request, media=None):
     if request.method == 'POST' and submit_form.validate():
         collection = request.db.Collection()
 
-        collection.title = six.text_type(submit_form.title.data)
-        collection.description = six.text_type(submit_form.description.data)
+        collection.title = str(submit_form.title.data)
+        collection.description = str(submit_form.description.data)
         collection.actor = request.user.id
         collection.type = request.db.Collection.USER_DEFINED_TYPE
         collection.generate_slug()

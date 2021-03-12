@@ -17,8 +17,6 @@
 import logging
 import re
 
-import six
-
 from werkzeug.exceptions import MethodNotAllowed, BadRequest, NotImplemented
 from werkzeug.wrappers import BaseResponse
 
@@ -121,7 +119,7 @@ def pwg_images_addSimple(request):
         raise BadRequest()
     dump = []
     for f in form:
-        dump.append("%s=%r" % (f.name, f.data))
+        dump.append("{}={!r}".format(f.name, f.data))
     _log.info("addSimple: %r %s %r", request.form, " ".join(dump),
               request.files)
 
@@ -133,8 +131,8 @@ def pwg_images_addSimple(request):
             mg_app=request.app, user=request.user,
             submitted_file=request.files['image'],
             filename=request.files['image'].filename,
-            title=six.text_type(form.name.data),
-            description=six.text_type(form.comment.data))
+            title=str(form.name.data),
+            description=str(form.comment.data))
 
         collection_id = form.category.data
         if collection_id > 0:
@@ -151,7 +149,7 @@ def pwg_images_addSimple(request):
     # Handle upload limit issues
     except FileUploadLimit:
         raise BadRequest(
-            _(u'Sorry, the file size is too big.'))
+            _('Sorry, the file size is too big.'))
     except UserUploadLimit:
         raise BadRequest(
             _('Sorry, uploading this file will put you over your'

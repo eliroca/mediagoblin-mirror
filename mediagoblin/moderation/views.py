@@ -32,14 +32,14 @@ def moderation_media_processing_panel(request):
     '''
     Show the global media processing panel for this instance
     '''
-    processing_entries = MediaEntry.query.filter_by(state = u'processing').\
+    processing_entries = MediaEntry.query.filter_by(state = 'processing').\
         order_by(MediaEntry.created.desc())
 
     # Get media entries which have failed to process
-    failed_entries = MediaEntry.query.filter_by(state = u'failed').\
+    failed_entries = MediaEntry.query.filter_by(state = 'failed').\
         order_by(MediaEntry.created.desc())
 
-    processed_entries = MediaEntry.query.filter_by(state = u'processed').\
+    processed_entries = MediaEntry.query.filter_by(state = 'processed').\
         order_by(MediaEntry.created.desc()).limit(10)
 
     # Render to response
@@ -163,8 +163,8 @@ def moderation_reports_detail(request):
     ]
 
     if request.method == "POST" and form.validate() and not (
-        not request.user.has_privilege(u'admin') and
-        report.reported_user.has_privilege(u'admin')):
+        not request.user.has_privilege('admin') and
+        report.reported_user.has_privilege('admin')):
 
         user = User.query.get(form.targeted_user.data)
         return take_punitive_actions(request, form, report, user)
@@ -178,7 +178,7 @@ def moderation_reports_detail(request):
         {'report':report,
          'form':form})
 
-@user_has_privilege(u'admin')
+@user_has_privilege('admin')
 @active_user_from_url
 def give_or_take_away_privilege(request, url_user):
     '''
@@ -200,7 +200,7 @@ def give_or_take_away_privilege(request, url_user):
         'mediagoblin.moderation.users_detail',
         user=url_user.username)
 
-@user_has_privilege(u'admin')
+@user_has_privilege('admin')
 @active_user_from_url
 def ban_or_unban(request, url_user):
     """

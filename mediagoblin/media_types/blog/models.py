@@ -48,7 +48,7 @@ class Blog(Base, BlogMixin):
 
     @property
     def slug_or_id(self):
-        return (self.slug or u'blog_{0}'.format(self.id))
+        return (self.slug or 'blog_{}'.format(self.id))
  
     def get_all_blog_posts(self, state=None):
         blog_posts = Session.query(MediaEntry).join(BlogPostData)\
@@ -63,7 +63,7 @@ class Blog(Base, BlogMixin):
             post.delete(del_orphan_tags=False, commit=False)
         from mediagoblin.db.util import clean_orphan_tags
         clean_orphan_tags(commit=False)
-        super(Blog, self).delete(**kwargs)
+        super().delete(**kwargs)
         
         
     

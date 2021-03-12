@@ -17,18 +17,48 @@
 Release Notes
 =============
 
-This chapter has important information for releases in it.
-If you're upgrading from a previous release, please read it
-carefully, or at least skim over it.
+This chapter has important information about our current and previous releases.
 
-.. note::
 
-   ALWAYS do backups before upgrading, especially before
-   running migrations!  That way if something goes wrong, we can fix
-   things!
+0.11.0
+======
 
-   And be sure to shut down your current MediaGoblin/Celery processes
-   before upgrading!
+Following our final Python 2-compatible release of 0.10.0, this release drops
+support for Python 2 and removes all Python 2 compatibility code.
+
+This release also reinstates audio spectrograms with a completely rewritten
+Python 3 replacement for the previous Python 2-only audio feature by Fernando
+Gutierrez.
+
+**Upgrading:**
+
+For detailed instructions on installing or upgrading, see ":doc:`deploying`" and
+":doc:`upgrading`".
+
+If you have any problems, please drop in to the `#mediagoblin IRC chat
+<https://webchat.freenode.net/#mediagoblin>`_, report an issue on our `issue
+tracker <https://issues.mediagoblin.org/>`_ or drop us an email to
+`mediagoblin-devel@gnu.org <mailto:mediagoblin-devel@gnu.org>`_.
+
+**Improvements:**
+
+- Run test for LDAP, OpenID and PDF plugins in development Dockerfiles (Ben Sturmfels)
+- Add Debian and Fedora CI builds for sourcehut (Jesús E, Ben Sturmfels)
+- Extend Fedora install docs and development Dockerfile to support audio/video (Ben Sturmfels)
+- Remove Python 2 installation and compatibility code (Ben Sturmfels)
+- Reinstate Python 3 audio spectrograms [#5610] (Fernando Gutierrez)
+
+**Bug fixes:**
+
+- Fix missing download link for videos uploaded after 0.10.0 [#5620] (Ben Sturmfels)
+- Fix raw image plugin installation instruction [#5523] (Ben Sturmfels)
+- Pin sqlalchemy to fix due to changed internals [#5624] (Charlotte Koch)
+- Fix test suite to pass 100% (Ben Sturmfels)
+- Make LDAP plugin Python 3 compatible [#5607] (Olivier Mehani)
+- Support blank titles in Atom feed [#1018] (Ben Sturmfels)
+- Avoid Celery/RabbitMQ "connection reset" errors [#5609] (Fernando Gutierrez)
+- Fix Mac dev setup issues [#5442] (Jeremy Bowman)
+- Pin a compatible version of WTForms (milquetoast)
 
 
 0.10.0
@@ -45,46 +75,12 @@ release.
 FastCGI support has now been deprecated and removed from the documentation as
 our dependency `flup` does not support Python 3.
 
-**Upgrade (already on Python 3):**
+**Upgrading:**
 
-0. Update to the latest release.  In your ``mediagoblin`` directory, run:
-   ``git fetch && git checkout -q v0.10.0``
-1. Remove your existing installation:
-   ``rm -rf bin include lib lib64 node_modules``
-2. Upgrade MediaGoblin:
-   ``./bootstrap.sh && ./configure && make``
-3. Update the database:
-   ``./bin/gmg dbupdate``
-4. Restart MediaGoblin
+For detailed instructions on installing or upgrading, see ":doc:`deploying`" and
+":doc:`upgrading`".
 
-**Upgrade (upgrading to Python 3):**
-
-0. Refer to the "Dependences" and "Configure PostgreSQL" sections of
-   ":doc:`deploying`" to install the necessary Python 3 dependencies.
-1. Update to the latest release.  In your ``mediagoblin`` directory, run:
-   ``git fetch && git checkout -q v0.10.0``
-2. Remove your existing installation:
-   ``rm -rf bin include lib lib64 node_modules``
-3. Upgrade MediaGoblin:
-   ``./bootstrap.sh && ./configure && make``
-4. Update the database:
-   ``./bin/gmg dbupdate``
-5. Restart MediaGoblin
-
-**Upgrade (remaining on Python 2 - not recommended):**
-
-0. Update to the latest release.  In your ``mediagoblin`` directory, run:
-   ``git fetch && git checkout -q v0.10.0``
-1. Remove your existing installation:
-   ``rm -rf bin include lib lib64 node_modules``
-2. Upgrade MediaGoblin:
-   ``./bootstrap.sh && ./configure --without-python3 && make``
-3. Update the database:
-   ``./bin/gmg dbupdate``
-4. Restart MediaGoblin
-
-For detailed instructions on installing MediaGoblin, see ":doc:`deploying`". If
-you have any problems, please drop in to the `#mediagoblin IRC chat
+If you have any problems, please drop in to the `#mediagoblin IRC chat
 <https://webchat.freenode.net/#mediagoblin>`_, report an issue on our `issue
 tracker <https://issues.mediagoblin.org/>`_ or drop us an email to
 `mediagoblin-devel@gnu.org <mailto:mediagoblin-devel@gnu.org>`_.

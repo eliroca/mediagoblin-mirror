@@ -13,8 +13,6 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import six
-
 from mediagoblin.db.models import MediaEntry, User, LocalUser
 from mediagoblin.plugins.archivalook.models import FeaturedMedia
 from mediagoblin.tools.translate import lazy_pass_to_ugettext as _
@@ -56,7 +54,7 @@ def parse_url(url):
                                         who uploaded the piece of media, slug is
                                         the media entry's url slug.
     """
-    url = six.text_type(url)
+    url = str(url)
     u_end, m_start, m_end, end = (url.find('/u/') + 3,
                                   url.find('/m/'),
                                   url.find('/m/') + 3,
@@ -87,14 +85,14 @@ def split_featured_media_list(featured_media):
                                                 or tertiary)
     """
 
-    featured_media = six.text_type(featured_media)
+    featured_media = str(featured_media)
     featured_media_list = featured_media.split("\n")
     display_type = 0
     media_already_featured = []
     all_featured_media = []
     for line in featured_media_list:
         if line == '' or line.isspace(): continue
-        elif line.startswith(u'-'):
+        elif line.startswith('-'):
             display_type += 1
         elif display_type <= 0 or display_type > 3: continue
         else:
@@ -106,9 +104,9 @@ def split_featured_media_list(featured_media):
             media_already_featured.append(media)
             all_featured_media.append((media,
                 [None,
-                u'primary',
-                u'secondary',
-                u'tertiary'][display_type]))
+                'primary',
+                'secondary',
+                'tertiary'][display_type]))
 
     return all_featured_media
 
@@ -123,24 +121,24 @@ def create_featured_media_textbox():
 
     primaries = FeaturedMedia.query.order_by(
         FeaturedMedia.order.asc()).filter(
-        FeaturedMedia.display_type == u'primary').all()
+        FeaturedMedia.display_type == 'primary').all()
     secondaries = FeaturedMedia.query.order_by(
         FeaturedMedia.order.asc()).filter(
-        FeaturedMedia.display_type == u'secondary').all()
+        FeaturedMedia.display_type == 'secondary').all()
     tertiaries = FeaturedMedia.query.order_by(
         FeaturedMedia.order.asc()).filter(
-        FeaturedMedia.display_type == u'tertiary').all()
-    output_text = u''
+        FeaturedMedia.display_type == 'tertiary').all()
+    output_text = ''
     for display_type, feature_list in [
-            (_(u'Primary'),primaries),
-            (_(u'Secondary'),secondaries),
-            (_(u'Tertiary'),tertiaries)]:
+            (_('Primary'),primaries),
+            (_('Secondary'),secondaries),
+            (_('Tertiary'),tertiaries)]:
         output_text += _(
-            u"""-----------{display_type}-Features---------------------------
+            """-----------{display_type}-Features---------------------------
 """).format(display_type=display_type)
         for feature in feature_list:
             media_entry = feature.media_entry
-            output_text += u'/u/{uploader_username}/m/{media_slug}/\n'.format(
+            output_text += '/u/{uploader_username}/m/{media_slug}/\n'.format(
                 uploader_username = media_entry.get_actor.username,
                 media_slug = media_entry.slug)
 
@@ -164,9 +162,9 @@ def automatically_add_new_feature(media_entry):
     # secondary features, but in the future this should be a variable editable
     # by the site admin.
     too_many_primaries = FeaturedMedia.query.filter(
-        FeaturedMedia.display_type==u'primary').count() >= 1
+        FeaturedMedia.display_type=='primary').count() >= 1
     too_many_secondaries = FeaturedMedia.query.filter(
-        FeaturedMedia.display_type==u'secondary').count() >= 2
+        FeaturedMedia.display_type=='secondary').count() >= 2
     featured_first_to_last = FeaturedMedia.query.order_by(
         FeaturedMedia.order.asc()).all()
 
@@ -174,11 +172,11 @@ def automatically_add_new_feature(media_entry):
         # Some features have the option to demote or promote themselves to a
         # different display_type, based on their position. But all features move
         # up and down one step in the stack.
-        if (feature.is_last_of_type() and feature.display_type == u'primary'
+        if (feature.is_last_of_type() and feature.display_type == 'primary'
                 and too_many_primaries):
             feature.demote()
             too_many_primaries = False
-        elif (feature.is_last_of_type() and feature.display_type == u'secondary'
+        elif (feature.is_last_of_type() and feature.display_type == 'secondary'
                 and too_many_secondaries):
             feature.demote()
             too_many_secondaries = False
@@ -188,7 +186,7 @@ def automatically_add_new_feature(media_entry):
     # Create the new feature at the top of the stack.
     new_feature = FeaturedMedia(
         media_entry=media_entry,
-        display_type=u"primary",
+        display_type="primary",
         order=0)
     new_feature.save()
     return new_feature
@@ -252,10 +250,10 @@ def promote_feature(media_entry):
                                         target_feature.display_type)
         above_feature.save()
     # Change the feature's display type to a more prominent one
-    elif target_feature.display_type == u'secondary':
-        target_feature.display_type = u'primary'
-    elif target_feature.display_type == u'tertiary':
-        target_feature.display_type = u'secondary'
+    elif target_feature.display_type == 'secondary':
+        target_feature.display_type = 'primary'
+    elif target_feature.display_type == 'tertiary':
+        target_feature.display_type = 'secondary'
     target_feature.save()
 
 def demote_feature(media_entry):
@@ -287,8 +285,8 @@ def demote_feature(media_entry):
                                         target_feature.display_type)
         below_feature.save()
     # Change the feature's display type to a less prominent one
-    elif target_feature.display_type == u'secondary':
-        target_feature.display_type = u'tertiary'
-    elif target_feature.display_type == u'primary':
-        target_feature.display_type = u'secondary'
+    elif target_feature.display_type == 'secondary':
+        target_feature.display_type = 'tertiary'
+    elif target_feature.display_type == 'primary':
+        target_feature.display_type = 'secondary'
     target_feature.save()

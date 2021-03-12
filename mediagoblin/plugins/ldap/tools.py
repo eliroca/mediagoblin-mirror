@@ -16,19 +16,17 @@
 import ldap
 import logging
 
-import six
-
 from mediagoblin.tools import pluginapi
 
 _log = logging.getLogger(__name__)
 
 
-class LDAP(object):
+class LDAP:
     def __init__(self):
         self.ldap_settings = pluginapi.get_config('mediagoblin.plugins.ldap')
 
     def _connect(self, server):
-        _log.info('Connecting to {0}.'.format(server['LDAP_SERVER_URI']))
+        _log.info('Connecting to {}.'.format(server['LDAP_SERVER_URI']))
         self.conn = ldap.initialize(server['LDAP_SERVER_URI'])
 
         if server['LDAP_START_TLS'] == 'true':
@@ -38,7 +36,7 @@ class LDAP(object):
     def _get_email(self, server, username):
         try:
             results = self.conn.search_s(server['LDAP_SEARCH_BASE'],
-                                        ldap.SCOPE_SUBTREE, 'uid={0}'
+                                        ldap.SCOPE_SUBTREE, 'uid={}'
                                         .format(username),
                                         [server['EMAIL_SEARCH_FIELD']])
 
@@ -49,7 +47,7 @@ class LDAP(object):
         return email
 
     def login(self, username, password):
-        for k, v in six.iteritems(self.ldap_settings):
+        for k, v in self.ldap_settings.items():
             try:
                 self._connect(v)
                 user_dn = v['LDAP_USER_DN_TEMPLATE'].format(username=username)
@@ -57,11 +55,11 @@ class LDAP(object):
                 email = self._get_email(v, username)
                 return username, email
 
-            except ldap.LDAPError, e:
+            except ldap.LDAPError as e:
                 _log.info(e)
 
             finally:
-                _log.info('Unbinding {0}.'.format(v['LDAP_SERVER_URI']))
+                _log.info('Unbinding {}.'.format(v['LDAP_SERVER_URI']))
                 self.conn.unbind()
 
         return False, None

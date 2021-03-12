@@ -35,7 +35,7 @@ ACCEPTED_EXTENSIONS = ['nef', 'cr2']
 # The entire function have to be copied
 
 def sniff_handler(media_file, filename):
-    _log.info('Sniffing {0}'.format(MEDIA_TYPE))
+    _log.info('Sniffing {}'.format(MEDIA_TYPE))
     name, ext = os.path.splitext(filename)
     clean_ext = ext[1:].lower()  # Strip the . from ext and make lowercase
 
@@ -43,7 +43,7 @@ def sniff_handler(media_file, filename):
         _log.info('Found file extension in supported filetypes')
         return MEDIA_TYPE
     else:
-        _log.debug('Media present, extension not found in {0}'.format(
+        _log.debug('Media present, extension not found in {}'.format(
                 ACCEPTED_EXTENSIONS))
 
     return None
@@ -54,7 +54,7 @@ class InitialRawProcessor(InitialProcessor):
         """
         Pull out a full-size JPEG-preview
         """
-        super(InitialRawProcessor, self).common_setup()
+        super().common_setup()
 
         self._original_raw = self.process_filename
 
@@ -68,7 +68,7 @@ class InitialRawProcessor(InitialProcessor):
         md.previews[-1].write_to_file(
             self.process_filename.encode('utf-8'))
         self.process_filename += '.jpg'
-        _log.debug(u'Wrote new file from {0} to preview (jpg) {1}'.format(
+        _log.debug('Wrote new file from {} to preview (jpg) {}'.format(
             self._original_raw, self.process_filename))
 
         # Override the namebuilder with our new jpg-based name
@@ -77,6 +77,6 @@ class InitialRawProcessor(InitialProcessor):
 
 class RawImageProcessingManager(ProcessingManager):
     def __init__(self):
-        super(RawImageProcessingManager, self).__init__()
+        super().__init__()
         self.add_processor(InitialRawProcessor)
         self.add_processor(Resizer)

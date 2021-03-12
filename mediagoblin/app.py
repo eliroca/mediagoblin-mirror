@@ -52,7 +52,7 @@ from mediagoblin.tools.transition import DISABLE_GLOBALS
 _log = logging.getLogger(__name__)
 
 
-class Context(object):
+class Context:
     """
     MediaGoblin context object.
 
@@ -65,7 +65,7 @@ class Context(object):
     pass
 
 
-class MediaGoblinApp(object):
+class MediaGoblinApp:
     """
     WSGI application of MediaGoblin
 
@@ -359,7 +359,7 @@ def paste_app_factory(global_config, **app_config):
             break
 
     if not mediagoblin_config:
-        raise IOError("Usable mediagoblin config not found.")
+        raise OSError("Usable mediagoblin config not found.")
     del app_config['config']
 
     mgoblin_app = MediaGoblinApp(mediagoblin_config)

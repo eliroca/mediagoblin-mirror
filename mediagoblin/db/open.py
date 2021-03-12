@@ -18,7 +18,6 @@
 from contextlib import contextmanager
 import logging
 
-import six
 from sqlalchemy import create_engine, event
 
 from mediagoblin import mg_globals
@@ -34,14 +33,14 @@ def set_models_as_attributes(obj):
 
     TODO: This should eventually be deprecated.
     """
-    for k, v in six.iteritems(Base._decl_class_registry):
+    for k, v in Base._decl_class_registry.items():
         setattr(obj, k, v)
 
 
 if not DISABLE_GLOBALS:
     from mediagoblin.db.base import Session
 
-    class DatabaseMaster(object):
+    class DatabaseMaster:
         def __init__(self, engine):
             self.engine = engine
 
@@ -71,7 +70,7 @@ if not DISABLE_GLOBALS:
 else:
     from sqlalchemy.orm import sessionmaker
 
-    class DatabaseManager(object):
+    class DatabaseManager:
         """
         Manage database connections.
 
@@ -136,7 +135,7 @@ def load_models(app_config):
         try:
             __import__(plugin + ".models")
         except ImportError as exc:
-            _log.debug("Could not load {0}.models: {1}".format(
+            _log.debug("Could not load {}.models: {}".format(
                 plugin,
                 exc))
 

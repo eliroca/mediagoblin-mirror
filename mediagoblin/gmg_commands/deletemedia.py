@@ -14,7 +14,6 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import print_function
 import sys
 
 from mediagoblin.gmg_commands import util as commands_util
@@ -28,7 +27,7 @@ def parser_setup(subparser):
 def deletemedia(args):
     app = commands_util.setup_app(args)
 
-    media_ids = set([int(mid) for mid in args.media_ids.split(',') if mid.isdigit()])
+    media_ids = {int(mid) for mid in args.media_ids.split(',') if mid.isdigit()}
     if not media_ids:
         print('Can\'t find any valid media ID(s).')
         sys.exit(1)

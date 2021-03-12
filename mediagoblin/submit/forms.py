@@ -27,7 +27,7 @@ def get_submit_start_form(form, **kwargs):
     max_file_size = kwargs.get('max_file_size')
     desc = None
     if max_file_size:
-        desc = _('Max file size: {0} mb'.format(max_file_size))
+        desc = _('Max file size: {} mb'.format(max_file_size))
 
     class SubmitStartForm(wtforms.Form):
         file = wtforms.FileField(

@@ -32,7 +32,7 @@ class ImageMediaManager(MediaManagerBase):
     display_template = "mediagoblin/media_displays/image.html"
     default_thumb = "images/media_thumbs/image.png"
 
-    media_fetch_order = [u'medium', u'original', u'thumb']
+    media_fetch_order = ['medium', 'original', 'thumb']
 
     def get_original_date(self):
         """

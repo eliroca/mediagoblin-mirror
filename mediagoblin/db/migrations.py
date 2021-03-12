@@ -14,12 +14,9 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import print_function
 
 import datetime
 import uuid
-
-import six
 
 try:
     import migrate
@@ -267,11 +264,11 @@ def mediaentry_new_slug_era(db):
     for row in db.execute(media_table.select()):
         # no slug, try setting to an id
         if not row.slug:
-            append_garbage_till_unique(row, six.text_type(row.id))
+            append_garbage_till_unique(row, str(row.id))
         # has "=" or ":" in it... we're getting rid of those
-        elif u"=" in row.slug or u":" in row.slug:
+        elif "=" in row.slug or ":" in row.slug:
             append_garbage_till_unique(
-                row, row.slug.replace(u"=", u"-").replace(u":", u"-"))
+                row, row.slug.replace("=", "-").replace(":", "-"))
 
     db.commit()
 
@@ -296,7 +293,7 @@ def unique_collections_slug(db):
                 existing_slugs[row.creator].append(row.slug)
 
     for row_id in slugs_to_change:
-        new_slug = six.text_type(uuid.uuid4())
+        new_slug = str(uuid.uuid4())
         db.execute(collection_table.update().
                    where(collection_table.c.id == row_id).
                    values(slug=new_slug))
@@ -428,9 +425,9 @@ class Client_v0(declarative_base()):
 
     def __repr__(self):
         if self.application_name:
-            return "<Client {0} - {1}>".format(self.application_name, self.id)
+            return "<Client {} - {}>".format(self.application_name, self.id)
         else:
-            return "<Client {0}>".format(self.id)
+            return "<Client {}>".format(self.id)
 
 class RequestToken_v0(declarative_base()):
     """
@@ -445,7 +442,7 @@ class RequestToken_v0(declarative_base()):
     used = Column(Boolean, default=False)
     authenticated = Column(Boolean, default=False)
     verifier = Column(Unicode, nullable=True)
-    callback = Column(Unicode, nullable=False, default=u"oob")
+    callback = Column(Unicode, nullable=False, default="oob")
     created = Column(DateTime, nullable=False, default=datetime.datetime.now)
     updated = Column(DateTime, nullable=False, default=datetime.datetime.now)
 
@@ -589,12 +586,12 @@ class PrivilegeUserAssociation_v0(declarative_base()):
         primary_key=True)
 
 
-PRIVILEGE_FOUNDATIONS_v0 = [{'privilege_name':u'admin'},
-                            {'privilege_name':u'moderator'},
-                            {'privilege_name':u'uploader'},
-                            {'privilege_name':u'reporter'},
-                            {'privilege_name':u'commenter'},
-                            {'privilege_name':u'active'}]
+PRIVILEGE_FOUNDATIONS_v0 = [{'privilege_name':'admin'},
+                            {'privilege_name':'moderator'},
+                            {'privilege_name':'uploader'},
+                            {'privilege_name':'reporter'},
+                            {'privilege_name':'commenter'},
+                            {'privilege_name':'active'}]
 
 # vR1 stands for "version Rename 1".  This only exists because we need
 # to deal with dropping some booleans and it's otherwise impossible
@@ -656,11 +653,11 @@ def create_moderation_tables(db):
         db.execute(
             user_table.select().where(
                 user_table.c.is_admin==False).where(
-                user_table.c.status==u"active")).fetchall(),
+                user_table.c.status=="active")).fetchall(),
         db.execute(
             user_table.select().where(
                 user_table.c.is_admin==False).where(
-                user_table.c.status!=u"active")).fetchall())
+                user_table.c.status!="active")).fetchall())
 
     # Get the ids for each of the privileges so we can reference them ~~~~~~~~~
     (admin_privilege_id, uploader_privilege_id,
@@ -669,7 +666,7 @@ def create_moderation_tables(db):
         db.execute(privileges_table.select().where(
             privileges_table.c.privilege_name==privilege_name)).first()['id']
         for privilege_name in
-            [u"admin",u"uploader",u"reporter",u"commenter",u"active"]
+            ["admin","uploader","reporter","commenter","active"]
     ]
 
     # Give each user the appopriate privileges depending whether they are an
@@ -854,14 +851,14 @@ def revert_username_index(db):
     """
     metadata = MetaData(bind=db.bind)
     user_table = inspect_table(metadata, "core__users")
-    indexes = dict(
-        [(index.name, index) for index in user_table.indexes])
+    indexes = {
+        index.name: index for index in user_table.indexes}
 
     # index from unnecessary migration
-    users_uploader_index = indexes.get(u'ix_core__users_uploader')
+    users_uploader_index = indexes.get('ix_core__users_uploader')
     # index created from models.py after (unique=True, index=True)
     # was set in models.py
-    users_username_index = indexes.get(u'ix_core__users_username')
+    users_username_index = indexes.get('ix_core__users_username')
 
     if users_uploader_index is None and users_username_index is None:
         # We don't need to do anything.
@@ -988,7 +985,7 @@ def activity_migration(db):
 
     # Get the ID of that generator
     gmg_generator = db.execute(generator_table.select(
-        generator_table.c.name==u"GNU Mediagoblin")).first()
+        generator_table.c.name=="GNU Mediagoblin")).first()
 
 
     # Now we want to modify the tables which MAY have an activity at some point

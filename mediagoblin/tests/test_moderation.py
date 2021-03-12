@@ -28,12 +28,12 @@ class TestModerationViews:
     def _setup(self, test_app):
         self.test_app = test_app
 
-        fixture_add_user(u'admin',
-            privileges=[u'admin',u'active'])
-        fixture_add_user(u'moderator',
-            privileges=[u'moderator',u'active'])
-        fixture_add_user(u'regular',
-            privileges=[u'active',u'commenter'])
+        fixture_add_user('admin',
+            privileges=['admin','active'])
+        fixture_add_user('moderator',
+            privileges=['moderator','active'])
+        fixture_add_user('regular',
+            privileges=['active','commenter'])
         self.query_for_users()
 
     def login(self, username):
@@ -48,9 +48,9 @@ class TestModerationViews:
         self.query_for_users()
 
     def query_for_users(self):
-        self.admin_user = LocalUser.query.filter(LocalUser.username==u'admin').first()
-        self.mod_user = LocalUser.query.filter(LocalUser.username==u'moderator').first()
-        self.user = LocalUser.query.filter(LocalUser.username==u'regular').first()
+        self.admin_user = LocalUser.query.filter(LocalUser.username=='admin').first()
+        self.mod_user = LocalUser.query.filter(LocalUser.username=='moderator').first()
+        self.user = LocalUser.query.filter(LocalUser.username=='regular').first()
 
     def do_post(self, data, *context_keys, **kwargs):
         url = kwargs.pop('url', '/submit/')
@@ -65,39 +65,39 @@ class TestModerationViews:
         return response, context_data
 
     def testGiveOrTakeAwayPrivileges(self):
-        self.login(u'admin')
+        self.login('admin')
         # First, test an admin taking away a privilege from a user
         #----------------------------------------------------------------------
-        response, context = self.do_post({'privilege_name':u'commenter'},
-            url='/mod/users/{0}/privilege/'.format(self.user.username))
+        response, context = self.do_post({'privilege_name':'commenter'},
+            url='/mod/users/{}/privilege/'.format(self.user.username))
         assert response.status == '302 FOUND'
         self.query_for_users()
-        assert not self.user.has_privilege(u'commenter')
+        assert not self.user.has_privilege('commenter')
 
         # Then, test an admin giving a privilege to a user
         #----------------------------------------------------------------------
-        response, context = self.do_post({'privilege_name':u'commenter'},
-            url='/mod/users/{0}/privilege/'.format(self.user.username))
+        response, context = self.do_post({'privilege_name':'commenter'},
+            url='/mod/users/{}/privilege/'.format(self.user.username))
         assert response.status == '302 FOUND'
         self.query_for_users()
-        assert self.user.has_privilege(u'commenter')
+        assert self.user.has_privilege('commenter')
 
         # Then, test a mod trying to take away a privilege from a user
         # they are not allowed to do this, so this will raise an error
         #----------------------------------------------------------------------
         self.logout()
-        self.login(u'moderator')
+        self.login('moderator')
 
         with pytest.raises(AppError) as excinfo:
-            response, context = self.do_post({'privilege_name':u'commenter'},
-                url='/mod/users/{0}/privilege/'.format(self.user.username))
+            response, context = self.do_post({'privilege_name':'commenter'},
+                url='/mod/users/{}/privilege/'.format(self.user.username))
         assert 'Bad response: 403 FORBIDDEN' in str(excinfo)
         self.query_for_users()
 
-        assert self.user.has_privilege(u'commenter')
+        assert self.user.has_privilege('commenter')
 
     def testReportResolution(self):
-        self.login(u'moderator')
+        self.login('moderator')
 
         # First, test a moderators taking away a user's privilege in response
         # to a reported comment
@@ -106,23 +106,23 @@ class TestModerationViews:
         comment_report = Report.query.filter(
             Report.reported_user==self.user).first()
 
-        response = self.test_app.get('/mod/reports/{0}/'.format(
+        response = self.test_app.get('/mod/reports/{}/'.format(
             comment_report.id))
         assert response.status == '200 OK'
         self.query_for_users()
         comment_report = Report.query.filter(
             Report.reported_user==self.user).first()
 
-        response, context = self.do_post({'action_to_resolve':[u'takeaway'],
-            'take_away_privileges':[u'commenter'],
+        response, context = self.do_post({'action_to_resolve':['takeaway'],
+            'take_away_privileges':['commenter'],
             'targeted_user':self.user.id},
-            url='/mod/reports/{0}/'.format(comment_report.id))
+            url='/mod/reports/{}/'.format(comment_report.id))
 
         self.query_for_users()
         comment_report = Report.query.filter(
             Report.reported_user==self.user).first()
         assert response.status == '302 FOUND'
-        assert not self.user.has_privilege(u'commenter')
+        assert not self.user.has_privilege('commenter')
         assert comment_report.is_archived_report() is True
 
         fixture_add_comment_report(reported_user=self.user)
@@ -134,16 +134,16 @@ class TestModerationViews:
         #----------------------------------------------------------------------
         self.query_for_users()
 
-        response, context = self.do_post({'action_to_resolve':[u'sendmessage'],
+        response, context = self.do_post({'action_to_resolve':['sendmessage'],
             'message_to_user':'This is your last warning, regular....',
             'targeted_user':self.user.id},
-            url='/mod/reports/{0}/'.format(comment_report.id))
+            url='/mod/reports/{}/'.format(comment_report.id))
 
         self.query_for_users()
         comment_report = Report.query.filter(
             Report.reported_user==self.user).first()
         assert response.status == '302 FOUND'
-        assert mail.EMAIL_TEST_MBOX_INBOX ==  [{'to': [u'regular@example.com'],
+        assert mail.EMAIL_TEST_MBOX_INBOX ==  [{'to': ['regular@example.com'],
             'message': 'Content-Type: text/plain; charset="utf-8"\n\
 MIME-Version: 1.0\nContent-Transfer-Encoding: base64\nSubject: Warning from- \
 moderator \nFrom: notice@mediagoblin.example.org\nTo: regular@example.com\n\n\
@@ -157,7 +157,7 @@ VGhpcyBpcyB5b3VyIGxhc3Qgd2FybmluZywgcmVndWxhci4uLi4=\n',
         #----------------------------------------------------------------------
         self.query_for_users()
         fixture_add_comment(author=self.user.id,
-            comment=u'Comment will be removed')
+            comment='Comment will be removed')
         test_comment = TextComment.query.filter(
             TextComment.actor==self.user.id).first()
         fixture_add_comment_report(comment=test_comment,
@@ -171,11 +171,11 @@ VGhpcyBpcyB5b3VyIGxhc3Qgd2FybmluZywgcmVndWxhci4uLi4=\n',
             Report.resolved==None).first()
 
         response, context = self.do_post(
-            {'action_to_resolve':[u'userban', u'delete'],
+            {'action_to_resolve':['userban', 'delete'],
             'targeted_user':self.user.id,
-            'why_user_was_banned':u'',
-            'user_banned_until':u''},
-            url='/mod/reports/{0}/'.format(comment_report.id))
+            'why_user_was_banned':'',
+            'user_banned_until':''},
+            url='/mod/reports/{}/'.format(comment_report.id))
         assert response.status == '302 FOUND'
         self.query_for_users()
         test_user_ban = UserBan.query.filter(
@@ -193,17 +193,17 @@ VGhpcyBpcyB5b3VyIGxhc3Qgd2FybmluZywgcmVndWxhci4uLi4=\n',
             Report.reported_user==self.admin_user).filter(
             Report.resolved==None).first()
 
-        response, context = self.do_post({'action_to_resolve':[u'takeaway'],
-            'take_away_privileges':[u'active'],
+        response, context = self.do_post({'action_to_resolve':['takeaway'],
+            'take_away_privileges':['active'],
             'targeted_user':self.admin_user.id},
-            url='/mod/reports/{0}/'.format(comment_report.id))
+            url='/mod/reports/{}/'.format(comment_report.id))
         self.query_for_users()
 
         assert response.status == '200 OK'
-        assert self.admin_user.has_privilege(u'active')
+        assert self.admin_user.has_privilege('active')
 
     def testAllModerationViews(self):
-        self.login(u'moderator')
+        self.login('moderator')
         username = self.user.username
         self.query_for_users()
         fixture_add_comment_report(reported_user=self.admin_user)
@@ -216,7 +216,7 @@ VGhpcyBpcyB5b3VyIGxhc3Qgd2FybmluZywgcmVndWxhci4uLi4=\n',
         response = self.test_app.get('/mod/users/')
         assert response.status == "200 OK"
 
-        user_page_url = '/mod/users/{0}/'.format(username)
+        user_page_url = '/mod/users/{}/'.format(username)
         response = self.test_app.get(user_page_url)
         assert response.status == "200 OK"
 
@@ -224,20 +224,20 @@ VGhpcyBpcyB5b3VyIGxhc3Qgd2FybmluZywgcmVndWxhci4uLi4=\n',
         assert response.status == "200 OK"
 
     def testBanUnBanUser(self):
-        self.login(u'admin')
+        self.login('admin')
         username = self.user.username
         user_id = self.user.id
-        ban_url = '/mod/users/{0}/ban/'.format(username)
+        ban_url = '/mod/users/{}/ban/'.format(username)
         response, context = self.do_post({
-            'user_banned_until':u'',
-            'why_user_was_banned':u'Because I said so'},
+            'user_banned_until':'',
+            'why_user_was_banned':'Because I said so'},
             url=ban_url)
 
         assert response.status == "302 FOUND"
         user_banned = UserBan.query.filter(UserBan.user_id==user_id).first()
         assert user_banned is not None
         assert user_banned.expiration_date is None
-        assert user_banned.reason == u'Because I said so'
+        assert user_banned.reason == 'Because I said so'
 
         response, context = self.do_post({},
             url=ban_url)

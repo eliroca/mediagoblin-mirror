@@ -14,7 +14,6 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import print_function, unicode_literals
 
 import csv
 import os
@@ -22,8 +21,7 @@ import shutil
 import tempfile
 
 import requests
-import six
-from six.moves.urllib.parse import urlparse
+from urllib.parse import urlparse
 
 from mediagoblin.db.models import LocalUser, MediaEntry
 from mediagoblin.gmg_commands import util as commands_util
@@ -84,12 +82,9 @@ def batchaddmedia(args):
     abs_metadata_filename = os.path.abspath(metadata_path)
     abs_metadata_dir = os.path.dirname(abs_metadata_filename)
 
-    all_metadata = open(abs_metadata_filename, 'r')
+    all_metadata = open(abs_metadata_filename)
     media_metadata = csv.DictReader(all_metadata)
     for index, file_metadata in enumerate(media_metadata):
-        if six.PY2:
-            file_metadata = {k.decode('utf-8'): v.decode('utf-8') for k, v in file_metadata.items()}
-
         files_attempted += 1
         # In case the metadata was not uploaded initialize an empty dictionary.
         json_ld_metadata = compact_and_validate({})
@@ -147,8 +142,6 @@ Metadata was not uploaded.""".format(
             # `batchaddmedia` to upload a file larger than 200MB.
             media_file = tempfile.TemporaryFile()
             shutil.copyfileobj(res.raw, media_file)
-            if six.PY2:
-                media_file.seek(0)
 
         elif url.scheme == '':
             path = url.path
@@ -159,7 +152,7 @@ Metadata was not uploaded.""".format(
                 file_abs_path = os.path.abspath(file_path)
             try:
                 media_file = open(file_abs_path, 'rb')
-            except IOError:
+            except OSError:
                 print(_("""\
 FAIL: Local file {filename} could not be accessed.
 {filename} will not be uploaded.""".format(filename=filename)))

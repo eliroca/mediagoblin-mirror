@@ -20,7 +20,7 @@ This plugin can be enabled alongside :ref:`basic_auth-chapter` and
 Set up the OpenID plugin
 ============================
 
-1. Install the ``python-openid`` package.
+1. Install the ``python3-openid`` package.
 
 2. Add the following to your MediaGoblin .ini file in the ``[plugins]`` section::
 

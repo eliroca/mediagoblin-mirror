@@ -24,7 +24,7 @@ def upgrade():
     sa.Column('name', sa.Unicode(), nullable=False),
     sa.Column('filepath', PathTupleWithSlashes(), nullable=True),
     sa.Column('created', sa.DateTime(), nullable=False),
-    sa.ForeignKeyConstraint(['media_entry'], [u'core__media_entries.id'], ),
+    sa.ForeignKeyConstraint(['media_entry'], ['core__media_entries.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     ### end Alembic commands ###

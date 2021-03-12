@@ -21,14 +21,14 @@ from .tools import fixture_add_user
 XML_PREFIX = "<?xml version='1.0' encoding='utf-8'?>\n"
 
 
-class Test_PWG(object):
+class Test_PWG:
     @pytest.fixture(autouse=True)
     def setup(self, test_app):
         self.test_app = test_app
 
         fixture_add_user()
 
-        self.username = u"chris"
+        self.username = "chris"
         self.password = "toast"
 
     def do_post(self, method, params):
@@ -43,7 +43,7 @@ class Test_PWG(object):
 
     def test_session(self):
         resp = self.do_post("pwg.session.login",
-            {"username": u"nouser", "password": "wrong"})
+            {"username": "nouser", "password": "wrong"})
         assert resp.body == (XML_PREFIX + '<rsp stat="fail"><err code="999" msg="Invalid username/password"/></rsp>').encode('ascii')
 
         resp = self.do_post("pwg.session.login",

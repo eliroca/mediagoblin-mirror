@@ -93,13 +93,18 @@
         </a>
       </li>
     {% endif %}
+    {# Sorting will be wrong for resolutions >= 1000p as it's alphanumeric. #}
+    {% for name, media in media.media_files|dictsort|list %}
+      {% if name.startswith('webm') %}
+        <li>
+          <a href="{{ request.app.public_store.file_url(media) }}">
+            {%- trans %}WebM file (VP8/Vorbis){% endtrans -%}
+            {{ name | replace('webm_', ' ') }}
+          </a>
+        </li>
+      {% endif %}
+    {% endfor %}
     {% if 'webm_video' in media.media_files %}
-      <li>
-        <a href="{{ request.app.public_store.file_url(
-                       media.media_files.webm_video) }}">
-          {%- trans %}WebM file (VP8/Vorbis){% endtrans -%}
-        </a>
-      </li>
     {% endif %}
   </ul>
 {% endblock %}

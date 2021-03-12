@@ -1,16 +1,24 @@
 # A Dockerfile for MediaGoblin hacking.
 #
+# IMPORTANT: This Dockerfile is not an officially supported approach to
+# deploying MediaGoblin. It is experimental and intended for helping developers
+# run the test suite. To deploy MediaGoblin, see:
+#
+# https://mediagoblin.readthedocs.io/en/master/siteadmin/deploying.html
+#
 # Most development Docker images are built and run as root. That doesn't work
 # here because the `bower` command run within the `make` step, refuses to run as
 # root.
 #
 # To build this Docker image, run:
 #
-#   docker build -t mediagoblin-python3 -f Dockerfile-debian-python3-sqlite .  # or
-#   docker build -t mediagoblin-python3 - < Dockerfile-debian-python3-sqlite  # with no build context
+#   docker build -t mediagoblin-python3 - < Dockerfile-debian-python3-sqlite
 #
 # The "- < Dockerfile" format advises Docker not to include the current
-# directory as build context.
+# directory as build context. Alternatively the following provides build
+# context:
+#
+#   docker build -t mediagoblin-python3 -f Dockerfile-debian-python3-sqlite .
 #
 # Before running the image you first need to first assign the "mediagoblin" and
 # "user_dev" directories to an artificial group (1024) on the host that is
@@ -68,7 +76,6 @@ python3-migrate \
 python3-py \
 python3-pytest \
 python3-pytest-xdist \
-python3-six \
 python3-snowballstemmer \
 python3-sphinx \
 python3-sphinxcontrib.websupport \
@@ -81,7 +88,8 @@ gstreamer1.0-plugins-bad \
 gstreamer1.0-plugins-base \
 gstreamer1.0-plugins-good \
 gstreamer1.0-plugins-ugly \
-python3-gst-1.0
+python3-gst-1.0 \
+python3-numpy
 
 # Install video dependencies.
 RUN apt-get install -y \
@@ -90,10 +98,25 @@ gir1.2-gstreamer-1.0 \
 gstreamer1.0-tools \
 python3-gi
 
+# Install raw image dependencies.
+#
+# Currently (March 2021), python3-py3exiv2 is only available in Debian Sid, so
+# we need to install py3exiv2 from PyPI (later on in this Dockerfile). These are
+# the build depedencies for py3exiv2.
+RUN apt-get install -y \
+libexiv2-dev \
+libboost-python-dev
+
 # Install document (PDF-only) dependencies.
 # TODO: Check that PDF tests aren't skipped.
 RUN apt-get install -y \
 poppler-utils
+
+# Install LDAP depedencies.
+RUN apt-get install -y python3-ldap
+
+# Install OpenID dependencies.
+RUN apt-get install -y python3-openid
 
 # Create working directory.
 RUN mkdir /opt/mediagoblin
@@ -138,20 +161,25 @@ USER www-data
 # version, so that local changes are immediately available to the running
 # container. Not as easy as it sounds. We have this working with docker-compose,
 # but still uses upstream MediaGoblin for the build.
-# RUN git clone --depth=1 git://git.savannah.gnu.org/mediagoblin.git --branch master .
-RUN git clone --depth=1 https://gitlab.com/BenSturmfels/mediagoblin.git --branch spectrograms .
+RUN git clone --depth=1 git://git.savannah.gnu.org/mediagoblin.git --branch master .
+# RUN git clone --depth=1 https://gitlab.com/BenSturmfels/mediagoblin.git --branch master .
+RUN git show --oneline --no-patch
 
 RUN ./bootstrap.sh
 RUN VIRTUALENV_FLAGS='--system-site-packages' ./configure
 RUN make
 
+# Install raw image library from PyPI.
+RUN ./bin/pip install py3exiv2
+
 # Run the tests.
-RUN ./bin/python -m pytest ./mediagoblin/tests --boxed
+RUN ./bin/python -m pytest -rs ./mediagoblin/tests --boxed
 
 # Only safe if being run on a clean git checkout. Otherwise you may have already
 # customised mediagoblin.ini to already install these.
 RUN echo '[[mediagoblin.media_types.audio]]' >> mediagoblin.ini
 RUN echo '[[mediagoblin.media_types.video]]' >> mediagoblin.ini
+RUN echo '[[mediagoblin.media_types.raw_image]]' >> mediagoblin.ini
 
 # Prepare the SQLite database.
 #

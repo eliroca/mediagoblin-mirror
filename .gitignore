@@ -42,6 +42,7 @@
 /aclocal.m4
 
 # Tests
+/mediagoblin/tests/.cache/
 /mediagoblin/tests/user_dev/
 
 # File extensions
@@ -65,3 +66,7 @@ venv*
 /extlib/tinymce/
 /extlib/video.js/
 /extlib/videojs-resolution-switcher
+
+# Mac files
+.DS_Store
+.Python

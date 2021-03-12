@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from six.moves.urllib.parse import urlparse
+from urllib.parse import urlparse
 
 def validate_email(email):
     """

@@ -16,7 +16,6 @@
 
 import logging
 
-import six
 from alembic import command
 from sqlalchemy.orm import sessionmaker
 
@@ -36,7 +35,7 @@ def dbupdate_parse_setup(subparser):
     pass
 
 
-class DatabaseData(object):
+class DatabaseData:
     def __init__(self, name, models, migrations):
         self.name = name
         self.models = models
@@ -64,34 +63,34 @@ def gather_database_data(plugins):
 
     managed_dbdata.append(
         DatabaseData(
-            u'__main__', MAIN_MODELS, MAIN_MIGRATIONS))
+            '__main__', MAIN_MODELS, MAIN_MIGRATIONS))
 
     for plugin in plugins:
         try:
-            models = import_component('{0}.models:MODELS'.format(plugin))
+            models = import_component('{}.models:MODELS'.format(plugin))
         except ImportError as exc:
-            _log.debug('No models found for {0}: {1}'.format(
+            _log.debug('No models found for {}: {}'.format(
                 plugin,
                 exc))
 
             models = []
         except AttributeError as exc:
-            _log.warning('Could not find MODELS in {0}.models, have you '
-                         'forgotten to add it? ({1})'.format(plugin, exc))
+            _log.warning('Could not find MODELS in {}.models, have you '
+                         'forgotten to add it? ({})'.format(plugin, exc))
             models = []
 
         try:
-            migrations = import_component('{0}.migrations:MIGRATIONS'.format(
+            migrations = import_component('{}.migrations:MIGRATIONS'.format(
                 plugin))
         except ImportError as exc:
-            _log.debug('No migrations found for {0}: {1}'.format(
+            _log.debug('No migrations found for {}: {}'.format(
                 plugin,
                 exc))
 
             migrations = {}
         except AttributeError as exc:
-            _log.debug('Could not find MIGRATIONS in {0}.migrations, have you'
-                       'forgotten to add it? ({1})'.format(plugin, exc))
+            _log.debug('Could not find MIGRATIONS in {}.migrations, have you'
+                       'forgotten to add it? ({})'.format(plugin, exc))
             migrations = {}
 
         if models:
@@ -106,7 +105,7 @@ def run_foundations(db, global_config):
     Gather foundations data and run it.
     """
     from mediagoblin.db.models import FOUNDATIONS as MAIN_FOUNDATIONS
-    all_foundations = [(u"__main__", MAIN_FOUNDATIONS)]
+    all_foundations = [("__main__", MAIN_FOUNDATIONS)]
 
     Session = sessionmaker(bind=db.engine)
     session = Session()
@@ -116,7 +115,7 @@ def run_foundations(db, global_config):
     for plugin in plugins:
         try:
             foundations = import_component(
-                '{0}.models:FOUNDATIONS'.format(plugin))
+                '{}.models:FOUNDATIONS'.format(plugin))
             all_foundations.append((plugin, foundations))
         except ImportError as exc:
             continue
@@ -215,7 +214,7 @@ def sqam_migrations_to_run(db, app_config, global_config):
     # was never installed with any migrations
     from mediagoblin.db.models import MigrationData
     if Session().query(MigrationData).filter_by(
-            name=u"__main__").first() is None:
+            name="__main__").first() is None:
         return False
 
     # Setup media managers for all dbdata, run init/migrate and print info

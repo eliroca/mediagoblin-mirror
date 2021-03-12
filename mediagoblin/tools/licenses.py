@@ -37,7 +37,7 @@ SORTED_LICENSES = [
     License("CC BY-NC-ND 4.0",
             "Creative Commons Attribution-NonCommercial-NoDerivs 4.0 International",
             "https://creativecommons.org/licenses/by-nc-nd/4.0/"),
-    License("CC BY 3.0", "Creative Commons Attribution Unported 3.0",
+    License("CC BY 3.0", "Creative Commons Attribution 3.0 Unported",
            "https://creativecommons.org/licenses/by/3.0/"),
     License("CC BY-SA 3.0",
            "Creative Commons Attribution-ShareAlike 3.0 Unported",
@@ -64,7 +64,7 @@ SORTED_LICENSES = [
 # dict {uri: License,...} to enable fast license lookup by uri. Ideally,
 # we'd want to use an OrderedDict (python 2.7+) here to avoid having the
 # same data in two structures
-SUPPORTED_LICENSES = dict(((l.uri, l) for l in SORTED_LICENSES))
+SUPPORTED_LICENSES = {l.uri: l for l in SORTED_LICENSES}
 
 
 def get_license_by_url(url):

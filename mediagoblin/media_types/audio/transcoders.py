@@ -43,45 +43,15 @@ gi.require_version('Gst', '1.0')
 from gi.repository import GObject, Gst
 Gst.init(None)
 
-
-# TODO: Now unused - remove.
-class Python2AudioThumbnailer(object):
+class Python3AudioThumbnailer:
     def __init__(self):
-        _log.info('Initializing {0}'.format(self.__class__.__name__))
+        _log.info('Initializing {}'.format(self.__class__.__name__))
 
     def spectrogram(self, src, dst, **kw):
-        import numpy
-        # This third-party bundled module is Python 2-only.
-        from mediagoblin.media_types.audio import audioprocessing
-
-        width = kw['width']
-        height = int(kw.get('height', float(width) * 0.3))
-        fft_size = kw.get('fft_size', 2048)
+        from mediagoblin.media_types.audio import audiotospectrogram
+        fft_size = kw.get('fft_size', 1024)
         callback = kw.get('progress_callback')
-        processor = audioprocessing.AudioProcessor(
-            src,
-            fft_size,
-            numpy.hanning)
-
-        samples_per_pixel = processor.audio_file.nframes / float(width)
-
-        spectrogram = audioprocessing.SpectrogramImage(width, height, fft_size)
-
-        for x in range(width):
-            if callback and x % (width / 10) == 0:
-                callback((x * 100) / width)
-
-            seek_point = int(x * samples_per_pixel)
-
-            (spectral_centroid, db_spectrum) = processor.spectral_centroid(
-                seek_point)
-
-            spectrogram.draw_spectrum(x, db_spectrum)
-
-        if callback:
-            callback(100)
-
-        spectrogram.save(dst)
+        audiotospectrogram.drawSpectrogram(src, dst, fftSize = fft_size, progressCallback = callback)
 
     def thumbnail_spectrogram(self, src, dst, thumb_size):
         '''
@@ -111,35 +81,11 @@ class Python2AudioThumbnailer(object):
 
         th.save(dst)
 
+AudioThumbnailer = Python3AudioThumbnailer
 
-class DummyAudioThumbnailer(Python2AudioThumbnailer):
-    """A thumbnailer that just outputs a stock image.
-
-    The Python package used for audio spectrograms, "scikits.audiolab", does not
-    support Python 3 and is a constant source of problems for people installing
-    MediaGoblin. Until the feature is rewritten, this thumbnailer class simply
-    provides a generic image.
-
-    TODO: Consider Python 3 compatible interfaces to libsndfile, such as
-    https://pypi.python.org/pypi/PySoundFile/0.9.0.post1 as discussed here
-    https://issues.mediagoblin.org/ticket/5467#comment:6
-
-    """
-    def spectrogram(self, src, dst, **kw):
-        # Using PIL here in case someone wants to swap out the image for a PNG.
-        # This will convert to JPEG, where simply copying the file won't.
-        img = Image.open('mediagoblin/static/images/media_thumbs/video.jpg')
-        img.save(dst)
-
-
-# Due to recurring problems with spectrograms under Python 2, and the fact we're
-# soon dropping Python 2 support, we're disabling spectrogram thumbnails. See #5594.
-AudioThumbnailer = DummyAudioThumbnailer
-
-
-class AudioTranscoder(object):
+class AudioTranscoder:
     def __init__(self):
-        _log.info('Initializing {0}'.format(self.__class__.__name__))
+        _log.info('Initializing {}'.format(self.__class__.__name__))
 
         # Instantiate MainLoop
         self._loop = GObject.MainLoop()
@@ -150,10 +96,10 @@ class AudioTranscoder(object):
         def _on_pad_added(element, pad, connect_to):
             caps = pad.query_caps(None)
             name = caps.to_string()
-            _log.debug('on_pad_added: {0}'.format(name))
+            _log.debug('on_pad_added: {}'.format(name))
             if name.startswith('audio') and not connect_to.is_linked():
                 pad.link(connect_to)
-        _log.info('Transcoding {0} into {1}'.format(src, dst))
+        _log.info('Transcoding {} into {}'.format(src, dst))
         self.__on_progress = progress_callback
         # Set up pipeline
         tolerance = 80000000
@@ -209,7 +155,7 @@ class AudioTranscoder(object):
             (success, percent) = structure.get_int('percent')
             if self.__on_progress and success:
                 self.__on_progress(percent)
-            _log.info('{0}% done...'.format(percent))
+            _log.info('{}% done...'.format(percent))
         elif message.type == Gst.MessageType.EOS:
             _log.info('Done')
             self.halt()

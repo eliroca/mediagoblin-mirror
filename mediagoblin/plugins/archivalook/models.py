@@ -64,17 +64,17 @@ class FeaturedMedia(Base):
         self.save()
 
     def demote(self):
-        if self.is_last_of_type() and self.display_type == u'primary':
-            self.display_type = u'secondary'
-        elif self.is_last_of_type() and self.display_type == u'secondary':
-            self.display_type = u'tertiary'
+        if self.is_last_of_type() and self.display_type == 'primary':
+            self.display_type = 'secondary'
+        elif self.is_last_of_type() and self.display_type == 'secondary':
+            self.display_type = 'tertiary'
         self.save()
 
     def promote(self):
-        if self.is_first_of_type() and self.display_type == u'secondary':
-            self.display_type = u'primary'
-        elif self.is_first_of_type() and self.display_type == u'tertiary':
-            self.display_type = u'secondary'
+        if self.is_first_of_type() and self.display_type == 'secondary':
+            self.display_type = 'primary'
+        elif self.is_first_of_type() and self.display_type == 'tertiary':
+            self.display_type = 'secondary'
         self.save()
 
     def is_first_of_type(self):

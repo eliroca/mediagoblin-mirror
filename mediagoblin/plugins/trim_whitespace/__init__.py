@@ -13,7 +13,6 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-from __future__ import unicode_literals
 import logging
 import re
 
@@ -23,7 +22,7 @@ _log = logging.getLogger(__name__)
 
 class TrimWhiteSpaceMeddleware(meddleware.BaseMeddleware):
     _setup_plugin_called = 0
-    RE_MULTI_WHITESPACE = re.compile(b'(\s)\s+', re.M)
+    RE_MULTI_WHITESPACE = re.compile(br'(\s)\s+', re.M)
 
     def process_response(self, request, response):
         """Perform very naive html tidying by removing multiple whitespaces"""
@@ -65,7 +64,7 @@ class TrimWhiteSpaceMeddleware(meddleware.BaseMeddleware):
 
         # Append ourselves to the list of enabled Meddlewares
         meddleware.ENABLED_MEDDLEWARE.append(
-            '{0}:{1}'.format(cls.__module__, cls.__name__))
+            '{}:{}'.format(cls.__module__, cls.__name__))
 
 
 hooks = {

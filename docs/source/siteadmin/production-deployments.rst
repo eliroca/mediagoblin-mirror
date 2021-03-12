@@ -106,6 +106,7 @@ system. Similar scripts will be in your system's ``/etc/init.d/``
 or ``/etc/rc.d/`` directory, but the specifics of an init script will vary from
 one distribution to the next.
 
+.. _separate-celery:
 
 Separate celery
 ---------------

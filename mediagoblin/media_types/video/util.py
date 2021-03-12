@@ -43,7 +43,7 @@ def skip_transcode(metadata, size):
     # XXX: how were we supposed to use it?
     medium_config = mgg.global_config['media:medium']
 
-    _log.debug('skip_transcode config: {0}'.format(config))
+    _log.debug('skip_transcode config: {}'.format(config))
 
     metadata_tags = metadata.get_tags()
     if not metadata_tags:

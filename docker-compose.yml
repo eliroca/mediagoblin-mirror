@@ -1,5 +1,11 @@
 # A docker-compose recipe for MediaGoblin hacking.
 #
+# IMPORTANT: This docker-compose recipe is not an officially supported approach
+# to deploying MediaGoblin. It is experimental and intended for helping
+# developers run the test suite. To deploy MediaGoblin, see:
+#
+# https://mediagoblin.readthedocs.io/en/master/siteadmin/deploying.html
+#
 # Tested on Trisquel 8 and Guix System. Currently runs Python 3 and works for
 # images, audio and video.
 #

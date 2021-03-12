@@ -41,7 +41,7 @@ from mediagoblin.tools.text import cleaned_markdown_conversion
 from mediagoblin.tools.url import slugify
 from mediagoblin.tools.translate import pass_to_ugettext as _
 
-class CommentingMixin(object):
+class CommentingMixin:
     """
     Mixin that gives classes methods to get and add the comments on/to it
 
@@ -80,9 +80,9 @@ class CommentingMixin(object):
         link = self.get_comment_link()
         if link is not None:
             link.delete()
-        super(CommentingMixin, self).soft_delete(*args, **kwargs)
+        super().soft_delete(*args, **kwargs)
 
-class GeneratePublicIDMixin(object):
+class GeneratePublicIDMixin:
     """
     Mixin that ensures that a the public_id field is populated.
 
@@ -118,7 +118,7 @@ class GeneratePublicIDMixin(object):
             self.save()
         return self.public_id
 
-class UserMixin(object):
+class UserMixin:
     object_type = "person"
 
     @property
@@ -132,7 +132,7 @@ class UserMixin(object):
                       user=self.username, **kwargs)
 
 
-class GenerateSlugMixin(object):
+class GenerateSlugMixin:
     """
     Mixin to add a generate_slug method to objects.
 
@@ -179,7 +179,7 @@ class GenerateSlugMixin(object):
             return
 
         # We don't want any empty string slugs
-        if slug == u"":
+        if slug == "":
             return
 
         # Otherwise, let's see if this is unique.
@@ -188,7 +188,7 @@ class GenerateSlugMixin(object):
 
             # Can we just append the object's id to the end?
             if self.id:
-                slug_with_id = u"%s-%s" % (slug, self.id)
+                slug_with_id = "{}-{}".format(slug, self.id)
                 if not self.check_slug_used(slug_with_id):
                     self.slug = slug_with_id
                     return  # success!
@@ -284,7 +284,7 @@ class MediaEntryMixin(GenerateSlugMixin, GeneratePublicIDMixin):
         if self.slug:
             return self.slug
         else:
-            return u'id:%s' % self.id
+            return 'id:%s' % self.id
 
     def url_for_self(self, urlgen, **extra_args):
         """
@@ -306,26 +306,26 @@ class MediaEntryMixin(GenerateSlugMixin, GeneratePublicIDMixin):
         Will return either the real thumbnail or a default fallback icon."""
         # TODO: implement generic fallback in case MEDIA_MANAGER does
         # not specify one?
-        if u'thumb' in self.media_files:
+        if 'thumb' in self.media_files:
             thumb_url = self._app.public_store.file_url(
-                            self.media_files[u'thumb'])
+                            self.media_files['thumb'])
         else:
             # No thumbnail in media available. Get the media's
             # MEDIA_MANAGER for the fallback icon and return static URL
             # Raises FileTypeNotSupported in case no such manager is enabled
             manager = self.media_manager
-            thumb_url = self._app.staticdirector(manager[u'default_thumb'])
+            thumb_url = self._app.staticdirector(manager['default_thumb'])
         return thumb_url
 
     @property
     def original_url(self):
         """ Returns the URL for the original image
         will return self.thumb_url if original url doesn't exist"""
-        if u"original" not in self.media_files:
+        if "original" not in self.media_files:
             return self.thumb_url
 
         return self._app.public_store.file_url(
-            self.media_files[u"original"]
+            self.media_files["original"]
             )
 
     @property
@@ -442,7 +442,7 @@ class TextCommentMixin(GeneratePublicIDMixin):
         return cleaned_markdown_conversion(self.content)
 
     def __unicode__(self):
-        return u'<{klass} #{id} {actor} "{comment}">'.format(
+        return '<{klass} #{id} {actor} "{comment}">'.format(
             klass=self.__class__.__name__,
             id=self.id,
             actor=self.get_actor,
@@ -514,7 +514,7 @@ class CollectionMixin(GenerateSlugMixin, GeneratePublicIDMixin):
         item.save(commit=commit)
         return item
 
-class CollectionItemMixin(object):
+class CollectionItemMixin:
     @property
     def note_html(self):
         """

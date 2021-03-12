@@ -18,8 +18,6 @@ import logging
 import datetime
 import json
 
-import six
-
 from mediagoblin import messages, mg_globals
 from mediagoblin.db.models import (MediaEntry, MediaTag, Collection, Comment,
                                    CollectionItem, LocalUser, Activity, \
@@ -59,7 +57,7 @@ def user_home(request, page):
     user = LocalUser.query.filter_by(username=request.matchdict['user']).first()
     if not user:
         return render_404(request)
-    elif not user.has_privilege(u'active'):
+    elif not user.has_privilege('active'):
         return render_to_response(
             request,
             'mediagoblin/user_pages/user_nonactive.html',
@@ -95,7 +93,7 @@ def user_gallery(request, page, url_user=None):
     tag = request.matchdict.get('tag', None)
     cursor = MediaEntry.query.filter_by(
         actor=url_user.id,
-        state=u'processed').order_by(MediaEntry.created.desc())
+        state='processed').order_by(MediaEntry.created.desc())
 
     # Filter potentially by tag too:
     if tag:
@@ -171,7 +169,7 @@ def media_home(request, media, page, **kwargs):
 
 
 @get_media_entry_by_id
-@user_has_privilege(u'commenter')
+@user_has_privilege('commenter')
 def media_post_comment(request, media):
     """
     recieves POST from a MediaEntry() comment form, saves the comment.
@@ -180,12 +178,12 @@ def media_post_comment(request, media):
         raise MethodNotAllowed()
 
     # If media is not processed, return NotFound.
-    if not media.state == u'processed':
+    if not media.state == 'processed':
         return render_404(request)
 
     comment = request.db.TextComment()
     comment.actor = request.user.id
-    comment.content = six.text_type(request.form['comment_content'])
+    comment.content = str(request.form['comment_content'])
 
     # Show error message if commenting is disabled.
     if not mg_globals.app_config['allow_comments']:
@@ -224,7 +222,7 @@ def media_preview_comment(request):
     if not request.is_xhr:
         return render_404(request)
 
-    comment = six.text_type(request.form['comment_content'])
+    comment = str(request.form['comment_content'])
     cleancomment = { "content":cleaned_markdown_conversion(comment)}
 
     return Response(json.dumps(cleancomment))
@@ -236,7 +234,7 @@ def media_collect(request, media):
     """Add media to collection submission"""
 
     # If media is not processed, return NotFound.
-    if not media.state == u'processed':
+    if not media.state == 'processed':
         return render_404(request)
 
     form = user_forms.MediaCollectForm(request.form)
@@ -374,8 +372,8 @@ def media_confirm_delete(request, media):
                   "that you were sure."))
             return redirect_obj(request, media)
 
-    if ((request.user.has_privilege(u'admin') and
-         request.user.id != media.actor)):
+    if (request.user.has_privilege('admin') and
+         request.user.id != media.actor):
         messages.add_message(
             request,
             messages.WARNING,
@@ -464,8 +462,8 @@ def collection_item_confirm_remove(request, collection_item):
 
         return redirect_obj(request, collection)
 
-    if ((request.user.has_privilege(u'admin') and
-         request.user.id != collection_item.in_collection.actor)):
+    if (request.user.has_privilege('admin') and
+         request.user.id != collection_item.in_collection.actor):
         messages.add_message(
             request,
             messages.WARNING,
@@ -521,8 +519,8 @@ def collection_confirm_delete(request, collection):
 
             return redirect_obj(request, collection)
 
-    if ((request.user.has_privilege(u'admin') and
-         request.user.id != collection.actor)):
+    if (request.user.has_privilege('admin') and
+         request.user.id != collection.actor):
         messages.add_message(
             request, messages.WARNING,
             _("You are about to delete another user's collection. "
@@ -544,12 +542,12 @@ def atom_feed(request):
     """
     user = LocalUser.query.filter_by(
         username = request.matchdict['user']).first()
-    if not user or not user.has_privilege(u'active'):
+    if not user or not user.has_privilege('active'):
         return render_404(request)
     feed_title = "MediaGoblin Feed for user '%s'" % request.matchdict['user']
     link = request.urlgen('mediagoblin.user_pages.user_home',
                           qualified=True, user=request.matchdict['user'])
-    cursor = MediaEntry.query.filter_by(actor=user.id, state=u'processed')
+    cursor = MediaEntry.query.filter_by(actor=user.id, state='processed')
     cursor = cursor.order_by(MediaEntry.created.desc())
     cursor = cursor.limit(ATOM_DEFAULT_NR_OF_UPDATED_ITEMS)
 
@@ -581,7 +579,7 @@ def atom_feed(request):
         # Include a thumbnail image in content.
         file_urls = get_media_file_paths(entry.media_files, request.urlgen)
         if 'thumb' in file_urls:
-            content = u'<img src="{thumb}" alt='' /> {desc}'.format(
+            content = '<img src="{thumb}" alt='' /> {desc}'.format(
                 thumb=file_urls['thumb'], desc=entry.description_html)
         else:
             content = entry.description_html
@@ -614,7 +612,7 @@ def collection_atom_feed(request):
     """
     user = LocalUser.query.filter_by(
         username = request.matchdict['user']).first()
-    if not user or not user.has_privilege(u'active'):
+    if not user or not user.has_privilege('active'):
         return render_404(request)
 
     collection = Collection.query.filter_by(
@@ -647,7 +645,7 @@ def collection_atom_feed(request):
                 "MediaGoblin: Feed for %s's collection %s" %
                 (request.matchdict['user'], collection.title),
                 feed_url=request.url,
-                id=u'tag:{host},{year}:gnu-mediagoblin.{user}.collection.{slug}'\
+                id='tag:{host},{year}:gnu-mediagoblin.{user}.collection.{slug}'\
                     .format(
                     host=request.host,
                     year=collection.created.strftime('%Y'),
@@ -690,7 +688,7 @@ def processing_panel(request, page, url_user):
     #
     # Make sure we have permission to access this user's panel.  Only
     # admins and this user herself should be able to do so.
-    if not (user.id == request.user.id or request.user.has_privilege(u'admin')):
+    if not (user.id == request.user.id or request.user.has_privilege('admin')):
         # No?  Simply redirect to this user's homepage.
         return redirect(
             request, 'mediagoblin.user_pages.user_home',
@@ -721,7 +719,7 @@ def processing_panel(request, page, url_user):
 
 @allow_reporting
 @get_user_media_entry
-@user_has_privilege(u'reporter')
+@user_has_privilege('reporter')
 @get_optional_media_comment_by_id
 def file_a_report(request, media, comment):
     """

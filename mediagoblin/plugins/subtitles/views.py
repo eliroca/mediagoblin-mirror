@@ -14,8 +14,6 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import six
-
 from datetime import datetime
 
 from itsdangerous import BadSignature
@@ -57,7 +55,7 @@ def edit_subtitles(request, media):
         if mimetypes.guess_type(
                 request.files['subtitle_file'].filename)[0] in \
                 UNSAFE_MIMETYPES:
-            public_filename = secure_filename('{0}.notsafe'.format(
+            public_filename = secure_filename('{}.notsafe'.format(
                 request.files['subtitle_file'].filename))
         else:
             public_filename = secure_filename(
@@ -72,7 +70,7 @@ def edit_subtitles(request, media):
             return redirect(request,
                             location=media.url_for_self(request.urlgen))
         subtitle_public_filepath = mg_globals.public_store.get_unique_filepath(
-            ['media_entries', six.text_type(media.id), 'subtitle',
+            ['media_entries', str(media.id), 'subtitle',
              public_filename])
 
         with mg_globals.public_store.get_file(

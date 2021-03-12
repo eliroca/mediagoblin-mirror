@@ -14,7 +14,6 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import division, print_function
 
 import os
 import sys
@@ -63,7 +62,7 @@ def capture_thumb(video_path, dest_path, width=None, height=None, percent=0.5):
         '''This is a callback to dynamically add element to pipeline'''
         caps = pad.query_caps(None)
         name = caps.to_string()
-        _log.debug('on_pad_added: {0}'.format(name))
+        _log.debug('on_pad_added: {}'.format(name))
         if name.startswith('video') and not connect_to.is_linked():
             pad.link(connect_to)
 
@@ -71,7 +70,7 @@ def capture_thumb(video_path, dest_path, width=None, height=None, percent=0.5):
     # ! CAPS ! appsink
     pipeline = Gst.Pipeline()
     uridecodebin = Gst.ElementFactory.make('uridecodebin', None)
-    uridecodebin.set_property('uri', 'file://{0}'.format(video_path))
+    uridecodebin.set_property('uri', 'file://{}'.format(video_path))
     videoconvert = Gst.ElementFactory.make('videoconvert', None)
     uridecodebin.connect('pad-added', pad_added,
                          videoconvert.get_static_pad('sink'))
@@ -105,7 +104,7 @@ def capture_thumb(video_path, dest_path, width=None, height=None, percent=0.5):
     # timeout of 3 seconds below was set experimentally
     state = pipeline.get_state(Gst.SECOND * 3)
     if state[0] != Gst.StateChangeReturn.SUCCESS:
-        _log.warning('state change failed, {0}'.format(state))
+        _log.warning('state change failed, {}'.format(state))
         return
 
     # get duration
@@ -115,7 +114,7 @@ def capture_thumb(video_path, dest_path, width=None, height=None, percent=0.5):
         return
 
     seek_to = int(duration * int(percent * 100) / 100)
-    _log.debug('Seeking to {0} of {1}'.format(
+    _log.debug('Seeking to {} of {}'.format(
             float(seek_to) / Gst.SECOND, float(duration) / Gst.SECOND))
     seek = pipeline.seek_simple(Gst.Format.TIME, Gst.SeekFlags.FLUSH, seek_to)
     if not seek:
@@ -140,13 +139,13 @@ def capture_thumb(video_path, dest_path, width=None, height=None, percent=0.5):
     im = Image.frombytes('RGB', (width, height),
                          buffer.extract_dup(0, buffer.get_size()))
     im.save(dest_path)
-    _log.info('thumbnail saved to {0}'.format(dest_path))
+    _log.info('thumbnail saved to {}'.format(dest_path))
 
     # cleanup
     pipeline.set_state(Gst.State.NULL)
 
 
-class VideoTranscoder(object):
+class VideoTranscoder:
     '''
     Video transcoder
 
@@ -375,7 +374,7 @@ class VideoTranscoder(object):
                     _log.info('{percent}% of {dest} resolution done..'
                               '.'.format(percent=percent, dest=self.destination_dimensions))
         elif message.type == Gst.MessageType.ERROR:
-            _log.error('Got error: {0}'.format(message.parse_error()))
+            _log.error('Got error: {}'.format(message.parse_error()))
             self.dst_data = None
             self.__stop()
 

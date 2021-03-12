@@ -39,7 +39,7 @@ class TestMetadataFunctionality:
         # Free floating nodes should be removed
         assert jsonld_metadata.get('location') is None
         assert jsonld_metadata.get('@context') == \
-            u"http://www.w3.org/2013/json-ld-context/rdfa11"
+            "http://www.w3.org/2013/json-ld-context/rdfa11"
 
         # Next, make sure that various badly formatted metadata
         # will be rejected.

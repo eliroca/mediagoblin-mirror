@@ -19,8 +19,6 @@ import sys
 import datetime
 import logging
 
-import six
-
 from celery import Celery
 from kombu import Exchange, Queue
 from mediagoblin.tools.pluginapi import hook_runall
@@ -58,7 +56,7 @@ def get_celery_settings_dict(app_config, global_config,
     celery_settings = {}
 
     # Add all celery settings from config
-    for key, value in six.iteritems(celery_conf):
+    for key, value in celery_conf.items():
         celery_settings[key] = value
 
     # TODO: use default result stuff here if it exists
@@ -81,7 +79,6 @@ def get_celery_settings_dict(app_config, global_config,
                 'schedule': datetime.timedelta(minutes=frequency),
             }
         }
-        celery_settings['BROKER_HEARTBEAT'] = 1
 
     return celery_settings
 
@@ -123,7 +120,7 @@ def setup_celery_from_config(app_config, global_config,
     __import__(settings_module)
     this_module = sys.modules[settings_module]
 
-    for key, value in six.iteritems(celery_settings):
+    for key, value in celery_settings.items():
         setattr(this_module, key, value)
 
     if set_environ:
@@ -133,8 +130,8 @@ def setup_celery_from_config(app_config, global_config,
     # initiated
     from celery import current_app
 
-    _log.info('Setting celery configuration from object "{0}"'.format(
+    _log.info('Setting celery configuration from object "{}"'.format(
         settings_module))
     current_app.config_from_object(this_module)
 
-    _log.debug('Celery broker host: {0}'.format(current_app.conf['BROKER_HOST']))
+    _log.debug('Celery broker host: {}'.format(current_app.conf['BROKER_HOST']))

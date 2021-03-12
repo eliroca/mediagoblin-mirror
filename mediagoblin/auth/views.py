@@ -16,8 +16,6 @@
 
 import logging
 
-import six
-
 from itsdangerous import BadSignature
 
 from mediagoblin import messages, mg_globals
@@ -45,7 +43,7 @@ def register(request):
     if 'pass_auth' not in request.template_env.globals:
         redirect_name = hook_handle('auth_no_pass_redirect')
         if redirect_name:
-            return redirect(request, 'mediagoblin.plugins.{0}.register'.format(
+            return redirect(request, 'mediagoblin.plugins.{}.register'.format(
                 redirect_name))
         else:
             return redirect(request, 'index')
@@ -80,7 +78,7 @@ def login(request):
     if 'pass_auth' not in request.template_env.globals:
         redirect_name = hook_handle('auth_no_pass_redirect')
         if redirect_name:
-            return redirect(request, 'mediagoblin.plugins.{0}.login'.format(
+            return redirect(request, 'mediagoblin.plugins.{}.login'.format(
                 redirect_name))
         else:
             return redirect(request, 'index')
@@ -100,7 +98,7 @@ def login(request):
                 # set up login in session
                 if login_form.stay_logged_in.data:
                     request.session['stay_logged_in'] = True
-                request.session['user_id'] = six.text_type(user.id)
+                request.session['user_id'] = str(user.id)
                 request.session.save()
 
                 if request.form.get('next'):
@@ -157,11 +155,11 @@ def verify_email(request):
 
     user = User.query.filter_by(id=int(token)).first()
 
-    if user and user.has_privilege(u'active') is False:
+    if user and user.has_privilege('active') is False:
         user.verification_key = None
         user.all_privileges.append(
             Privilege.query.filter(
-            Privilege.privilege_name==u'active').first())
+            Privilege.privilege_name=='active').first())
 
         user.save()
 
@@ -196,7 +194,7 @@ def resend_activation(request):
 
         return redirect(request, 'mediagoblin.auth.login')
 
-    if request.user.has_privilege(u'active'):
+    if request.user.has_privilege('active'):
         messages.add_message(
             request,
             messages.ERROR,

@@ -402,7 +402,7 @@ def test_plugin_assetlink(static_plugin_app):
     # link dir doesn't exist, link it
     result = run_assetlink().collection[0]
     assert result == \
-        'Linked asset directory for plugin "staticstuff":\n  %s\nto:\n  %s\n' % (
+        'Linked asset directory for plugin "staticstuff":\n  {}\nto:\n  {}\n'.format(
             plugin_static.file_path.rstrip(os.path.sep),
             plugin_link_dir)
     assert os.path.lexists(plugin_link_dir)
@@ -430,10 +430,10 @@ def test_plugin_assetlink(static_plugin_app):
     result = run_assetlink().combined_string
     assert result == """Old link found for "staticstuff"; removing.
 Linked asset directory for plugin "staticstuff":
-  %s
+  {}
 to:
-  %s
-""" % (plugin_static.file_path.rstrip(os.path.sep), plugin_link_dir)
+  {}
+""".format(plugin_static.file_path.rstrip(os.path.sep), plugin_link_dir)
     assert os.path.lexists(plugin_link_dir)
     assert os.path.islink(plugin_link_dir)
     assert os.path.realpath(plugin_link_dir) == plugin_static.file_path
@@ -447,7 +447,7 @@ to:
     assert result == 'Could not link "staticstuff": %s exists and is not a symlink\n' % (
         plugin_link_dir)
 
-    with open(plugin_link_dir, 'r') as clobber_file:
+    with open(plugin_link_dir) as clobber_file:
         assert clobber_file.read() == 'clobbered!'
 
 

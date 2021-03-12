@@ -20,8 +20,6 @@ import logging
 import datetime
 import celery
 
-import six
-
 from celery import group
 from mediagoblin import mg_globals as mgg
 from mediagoblin.processing import (
@@ -46,19 +44,19 @@ class VideoTranscodingFail(BaseProcessingFail):
     '''
     Error raised if video transcoding fails
     '''
-    general_message = _(u'Video transcoding failed')
+    general_message = _('Video transcoding failed')
 
 
 def sniffer(media_file):
     '''New style sniffer, used in two-steps check; requires to have .name'''
-    _log.info('Sniffing {0}'.format(MEDIA_TYPE))
+    _log.info('Sniffing {}'.format(MEDIA_TYPE))
     try:
         data = transcoders.discover(media_file.name)
     except Exception as e:
         # this is usually GLib.GError, but we don't really care which one
-        _log.warning(u'GStreamer: {0}'.format(six.text_type(e)))
-        raise MissingComponents(u'GStreamer: {0}'.format(six.text_type(e)))
-    _log.debug('Discovered: {0}'.format(data))
+        _log.warning('GStreamer: {}'.format(str(e)))
+        raise MissingComponents('GStreamer: {}'.format(str(e)))
+    _log.debug('Discovered: {}'.format(data))
 
     if not data.get_video_streams():
         raise MissingComponents('No video streams found in this video')
@@ -66,17 +64,17 @@ def sniffer(media_file):
     if data.get_result() != 0:  # it's 0 if success
         try:
             missing = data.get_misc().get_string('name')
-            _log.warning('GStreamer: missing {0}'.format(missing))
+            _log.warning('GStreamer: missing {}'.format(missing))
         except AttributeError as e:
             # AttributeError happens here on gstreamer >1.4, when get_misc
             # returns None. There is a special function to get info about
             # missing plugin. This info should be printed to logs for admin and
             # showed to the user in a short and nice version
             details = data.get_missing_elements_installer_details()
-            _log.warning('GStreamer: missing: {0}'.format(', '.join(details)))
-            missing = u', '.join([u'{0} ({1})'.format(*d.split('|')[3:])
+            _log.warning('GStreamer: missing: {}'.format(', '.join(details)))
+            missing = ', '.join(['{} ({})'.format(*d.split('|')[3:])
                                   for d in details])
-        raise MissingComponents(u'{0} is missing'.format(missing))
+        raise MissingComponents('{} is missing'.format(missing))
 
     return MEDIA_TYPE
 
@@ -89,13 +87,13 @@ def sniff_handler(media_file, filename):
 
     if clean_ext in EXCLUDED_EXTS:
         # We don't handle this filetype, though gstreamer might think we can
-        _log.info('Refused to process {0} due to excluded extension'.format(filename))
+        _log.info('Refused to process {} due to excluded extension'.format(filename))
         return None
 
     try:
         return sniffer(media_file)
     except:
-        _log.error('Could not discover {0}'.format(filename))
+        _log.error('Could not discover {}'.format(filename))
         return None
 
 def get_tags(stream_info):
@@ -111,7 +109,7 @@ def get_tags(stream_info):
     # date/datetime should be converted from GDate/GDateTime to strings
     if 'date' in tags:
         date = tags['date']
-        tags['date'] = "%s-%s-%s" % (
+        tags['date'] = "{}-{}-{}".format(
                 date.year, date.month, date.day)
 
     if 'datetime' in tags:
@@ -127,7 +125,7 @@ def get_tags(stream_info):
             tags['datetime'] = None
     for k, v in tags.copy().items():
         # types below are accepted by json; others must not present
-        if not isinstance(v, (dict, list, six.string_types, int, float, bool,
+        if not isinstance(v, (dict, list, (str,), int, float, bool,
                               type(None))):
             del tags[k]
     return dict(tags)
@@ -192,10 +190,10 @@ def main_task(entry_id, resolution, medium_size, **process_info):
         processor.generate_thumb(thumb_size=process_info['thumb_size'])
         processor.store_orig_metadata()
     # Make state of entry as processed
-    entry.state = u'processed'
+    entry.state = 'processed'
     entry.save()
-    _log.info(u'MediaEntry ID {0} is processed (transcoded to default'
-              ' resolution): {1}'.format(entry.id, medium_size))
+    _log.info('MediaEntry ID {} is processed (transcoded to default'
+              ' resolution): {}'.format(entry.id, medium_size))
     _log.debug('MediaEntry processed')
 
 
@@ -211,7 +209,7 @@ def complementary_task(entry_id, resolution, medium_size, **process_info):
                             vp8_quality=process_info['vp8_quality'],
                             vp8_threads=process_info['vp8_threads'],
                             vorbis_quality=process_info['vorbis_quality'])
-    _log.info(u'MediaEntry ID {0} is transcoded to {1}'.format(
+    _log.info('MediaEntry ID {} is transcoded to {}'.format(
         entry.id, medium_size))
 
 
@@ -585,7 +583,7 @@ class Transcoder(CommonVideoProcessor):
 
 class VideoProcessingManager(ProcessingManager):
     def __init__(self):
-        super(VideoProcessingManager, self).__init__()
+        super().__init__()
         self.add_processor(InitialProcessor)
         self.add_processor(Resizer)
         self.add_processor(Transcoder)
@@ -596,7 +594,7 @@ class VideoProcessingManager(ProcessingManager):
         def_res = video_config['default_resolution']
         priority_num = len(video_config['available_resolutions']) + 1
 
-        entry.state = u'processing'
+        entry.state = 'processing'
         entry.save()
 
         reprocess_info = reprocess_info or {}

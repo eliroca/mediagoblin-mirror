@@ -16,13 +16,12 @@
 
 import pkg_resources
 import pytest
-import six
 try:
-    import mock
+    from unittest import mock
 except ImportError:
     import unittest.mock as mock
 
-import six.moves.urllib.parse as urlparse
+import urllib.parse as urlparse
 
 from mediagoblin import mg_globals
 from mediagoblin.db.base import Session
@@ -43,7 +42,7 @@ def ldap_plugin_app(request):
 
 
 def return_value():
-    return u'chris', u'chris@example.com'
+    return 'chris', 'chris@example.com'
 
 
 def test_ldap_plugin(ldap_plugin_app):
@@ -65,8 +64,8 @@ def test_ldap_plugin(ldap_plugin_app):
 
     context = template.TEMPLATE_TEST_CONTEXT['mediagoblin/auth/login.html']
     form = context['login_form']
-    assert form.username.errors == [u'This field is required.']
-    assert form.password.errors == [u'This field is required.']
+    assert form.username.errors == ['This field is required.']
+    assert form.password.errors == ['This field is required.']
 
     @mock.patch('mediagoblin.plugins.ldap.tools.LDAP.login',
                 mock.Mock(return_value=return_value()))
@@ -74,21 +73,21 @@ def test_ldap_plugin(ldap_plugin_app):
         template.clear_test_template_context()
         res = ldap_plugin_app.post(
             '/auth/ldap/login/',
-            {'username': u'chris',
-             'password': u'toast'})
+            {'username': 'chris',
+             'password': 'toast'})
 
         context = template.TEMPLATE_TEST_CONTEXT[
             'mediagoblin/auth/register.html']
         register_form = context['register_form']
 
-        assert register_form.username.data == u'chris'
-        assert register_form.email.data == u'chris@example.com'
+        assert register_form.username.data == 'chris'
+        assert register_form.email.data == 'chris@example.com'
 
         template.clear_test_template_context()
         res = ldap_plugin_app.post(
             '/auth/ldap/register/',
-            {'username': u'chris',
-             'email': u'chris@example.com'})
+            {'username': 'chris',
+             'email': 'chris@example.com'})
         res.follow()
 
         assert urlparse.urlsplit(res.location)[2] == '/u/chris/'
@@ -99,24 +98,24 @@ def test_ldap_plugin(ldap_plugin_app):
         template.clear_test_template_context()
         res = ldap_plugin_app.post(
             '/auth/ldap/register/',
-            {'username': u'chris',
-             'email': u'chris@example.com'})
+            {'username': 'chris',
+             'email': 'chris@example.com'})
 
         context = template.TEMPLATE_TEST_CONTEXT[
             'mediagoblin/auth/register.html']
         register_form = context['register_form']
 
         assert register_form.email.errors == [
-            u'Sorry, a user with that email address already exists.']
+            'Sorry, a user with that email address already exists.']
         assert register_form.username.errors == [
-            u'Sorry, a user with that name already exists.']
+            'Sorry, a user with that name already exists.']
 
         # Log out
         ldap_plugin_app.get('/auth/logout/')
 
         # Get user and detach from session
         test_user = mg_globals.database.LocalUser.query.filter(
-            LocalUser.username==u'chris'
+            LocalUser.username=='chris'
         ).first()
         Session.expunge(test_user)
 
@@ -124,8 +123,8 @@ def test_ldap_plugin(ldap_plugin_app):
         template.clear_test_template_context()
         res = ldap_plugin_app.post(
             '/auth/ldap/login/',
-            {'username': u'chris',
-             'password': u'toast'})
+            {'username': 'chris',
+             'password': 'toast'})
         res.follow()
 
         assert urlparse.urlsplit(res.location)[2] == '/'
@@ -134,6 +133,6 @@ def test_ldap_plugin(ldap_plugin_app):
         # Make sure user is in the session
         context = template.TEMPLATE_TEST_CONTEXT['mediagoblin/root.html']
         session = context['request'].session
-        assert session['user_id'] == six.text_type(test_user.id)
+        assert session['user_id'] == str(test_user.id)
 
     _test_authentication()

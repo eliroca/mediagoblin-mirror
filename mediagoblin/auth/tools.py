@@ -17,7 +17,6 @@
 
 import logging
 
-import six
 import wtforms
 from sqlalchemy import or_
 
@@ -47,12 +46,12 @@ def normalize_user_or_email_field(allow_email=True, allow_user=True,
         If is_login is True, does not check the length of username.
 
     """
-    message = _(u'Invalid User name or email address.')
-    nomail_msg = _(u"This field does not take email addresses.")
-    nouser_msg = _(u"This field requires an email address.")
+    message = _('Invalid User name or email address.')
+    nomail_msg = _("This field does not take email addresses.")
+    nouser_msg = _("This field requires an email address.")
 
     def _normalize_field(form, field):
-        email = u'@' in field.data
+        email = '@' in field.data
         if email:  # normalize email address casing
             if not allow_email:
                 raise wtforms.ValidationError(nomail_msg)
@@ -71,8 +70,8 @@ def normalize_user_or_email_field(allow_email=True, allow_user=True,
 
 
 EMAIL_VERIFICATION_TEMPLATE = (
-    u"{uri}?"
-    u"token={verification_key}")
+    "{uri}?"
+    "token={verification_key}")
 
 
 def send_verification_email(user, request, email=None,
@@ -121,11 +120,11 @@ def basic_extra_validation(register_form, *args):
 
     if users_with_username:
         register_form.username.errors.append(
-            _(u'Sorry, a user with that name already exists.'))
+            _('Sorry, a user with that name already exists.'))
         extra_validation_passes = False
     if users_with_email:
         register_form.email.errors.append(
-            _(u'Sorry, a user with that email address already exists.'))
+            _('Sorry, a user with that email address already exists.'))
         extra_validation_passes = False
 
     return extra_validation_passes
@@ -144,7 +143,7 @@ def register_user(request, register_form):
         user.save()
 
         # log the user in
-        request.session['user_id'] = six.text_type(user.id)
+        request.session['user_id'] = str(user.id)
         request.session.save()
 
         # send verification email

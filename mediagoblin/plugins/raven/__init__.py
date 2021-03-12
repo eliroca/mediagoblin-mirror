@@ -31,11 +31,11 @@ def get_client():
     client = None
 
     if sentry_dsn:
-        _log.info('Setting up raven from plugin config: {0}'.format(
+        _log.info('Setting up raven from plugin config: {}'.format(
             sentry_dsn))
         client = Client(sentry_dsn)
     elif os.environ.get('SENTRY_DSN'):
-        _log.info('Setting up raven from SENTRY_DSN environment variable: {0}'\
+        _log.info('Setting up raven from SENTRY_DSN environment variable: {}'\
                   .format(os.environ.get('SENTRY_DSN')))
         client = Client()  # Implicitly looks for SENTRY_DSN
 

@@ -18,8 +18,6 @@ import logging
 import uuid
 from os.path import splitext
 
-import six
-
 from celery import chord
 
 from werkzeug.utils import secure_filename
@@ -105,7 +103,7 @@ class UserPastUploadLimit(UploadLimitError):
 
 def submit_media(mg_app, user, submitted_file, filename,
                  title=None, description=None, collection_slug=None,
-                 license=None, metadata=None, tags_string=u"",
+                 license=None, metadata=None, tags_string="",
                  callback_url=None, urlgen=None,):
     """
     Args:
@@ -132,7 +130,7 @@ def submit_media(mg_app, user, submitted_file, filename,
 
     # If the filename contains non ascii generate a unique name
     if not all(ord(c) < 128 for c in filename):
-        filename = six.text_type(uuid.uuid4()) + splitext(filename)[-1]
+        filename = str(uuid.uuid4()) + splitext(filename)[-1]
 
     # Sniff the submitted media to determine which
     # media plugin should handle processing
@@ -141,9 +139,9 @@ def submit_media(mg_app, user, submitted_file, filename,
     # create entry and save in database
     entry = new_upload_entry(user)
     entry.media_type = media_type
-    entry.title = (title or six.text_type(splitext(filename)[0]))
+    entry.title = (title or str(splitext(filename)[0]))
 
-    entry.description = description or u""
+    entry.description = description or ""
 
     entry.license = license or None
 
@@ -163,7 +161,7 @@ def submit_media(mg_app, user, submitted_file, filename,
     # Get file size and round to 2 decimal places
     file_size = mg_app.queue_store.get_file_size(
         entry.queued_media_file) / (1024.0 * 1024)
-    file_size = float('{0:.2f}'.format(file_size))
+    file_size = float('{:.2f}'.format(file_size))
 
     # Check if file size is over the limit
     if max_file_size and file_size >= max_file_size:
@@ -233,7 +231,7 @@ def prepare_queue_task(app, entry, filename):
     # (If we got it off the task's auto-generation, there'd be
     # a risk of a race condition when we'd save after sending
     # off the task)
-    task_id = six.text_type(uuid.uuid4())
+    task_id = str(uuid.uuid4())
     entry.queued_task_id = task_id
 
     # Now store generate the queueing related filename

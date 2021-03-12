@@ -22,9 +22,8 @@ setting up your own instance of MediaGoblin.
 
 MediaGoblin most likely isn't yet available from your operating
 system's package manage, however, a basic install isn't too complex in
-and of itself. We recommend a setup that combines
-MediaGoblin, virtualenv, Waitress and Nginx on a .deb or .rpm-based
-GNU/Linux distribution.
+and of itself. We recommend a setup that combines MediaGoblin,
+virtualenv and Nginx on a .deb or .rpm-based GNU/Linux distribution.
 
 Experts may of course choose other deployment options, including
 Apache. See our `Deployment wiki page
@@ -57,7 +56,7 @@ Dependencies
 
 MediaGoblin has the following core dependencies:
 
-- Python 3.4+ (Python 2.7 is supported, but not recommended)
+- Python 3.4+
 - `python3-lxml <http://lxml.de/>`_
 - `git <http://git-scm.com/>`_
 - `SQLite <http://www.sqlite.org/>`_/`PostgreSQL <http://www.postgresql.org/>`_
@@ -66,7 +65,7 @@ MediaGoblin has the following core dependencies:
 - `Node.js <https://nodejs.org>`_
 
 These instructions have been tested on Debian 10, CentOS 8 and
-Fedora 31. These instructions should approximately translate to recent
+Fedora 33. These instructions should approximately translate to recent
 Debian derivatives such as Ubuntu 18.04 and Trisquel 8, and to relatives of
 Fedora such as CentOS 8.
 
@@ -76,19 +75,13 @@ Issue the following commands:
 
     # Debian 10
     sudo apt update
-    sudo apt install automake git nodejs npm python3-dev python3-gi \
+    sudo apt install automake git nodejs npm python3-dev \
     python3-gst-1.0 python3-lxml python3-pil virtualenv
 
-    # Fedora 31
-    sudo dnf install automake gcc git-core make nodejs npm python3-devel \
-    python3-lxml python3-pillow virtualenv
-
-.. note::
-
-   MediaGoblin now uses Python 3 by default. To use Python 2, you may
-   instead substitute from "python3" to "python" for most package
-   names in the Debian instructions and this should cover dependency
-   installation. Python 2 installation has not been tested on Fedora.
+    # Fedora 33
+    sudo dnf install automake gcc git-core make nodejs npm \
+    libffi-devel python3-devel python3-lxml python3-pillow \
+    virtualenv
 
 For a production deployment, you'll also need Nginx as frontend web
 server and RabbitMQ to store the media processing queue::
@@ -183,7 +176,7 @@ The following command will create a system account with a username of
 If you are using a Debian-based system, enter this command::
 
     # Debian
-    sudo useradd --system --create-home --home-dir /var/lib/qmediagoblin \
+    sudo useradd --system --create-home --home-dir /var/lib/mediagoblin \
     --group www-data --comment 'GNU MediaGoblin system account' mediagoblin
 
     # Fedora
@@ -266,40 +259,25 @@ Set up the environment::
     $ VIRTUALENV_FLAGS='--system-site-packages' ./configure
     $ make
 
-.. note::
-
-   If you'd prefer to run MediaGoblin with Python 2, pass in
-   ``--without-python3`` to the ``./configure`` command.
-
 Create and set the proper permissions on the ``user_dev`` directory.
 This directory will be used to store uploaded media files::
 
     $ mkdir --mode=2750 user_dev
 
-This concludes the initial configuration of the MediaGoblin 
-environment. In the future, when you update your
-codebase, you should also run::
-
-    sudo su mediagoblin --shell=/bin/bash
-    $ cd /srv/mediagoblin.example.org
-    $ git submodule update && ./bin/python setup.py develop --upgrade && ./bin/gmg dbupdate
-
-.. note::
-
-    Note: If you are running an active site, depending on your server
-    configuration, you may need to stop it first or the dbupdate command
-    may hang (and it's certainly a good idea to restart it after the
-    update)
+This concludes the initial configuration of the MediaGoblin
+environment. In the future, you can upgrade MediaGoblin according to
+the ":doc:`upgrading`" documentation.
 
 
-Deploy MediaGoblin Services
----------------------------
+Configure Mediagoblin
+---------------------
 
 Edit site configuration
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 Edit ``mediagoblin.ini`` and update ``email_sender_address`` to the
 address you wish to be used as the sender for system-generated emails.
+You'll find more details in ":doc:`configuration`".
 
 .. note::
 
@@ -307,10 +285,7 @@ address you wish to be used as the sender for system-generated emails.
    may need to edit ``direct_remote_path``, ``base_dir``, and
    ``base_url``.
 
-.. note::
 
-   The default config is stored in ``mediagoblin.example.ini`` in case
-   you ever need it.
 
 Configure MediaGoblin to use the PostgreSQL database
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -362,11 +337,19 @@ The next series of commands will need to be run as a privileged user.
 To return to your regular user account after using the system account,
 type ``exit`` or ``Ctrl-d``.
 
+
+Deploy MediaGoblin
+------------------
+
+The configuration described below is sufficient for development and
+smaller deployments. However, for larger production deployments with
+larger processing requirements, see the
+":doc:`production-deployments`" documentation.
+
 .. _webserver-config:
 
-
-Waitress and Nginx
-~~~~~~~~~~~~~~~~~~
+Nginx as a reverse-proxy
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 This configuration example will use Nginx, however, you may use any
 webserver of your choice. If you do not already have a web server,
@@ -414,8 +397,11 @@ should be modeled on the following::
      # This is the section you should read
      #####################################
 
-     # Change this to update the upload size limit for your users
-     client_max_body_size 8m;
+     # Change this to allow your users to upload larger files. If
+     # you enable audio or video you will need to increase this. This
+     # is essentially a security setting to prevent *extremely* large
+     # files being uploaded. Example settings include 500m and 1g.
+     client_max_body_size 100m;
 
      # prevent attacks (someone uploading a .txt file that the browser
      # interprets as an HTML file, etc.)
@@ -507,19 +493,6 @@ Type ``Ctrl-c`` to exit the above server test and ``exit`` or
 ``Ctrl-d`` to exit the mediagoblin shell.
 
 
-.. _create-log-file-dir:
-
-Create the directory for your log file:
----------------------------------------
-
-Production logs for the MediaGoblin application are kept in the
-``/var/log/mediagoblin`` directory.  Create the directory and give it the
-proper permissions::
-
-    sudo mkdir --parents /var/log/mediagoblin
-    sudo chown --no-dereference --recursive mediagoblin:mediagoblin /var/log/mediagoblin
-
-
 .. _systemd-service-files:
 
 Run MediaGoblin as a system service
@@ -529,6 +502,13 @@ To ensure MediaGoblin is automatically started and restarted in case of
 problems, we need to run it as a system service. If your operating system uses
 Systemd, you can use Systemd ``service files`` to manage both the Celery and
 Paste processes.
+
+In the Systemd configuration below, MediaGoblin log files are kept in
+the ``/var/log/mediagoblin`` directory. Create the directory and give
+it the proper permissions::
+
+    sudo mkdir --parents /var/log/mediagoblin
+    sudo chown --no-dereference --recursive mediagoblin:mediagoblin /var/log/mediagoblin
 
 Place the following service files in the ``/etc/systemd/system/``
 directory. The first file should be named
@@ -540,6 +520,7 @@ environment's setup:
     # Set the WorkingDirectory and Environment values to match your environment.
     [Unit]
     Description=MediaGoblin Celeryd
+    After=rabbitmq-server.service
 
     [Service]
     User=mediagoblin
@@ -609,18 +590,13 @@ Assuming the above was successful, you should now have a MediaGoblin
 server that will continue to operate, even after being restarted.
 Great job!
 
-.. note::
 
-   The configuration described above is sufficient for development and
-   smaller deployments. However, for larger production deployments
-   with larger processing requirements, see the
-   ":doc:`production-deployments`" documentation.
+What next?
+----------
 
-.. note::
-
-   This configuration supports upload of images only, but MediaGoblin
-   also supports other types of media, such as audio, video, PDFs and
-   3D models. For details, see ":doc:`media-types`".
+This configuration supports upload of images only, but MediaGoblin
+also supports other types of media, such as audio, video, PDFs and 3D
+models. For details, see the ":doc:`media-types`" documentation.
 
 ..
    Local variables:

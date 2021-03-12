@@ -47,7 +47,7 @@ def simple_printer(string):
     sys.stdout.flush()
 
 
-class CollectingPrinter(object):
+class CollectingPrinter:
     """
     Another printer object, this one useful for capturing output for
     examination during testing or otherwise.
@@ -68,6 +68,6 @@ class CollectingPrinter(object):
 
     @property
     def combined_string(self):
-        return u''.join(self.collection)
+        return ''.join(self.collection)
 
 

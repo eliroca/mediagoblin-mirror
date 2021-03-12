@@ -29,7 +29,7 @@ import os
 _log = logging.getLogger(__name__)
 
 
-class AsciiToImage(object):
+class AsciiToImage:
     '''
     Converter of ASCII art into image files, preserving whitespace
 
@@ -51,7 +51,7 @@ class AsciiToImage(object):
             self._font_size,
             encoding='unic')
 
-        _log.info('Font set to {0}, size {1}'.format(
+        _log.info('Font set to {}, size {}'.format(
                 self._font,
                 self._font_size))
 
@@ -68,7 +68,7 @@ class AsciiToImage(object):
 
         # PIL's Image.save will handle both file-likes and paths
         if im.save(destination):
-            _log.info('Saved image in {0}'.format(
+            _log.info('Saved image in {}'.format(
                     destination))
 
     def _create_image(self, text):
@@ -93,7 +93,7 @@ class AsciiToImage(object):
             max(line_lengths) * self._if_dims[0],
             len(line_lengths) * self._if_dims[1])
 
-        _log.info('Destination image dimensions will be {0}'.format(
+        _log.info('Destination image dimensions will be {}'.format(
                 im_dims))
 
         im = Image.new(
@@ -108,14 +108,14 @@ class AsciiToImage(object):
         for line in lines:
             line_length = len(line)
 
-            _log.debug('Writing line at {0}'.format(char_pos))
+            _log.debug('Writing line at {}'.format(char_pos))
 
             for _pos in range(0, line_length):
                 char = line[_pos]
 
                 px_pos = self._px_pos(char_pos)
 
-                _log.debug('Writing character "{0}" at {1} (px pos {2})'.format(
+                _log.debug('Writing character "{}" at {} (px pos {})'.format(
                         char.encode('ascii', 'replace'),
                         char_pos,
                         px_pos))

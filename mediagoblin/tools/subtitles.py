@@ -10,7 +10,7 @@ def get_path(path):
 
 def open_subtitle(path):
 	subtitle_path = get_path(path)
-	subtitle = open(subtitle_path,"r") # Opening the file using the absolute path
+	subtitle = open(subtitle_path) # Opening the file using the absolute path
 	text = subtitle.read()
 	return text
 

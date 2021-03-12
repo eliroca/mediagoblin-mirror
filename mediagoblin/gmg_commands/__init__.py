@@ -18,8 +18,6 @@ import argparse
 import os
 import shutil
 
-import six
-
 from mediagoblin.tools.common import import_component
 
 import logging
@@ -101,7 +99,7 @@ def main_cli():
             "otherwise mediagoblin.ini"))
 
     subparsers = parser.add_subparsers(help='sub-command help')
-    for command_name, command_struct in six.iteritems(SUBCOMMAND_MAP):
+    for command_name, command_struct in SUBCOMMAND_MAP.items():
         if 'help' in command_struct:
             subparser = subparsers.add_parser(
                 command_name, help=command_struct['help'])

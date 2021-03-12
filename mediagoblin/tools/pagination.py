@@ -19,12 +19,12 @@ from math import ceil, floor
 from itertools import count
 from werkzeug.datastructures import MultiDict
 
-from six.moves import range, urllib, zip
+import urllib
 
 PAGINATION_DEFAULT_PER_PAGE = 30
 
 
-class Pagination(object):
+class Pagination:
     """
     Pagination class for database queries.
 
@@ -105,7 +105,7 @@ class Pagination(object):
             new_get_params = dict(get_params) or {}
 
         new_get_params['page'] = page_no
-        return "%s?%s" % (
+        return "{}?{}".format(
             base_url, urllib.parse.urlencode(new_get_params))
 
     def get_page_url(self, request, page_no):

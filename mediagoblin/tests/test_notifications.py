@@ -16,7 +16,7 @@
 
 import pytest
 
-import six.moves.urllib.parse as urlparse
+import urllib.parse as urlparse
 
 from mediagoblin.tools import template, mail
 
@@ -37,13 +37,13 @@ class TestNotifications:
 
         # TODO: Possibly abstract into a decorator like:
         # @as_authenticated_user('chris')
-        self.test_user = fixture_add_user(privileges=[u'active',u'commenter'])
+        self.test_user = fixture_add_user(privileges=['active','commenter'])
 
         self.current_user = None
 
         self.login()
 
-    def login(self, username=u'chris', password=u'toast'):
+    def login(self, username='chris', password='toast'):
         response = self.test_app.post(
             '/auth/login/', {
                 'username': username,
@@ -75,13 +75,13 @@ class TestNotifications:
         '''
         user = fixture_add_user('otherperson', password='nosreprehto',
                                 wants_comment_notification=wants_email,
-                                privileges=[u'active',u'commenter'])
+                                privileges=['active','commenter'])
 
         assert user.wants_comment_notification == wants_email
 
         user_id = user.id
 
-        media_entry = fixture_media_entry(uploader=user.id, state=u'processed')
+        media_entry = fixture_media_entry(uploader=user.id, state='processed')
 
         media_entry_id = media_entry.id
 
@@ -89,15 +89,15 @@ class TestNotifications:
 
         subscription_id = subscription.id
 
-        media_uri_id = '/u/{0}/m/{1}/'.format(user.username,
+        media_uri_id = '/u/{}/m/{}/'.format(user.username,
                                               media_entry.id)
-        media_uri_slug = '/u/{0}/m/{1}/'.format(user.username,
+        media_uri_slug = '/u/{}/m/{}/'.format(user.username,
                                                 media_entry.slug)
 
         self.test_app.post(
             media_uri_id + 'comment/add/',
             {
-                'comment_content': u'Test comment #42'
+                'comment_content': 'Test comment #42'
             }
         )
 
@@ -111,7 +111,7 @@ class TestNotifications:
         assert notification.seen == False
         assert notification.user_id == user.id
         assert notification.obj().comment().get_actor.id == self.test_user.id
-        assert notification.obj().comment().content == u'Test comment #42'
+        assert notification.obj().comment().content == 'Test comment #42'
 
         if wants_email == True:
             # Why the `or' here?  In Werkzeug 0.11.0 and above
@@ -127,7 +127,7 @@ charset="utf-8"\nMIME-Version: 1.0\nContent-Transfer-Encoding: \
 base64\nSubject: GNU MediaGoblin - chris commented on your \
 post\nFrom: notice@mediagoblin.example.org\nTo: \
 otherperson@example.com\n\nSGkgb3RoZXJwZXJzb24sCmNocmlzIGNvbW1lbnRlZCBvbiB5b3VyIHBvc3QgKGh0dHA6Ly9sb2Nh\nbGhvc3Q6ODAvdS9vdGhlcnBlcnNvbi9tL3NvbWUtdGl0bGUvYy8xLyNjb21tZW50KSBhdCBHTlUg\nTWVkaWFHb2JsaW4KClRlc3QgY29tbWVudCAjNDIKCkdOVSBNZWRpYUdvYmxpbg==\n',
-                     'to': [u'otherperson@example.com']}]
+                     'to': ['otherperson@example.com']}]
                 or mail.EMAIL_TEST_MBOX_INBOX == [
                     {'from': 'notice@mediagoblin.example.org',
                      'message': 'Content-Type: text/plain; \
@@ -135,7 +135,7 @@ charset="utf-8"\nMIME-Version: 1.0\nContent-Transfer-Encoding: \
 base64\nSubject: GNU MediaGoblin - chris commented on your \
 post\nFrom: notice@mediagoblin.example.org\nTo: \
 otherperson@example.com\n\nSGkgb3RoZXJwZXJzb24sCmNocmlzIGNvbW1lbnRlZCBvbiB5b3VyIHBvc3QgKGh0dHA6Ly9sb2Nh\nbGhvc3QvdS9vdGhlcnBlcnNvbi9tL3NvbWUtdGl0bGUvYy8xLyNjb21tZW50KSBhdCBHTlUgTWVk\naWFHb2JsaW4KClRlc3QgY29tbWVudCAjNDIKCkdOVSBNZWRpYUdvYmxpbg==\n',
-                     'to': [u'otherperson@example.com']}])
+                     'to': ['otherperson@example.com']}])
         else:
             assert mail.EMAIL_TEST_MBOX_INBOX == []
 
@@ -147,7 +147,7 @@ otherperson@example.com\n\nSGkgb3RoZXJwZXJzb24sCmNocmlzIGNvbW1lbnRlZCBvbiB5b3VyI
         self.logout()
         self.login('otherperson', 'nosreprehto')
 
-        self.test_app.get(media_uri_slug + 'c/{0}/'.format(comment_id))
+        self.test_app.get(media_uri_slug + 'c/{}/'.format(comment_id))
 
         notification = Notification.query.filter_by(id=notification_id).first()
 
@@ -170,27 +170,27 @@ otherperson@example.com\n\nSGkgb3RoZXJwZXJzb24sCmNocmlzIGNvbW1lbnRlZCBvbiB5b3VyI
         """ Test that mark_all_comments_seen works"""
 
         user = fixture_add_user('otherperson', password='nosreprehto',
-                        privileges=[u'active'])
+                        privileges=['active'])
 
-        media_entry = fixture_media_entry(uploader=user.id, state=u'processed')
+        media_entry = fixture_media_entry(uploader=user.id, state='processed')
 
         fixture_comment_subscription(media_entry)
 
-        media_uri_id = '/u/{0}/m/{1}/'.format(user.username,
+        media_uri_id = '/u/{}/m/{}/'.format(user.username,
                                               media_entry.id)
 
         # add 2 comments
         self.test_app.post(
             media_uri_id + 'comment/add/',
             {
-                'comment_content': u'Test comment #43'
+                'comment_content': 'Test comment #43'
             }
         )
 
         self.test_app.post(
             media_uri_id + 'comment/add/',
             {
-                'comment_content': u'Test comment #44'
+                'comment_content': 'Test comment #44'
             }
         )
 

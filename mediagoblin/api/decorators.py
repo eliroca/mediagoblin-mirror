@@ -36,7 +36,7 @@ def user_has_privilege(privilege_name):
         @require_active_login
         def wrapper(request, *args, **kwargs):
             if not request.user.has_privilege(privilege_name):
-                error = "User '{0}' needs '{1}' privilege".format(
+                error = "User '{}' needs '{}' privilege".format(
                     request.user.username,
                     privilege_name
                 )

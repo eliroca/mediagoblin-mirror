@@ -41,7 +41,7 @@ class VideoMediaManager(MediaManagerBase):
         video_res.remove(video_config['default_resolution'])
         video_res.insert(0, video_config['default_resolution'])
         video_res = ['webm_{}'.format(x) for x in video_res]
-        return ([u'webm_video'] + video_res + [u'original'])
+        return (['webm_video'] + video_res + ['original'])
 
 
 def get_media_type_and_manager(ext):

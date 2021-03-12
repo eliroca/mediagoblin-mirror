@@ -35,7 +35,7 @@ fi
 ##
 ## List of uncompilable translations: Lojban (jbo), Interlingua (ia)
 
-for file in `find mediagoblin/i18n/ -name "*.po"`; do
+for file in `find mediagoblin/i18n -name "*.po"`; do
     if [ "$file" != "mediagoblin/i18n/jbo/mediagoblin.po" ] && \
        [ "$file" != "mediagoblin/i18n/ia/mediagoblin.po" ] && \
        [ "$file" != "mediagoblin/i18n/templates/en/mediagoblin.po" ]; then 

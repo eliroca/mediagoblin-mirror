@@ -29,11 +29,11 @@ class WebsiteField(wtforms.StringField):
     def process_formdata(self, valuelist):
         if valuelist:
             data = valuelist[0]
-            if not data.startswith((u'http://', u'https://')):
-                data = u'http://' + data
+            if not data.startswith(('http://', 'https://')):
+                data = 'http://' + data
             self.data = data
         else:
-            super(WebsiteField, self).process_formdata(valuelist)
+            super().process_formdata(valuelist)
 
 
 class EditForm(wtforms.Form):
@@ -143,7 +143,7 @@ class ChangeEmailForm(wtforms.Form):
             "Enter your password to prove you own this account."))
 
 
-class MetaDataValidator(object):
+class MetaDataValidator:
     """
     Custom validator which runs form data in a MetaDataForm through a jsonschema
     validator and passes errors recieved in jsonschema to wtforms.
@@ -171,8 +171,8 @@ class MetaDataValidator(object):
 
 
 class MetaDataForm(wtforms.Form):
-    identifier = wtforms.StringField(_(u'Identifier'),[MetaDataValidator()])
-    value = wtforms.StringField(_(u'Value'))
+    identifier = wtforms.StringField(_('Identifier'),[MetaDataValidator()])
+    value = wtforms.StringField(_('Value'))
 
 
 class EditMetaDataForm(wtforms.Form):

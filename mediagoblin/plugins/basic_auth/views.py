@@ -70,7 +70,7 @@ def forgot_password(request):
         success_message = _("An email has been sent with instructions "
                             "on how to change your password.")
 
-    if user and user.has_privilege(u'active') is False:
+    if user and user.has_privilege('active') is False:
         # Don't send reminder because user is inactive or has no verified email
         messages.add_message(
             request,
@@ -128,7 +128,7 @@ def verify_forgot_password(request):
             request, 'index')
 
     # check if user active and has email verified
-    if user.has_privilege(u'active'):
+    if user.has_privilege('active'):
         cp_form = forms.ChangeForgotPassForm(formdata_vars)
 
         if request.method == 'POST' and cp_form.validate():

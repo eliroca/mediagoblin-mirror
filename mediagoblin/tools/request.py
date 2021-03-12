@@ -17,7 +17,6 @@
 import json
 import logging
 
-import six
 from werkzeug.http import parse_options_header
 
 from mediagoblin.db.models import User, AccessToken
@@ -39,9 +38,9 @@ def setup_user_in_request(request):
     # If API request the user will be associated with the access token
     authorization = decode_authorization_header(request.headers)
 
-    if authorization.get(u"access_token"):
+    if authorization.get("access_token"):
         # Check authorization header.
-        token = authorization[u"oauth_token"]
+        token = authorization["oauth_token"]
         token = AccessToken.query.filter_by(token=token).first()
         if token is not None:
             request.user = token.user
@@ -66,7 +65,7 @@ def decode_request(request):
     content_type, _ = parse_options_header(request.content_type)
 
     if content_type == json_encoded:
-        data = json.loads(six.text_type(data, "utf-8"))
+        data = json.loads(str(data, "utf-8"))
     elif content_type == form_encoded or content_type == "":
         data = request.form
     else:

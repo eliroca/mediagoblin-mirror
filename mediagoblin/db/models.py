@@ -18,7 +18,6 @@
 TODO: indexes on foreignkeys, where useful.
 """
 
-from __future__ import print_function
 
 import logging
 import datetime
@@ -45,8 +44,7 @@ from mediagoblin.tools.common import import_component
 from mediagoblin.tools.routing import extract_url_arguments
 from mediagoblin.tools.text import convert_to_tag_list_of_dicts
 
-import six
-from six.moves.urllib.parse import urljoin
+from urllib.parse import urljoin
 from pytz import UTC
 
 _log = logging.getLogger(__name__)
@@ -114,9 +112,9 @@ class GenericModelReference(Base):
 
             # to prevent circular imports do import here
             registry = dict(Base._decl_class_registry).values()
-            self._TYPE_MAP = dict(
-                ((m.__tablename__, m) for m in registry if hasattr(m, "__tablename__"))
-            )
+            self._TYPE_MAP = {
+                m.__tablename__: m for m in registry if hasattr(m, "__tablename__")
+            }
             setattr(type(self), "_TYPE_MAP",  self._TYPE_MAP)
 
         return self.__class__._TYPE_MAP[model_type]
@@ -271,7 +269,7 @@ class User(Base, UserMixin):
         for activity in Activity.query.filter_by(actor=self.id):
             activity.delete(**kwargs)
 
-        super(User, self).soft_delete(*args, **kwargs)
+        super().soft_delete(*args, **kwargs)
 
 
     def delete(self, *args, **kwargs):
@@ -291,8 +289,8 @@ class User(Base, UserMixin):
 
         # Delete user, pass through commit=False/True in kwargs
         username = self.username
-        super(User, self).delete(*args, **kwargs)
-        _log.info('Deleted user "{0}" account'.format(username))
+        super().delete(*args, **kwargs)
+        _log.info('Deleted user "{}" account'.format(username))
 
     def has_privilege(self, privilege, allow_admin=True):
         """
@@ -311,7 +309,7 @@ class User(Base, UserMixin):
         priv = Privilege.query.filter_by(privilege_name=privilege).one()
         if priv in self.all_privileges:
             return True
-        elif allow_admin and self.has_privilege(u'admin', allow_admin=False):
+        elif allow_admin and self.has_privilege('admin', allow_admin=False):
             return True
 
         return False
@@ -383,15 +381,15 @@ class LocalUser(User):
     # plugin data would be in a separate model
 
     def __repr__(self):
-        return '<{0} #{1} {2} {3} "{4}">'.format(
+        return '<{} #{} {} {} "{}">'.format(
                 self.__class__.__name__,
                 self.id,
-                'verified' if self.has_privilege(u'active') else 'non-verified',
-                'admin' if self.has_privilege(u'admin') else 'user',
+                'verified' if self.has_privilege('active') else 'non-verified',
+                'admin' if self.has_privilege('admin') else 'user',
                 self.username)
 
     def get_public_id(self, host):
-        return "acct:{0}@{1}".format(self.username, host)
+        return "acct:{}@{}".format(self.username, host)
 
     def serialize(self, request):
         user = {
@@ -423,7 +421,7 @@ class LocalUser(User):
             },
         }
 
-        user.update(super(LocalUser, self).serialize(request))
+        user.update(super().serialize(request))
         return user
 
 class RemoteUser(User):
@@ -438,7 +436,7 @@ class RemoteUser(User):
     }
 
     def __repr__(self):
-        return "<{0} #{1} {2}>".format(
+        return "<{} #{} {}>".format(
             self.__class__.__name__,
             self.id,
             self.webfinger
@@ -466,9 +464,9 @@ class Client(Base):
 
     def __repr__(self):
         if self.application_name:
-            return "<Client {0} - {1}>".format(self.application_name, self.id)
+            return "<Client {} - {}>".format(self.application_name, self.id)
         else:
-            return "<Client {0}>".format(self.id)
+            return "<Client {}>".format(self.id)
 
 class RequestToken(Base):
     """
@@ -483,7 +481,7 @@ class RequestToken(Base):
     used = Column(Boolean, default=False)
     authenticated = Column(Boolean, default=False)
     verifier = Column(Unicode, nullable=True)
-    callback = Column(Unicode, nullable=False, default=u"oob")
+    callback = Column(Unicode, nullable=False, default="oob")
     created = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
     updated = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
 
@@ -529,7 +527,7 @@ class MediaEntry(Base, MediaEntryMixin, CommentingMixin):
     slug = Column(Unicode)
     description = Column(UnicodeText) # ??
     media_type = Column(Unicode, nullable=False)
-    state = Column(Unicode, default=u'unprocessed', nullable=False)
+    state = Column(Unicode, default='unprocessed', nullable=False)
         # or use sqlalchemy.types.Enum?
     license = Column(Unicode)
     file_size = Column(Integer, default=0)
@@ -636,7 +634,7 @@ class MediaEntry(Base, MediaEntryMixin, CommentingMixin):
         """get the next 'newer' entry by this user"""
         media = MediaEntry.query.filter(
             (MediaEntry.actor == self.actor)
-            & (MediaEntry.state == u'processed')
+            & (MediaEntry.state == 'processed')
             & (MediaEntry.id > self.id)).order_by(MediaEntry.id).first()
 
         if media is not None:
@@ -646,7 +644,7 @@ class MediaEntry(Base, MediaEntryMixin, CommentingMixin):
         """get the next 'older' entry by this user"""
         media = MediaEntry.query.filter(
             (MediaEntry.actor == self.actor)
-            & (MediaEntry.state == u'processed')
+            & (MediaEntry.state == 'processed')
             & (MediaEntry.id < self.id)).order_by(desc(MediaEntry.id)).first()
 
         if media is not None:
@@ -658,7 +656,7 @@ class MediaEntry(Base, MediaEntryMixin, CommentingMixin):
         return the value of the key.
         """
         media_file = MediaFile.query.filter_by(media_entry=self.id,
-                                               name=six.text_type(file_key)).first()
+                                               name=str(file_key)).first()
 
         if media_file:
             if metadata_key:
@@ -671,11 +669,11 @@ class MediaEntry(Base, MediaEntryMixin, CommentingMixin):
         Update the file_metadata of a MediaFile.
         """
         media_file = MediaFile.query.filter_by(media_entry=self.id,
-                                               name=six.text_type(file_key)).first()
+                                               name=str(file_key)).first()
 
         file_metadata = media_file.file_metadata or {}
 
-        for key, value in six.iteritems(kwargs):
+        for key, value in kwargs.items():
             file_metadata[key] = value
 
         media_file.file_metadata = file_metadata
@@ -700,7 +698,7 @@ class MediaEntry(Base, MediaEntryMixin, CommentingMixin):
             media_data.get_media_entry = self
         else:
             # Update old media data
-            for field, value in six.iteritems(kwargs):
+            for field, value in kwargs.items():
                 setattr(media_data, field, value)
 
     @memoized_property
@@ -708,11 +706,7 @@ class MediaEntry(Base, MediaEntryMixin, CommentingMixin):
         return import_component(self.media_type + '.models:BACKREF_NAME')
 
     def __repr__(self):
-        if six.PY2:
-            # obj.__repr__() should return a str on Python 2
-            safe_title = self.title.encode('utf-8', 'replace')
-        else:
-            safe_title = self.title
+        safe_title = self.title
 
         return '<{classname} {id}: {title}>'.format(
                 classname=self.__class__.__name__,
@@ -724,7 +718,7 @@ class MediaEntry(Base, MediaEntryMixin, CommentingMixin):
         for comment in self.get_comments():
             comment.delete(*args, **kwargs)
 
-        super(MediaEntry, self).soft_delete(*args, **kwargs)
+        super().soft_delete(*args, **kwargs)
 
     def delete(self, del_orphan_tags=True, **kwargs):
         """Delete MediaEntry and all related files/attachments/comments
@@ -744,7 +738,7 @@ class MediaEntry(Base, MediaEntryMixin, CommentingMixin):
             # Returns list of files we failed to delete
             _log.error('No such files from the user "{1}" to delete: '
                        '{0}'.format(str(error), self.get_actor))
-        _log.info('Deleted Media entry id "{0}"'.format(self.id))
+        _log.info('Deleted Media entry id "{}"'.format(self.id))
         # Related MediaTag's are automatically cleaned, but we might
         # want to clean out unused Tag's too.
         if del_orphan_tags:
@@ -753,7 +747,7 @@ class MediaEntry(Base, MediaEntryMixin, CommentingMixin):
             from mediagoblin.db.util import clean_orphan_tags
             clean_orphan_tags(commit=False)
         # pass through commit=False/True in kwargs
-        super(MediaEntry, self).delete(**kwargs)
+        super().delete(**kwargs)
 
     def serialize(self, request, show_comments=True):
         """ Unserialize MediaEntry to object """
@@ -864,7 +858,7 @@ class FileKeynames(Base):
     name = Column(Unicode, unique=True)
 
     def __repr__(self):
-        return "<FileKeyname %r: %r>" % (self.id, self.name)
+        return "<FileKeyname {!r}: {!r}>".format(self.id, self.name)
 
     @classmethod
     def find_or_new(cls, name):
@@ -893,7 +887,7 @@ class MediaFile(Base):
         {})
 
     def __repr__(self):
-        return "<MediaFile %s: %r>" % (self.name, self.file_path)
+        return "<MediaFile {}: {!r}>".format(self.name, self.file_path)
 
     name_helper = relationship(FileKeynames, lazy="joined", innerjoin=True)
     name = association_proxy('name_helper', 'name',
@@ -941,7 +935,7 @@ class Tag(Base):
     slug = Column(Unicode, nullable=False, unique=True)
 
     def __repr__(self):
-        return "<Tag %r: %r>" % (self.id, self.slug)
+        return "<Tag {!r}: {!r}>".format(self.id, self.slug)
 
     @classmethod
     def find_or_new(cls, slug):
@@ -1040,7 +1034,7 @@ class Comment(Base):
             # fetch it from self.comment()
             raise AttributeError
         try:
-            _log.debug('Old attr is being accessed: {0}'.format(attr))
+            _log.debug('Old attr is being accessed: {}'.format(attr))
             return getattr(self.comment(), attr)  # noqa
         except Exception as e:
             _log.error(e)
@@ -1347,7 +1341,7 @@ class Notification(Base):
             seen='unseen' if not self.seen else 'seen')
 
     def __unicode__(self):
-        return u'<{klass} #{id}: {user}: {subject} ({seen})>'.format(
+        return '<{klass} #{id}: {user}: {subject} ({seen})>'.format(
             id=self.id,
             klass=self.__class__.__name__,
             user=self.user,
@@ -1603,7 +1597,7 @@ class Activity(Base, ActivityMixin):
     def save(self, set_updated=True, *args, **kwargs):
         if set_updated:
             self.updated = datetime.datetime.now()
-        super(Activity, self).save(*args, **kwargs)
+        super().save(*args, **kwargs)
 
 class Graveyard(Base):
     """ Where models come to die """
@@ -1663,12 +1657,12 @@ MODELS = [
 
     FOUNDATIONS = {User:user_foundations}
 """
-privilege_foundations = [{'privilege_name':u'admin'},
-						{'privilege_name':u'moderator'},
-						{'privilege_name':u'uploader'},
-						{'privilege_name':u'reporter'},
-						{'privilege_name':u'commenter'},
-						{'privilege_name':u'active'}]
+privilege_foundations = [{'privilege_name':'admin'},
+						{'privilege_name':'moderator'},
+						{'privilege_name':'uploader'},
+						{'privilege_name':'reporter'},
+						{'privilege_name':'commenter'},
+						{'privilege_name':'active'}]
 FOUNDATIONS = {Privilege:privilege_foundations}
 
 ######################################################

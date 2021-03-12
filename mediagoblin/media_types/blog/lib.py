@@ -24,15 +24,15 @@ def check_blog_slug_used(author_id, slug, ignore_b_id=None):
     return does_exist
     
 def may_edit_blogpost(request, blog):
-    if request.user.has_privilege(u'admin') or request.user.id == blog.author:
+    if request.user.has_privilege('admin') or request.user.id == blog.author:
         return True
     return False
 
 def set_blogpost_state(request, blogpost):
     if request.form['status'] == 'Publish':
-        blogpost.state = u'processed'
+        blogpost.state = 'processed'
     else:
-        blogpost.state = u'failed'
+        blogpost.state = 'failed'
 
 def get_all_blogposts_of_blog(request, blog, state=None):
     blog_posts_list = []

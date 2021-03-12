@@ -112,8 +112,8 @@ def get_jinja_loader(user_template_path=None, current_theme=None,
     # Add plugin template paths next--takes precedence over
     # core templates.
     if plugin_template_paths is not None:
-        path_list.extend((jinja2.FileSystemLoader(path)
-                          for path in plugin_template_paths))
+        path_list.extend(jinja2.FileSystemLoader(path)
+                          for path in plugin_template_paths)
 
     # Add core templates last.
     path_list.append(jinja2.PackageLoader('mediagoblin', 'templates'))
@@ -133,7 +133,7 @@ def get_staticdirector(app_config):
 
     # Let plugins load additional paths
     for plugin_static in hook_runall("static_setup"):
-        direct_domains[plugin_static.name] = "%s/%s" % (
+        direct_domains[plugin_static.name] = "{}/{}".format(
             app_config['plugin_web_path'].rstrip('/'),
             plugin_static.name)
 

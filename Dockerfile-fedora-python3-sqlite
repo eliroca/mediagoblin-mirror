@@ -1,8 +1,14 @@
 # A Dockerfile for MediaGoblin hacking.
 #
-# See Dockerfile-debian-python3-sqlite for documentation.
+# IMPORTANT: This Dockerfile is not an officially supported approach to
+# deploying MediaGoblin. It is experimental and intended for helping developers
+# run the test suite. To deploy MediaGoblin, see:
+#
+# https://mediagoblin.readthedocs.io/en/master/siteadmin/deploying.html
+#
+# See Dockerfile-debian-python3-sqlite for details.
 
-FROM fedora:31
+FROM fedora:33
 
 RUN dnf -y install \
 automake \
@@ -27,31 +33,41 @@ python3-pillow \
 python3-py \
 python3-pytest \
 python3-pytest-xdist \
-python3-six \
 python3-snowballstemmer \
 python3-sphinx \
 # Not in Fedora
 # python3-sphinxcontrib.websupport \
 python3-webtest \
 # Fedora only
-which
+which \
+# To build waitress on Fedora 33 (not required for 31)
+libffi-devel
 
-# RUN dnf -y install \
-# gstreamer1.0-libav \
-# gstreamer1.0-plugins-bad \
-# gstreamer1.0-plugins-base \
-# gstreamer1.0-plugins-good \
-# gstreamer1.0-plugins-ugly \
-# python3-gst-1.0 \
+RUN dnf -y install \
+gstreamer1-plugins-base \
+gstreamer1-plugins-bad-free \
+gstreamer1-plugins-good \
+gstreamer1-plugins-ugly-free \
+python3-numpy
 
-# RUN apt-get install -y \
-# gir1.2-gst-plugins-base-1.0 \
-# gir1.2-gstreamer-1.0 \
-# gstreamer1.0-tools \
-# python3-gi
+RUN dnf search gst
+
+RUN dnf -y install \
+python3-gobject \
+python3-gstreamer1 \
+gstreamer1-plugin-openh264
 
 # RUN apt-get install -y \
 # poppler-utils
+
+# Install raw image dependencies.
+# TODO
+
+# Install LDAP depedencies.
+RUN dnf -y install python3-ldap
+
+# Install OpenID dependencies.
+RUN dnf -y install python3-openid
 
 RUN groupadd www-data
 RUN groupadd --system mediagoblin --gid 1024
@@ -67,19 +83,28 @@ RUN chown root:www-data /var/www
 USER www-data
 
 RUN git clone --depth=1 git://git.savannah.gnu.org/mediagoblin.git --branch master .
+RUN git show --oneline --no-patch
 
 RUN ./bootstrap.sh
 RUN VIRTUALENV_FLAGS='--system-site-packages' ./configure
 RUN make
 
-# RUN echo '[[mediagoblin.media_types.audio]]' >> mediagoblin.ini
-# RUN echo '[[mediagoblin.media_types.video]]' >> mediagoblin.ini
+RUN ./bin/python -m pytest -rs ./mediagoblin/tests --boxed
+
+RUN echo '[[mediagoblin.media_types.audio]]' >> mediagoblin.ini
+RUN echo '[[mediagoblin.media_types.video]]' >> mediagoblin.ini
 
 # Fedora only
 RUN ./bin/pip install certifi
 RUN ./bin/gmg dbupdate
 RUN ./bin/gmg adduser --username admin --password a --email admin@example.com
 RUN ./bin/gmg makeadmin admin
+
+# Without the following we get "ModuleNotFoundError: No module named
+# 'paste.script'" when running ./lazyserver.sh. Not sure why as PasteScript is
+# in the setup.py requirements. Before this we have Paste==3.4.0; after we have
+# Paste==3.5.0.
+RUN ./bin/pip install PasteScript --force-reinstall
 
 EXPOSE 6543/tcp
 

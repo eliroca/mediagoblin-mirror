@@ -14,10 +14,9 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import absolute_import, unicode_literals
 
 try:
-    import mock
+    from unittest import mock
 except ImportError:
     import unittest.mock as mock
 
@@ -27,7 +26,7 @@ from werkzeug.test import EnvironBuilder
 from mediagoblin.tools.request import decode_request
 from mediagoblin.tools.pagination import Pagination
 
-class TestDecodeRequest(object):
+class TestDecodeRequest:
     """Test the decode_request function."""
 
     def test_form_type(self):
@@ -67,7 +66,7 @@ class TestDecodeRequest(object):
         assert data['foo'] == 'bar'
 
 
-class TestPagination(object):
+class TestPagination:
     def _create_paginator(self, num_items, page, per_page):
         """Create a Paginator with a mock database cursor."""
         mock_cursor = mock.MagicMock()

@@ -17,7 +17,6 @@
 from collections import namedtuple
 import logging
 
-import six
 import lxml.etree as ET
 from werkzeug.exceptions import MethodNotAllowed, BadRequest
 
@@ -47,9 +46,9 @@ class PwgNamedArray(list):
 
 
 def _fill_element_dict(el, data, as_attr=()):
-    for k, v in six.iteritems(data):
+    for k, v in data.items():
         if k in as_attr:
-            if not isinstance(v, six.string_types):
+            if not isinstance(v, str):
                 v = str(v)
             el.set(k, v)
         else:
@@ -63,7 +62,7 @@ def _fill_element(el, data):
             el.text = "1"
         else:
             el.text = "0"
-    elif isinstance(data, six.string_types):
+    elif isinstance(data, str):
         el.text = data
     elif isinstance(data, int):
         el.text = str(data)
@@ -92,7 +91,7 @@ def response_xml(result):
                     mimetype='text/xml', status=status)
 
 
-class CmdTable(object):
+class CmdTable:
     _cmd_table = {}
 
     def __init__(self, cmd_name, only_post=False):
@@ -131,11 +130,11 @@ def check_form(form):
         raise BadRequest()
     dump = []
     for f in form:
-        dump.append("%s=%r" % (f.name, f.data))
+        dump.append("{}={!r}".format(f.name, f.data))
     _log.debug("form: %s", " ".join(dump))
 
 
-class PWGSession(object):
+class PWGSession:
     session_manager = None
 
     def __init__(self, request):

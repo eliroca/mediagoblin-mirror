@@ -90,18 +90,13 @@ as whatever GStreamer plugins you want, good/bad/ugly):
 
 .. code-block:: bash
 
-    # Debian and co.
+    # Debian
     sudo apt install python3-gst-1.0 gstreamer1.0-plugins-{base,bad,good,ugly} \
-    gstreamer1.0-libav
+    gstreamer1.0-libav python3-numpy
 
-    # Fedora and co.
-    sudo dnf install gstreamer1-plugins-{base,bad-free,good,ugly-free}
-
-.. note::
-
-   MediaGoblin previously generated spectrograms for uploaded audio. This
-   feature has been removed due to incompatibility with Python 3. We may
-   consider re-adding this feature in the future.
+    # Fedora
+    sudo dnf install gstreamer1-plugins-{base,bad-free,good,ugly-free} \
+    python3-numpy
 
 Add ``[[mediagoblin.media_types.audio]]`` under the ``[plugins]`` section in your
 ``mediagoblin.ini`` and update MediaGoblin::
@@ -110,6 +105,14 @@ Add ``[[mediagoblin.media_types.audio]]`` under the ``[plugins]`` section in you
 
 Restart MediaGoblin (and Celery if applicable). You should now be able to upload
 and listen to audio files!
+
+On production deployments, you will need to increase Nginx's
+``client_max_body_size`` to allow larger files to be uploaded, or you'll get a
+"413 Request Entity Too Large" error. See ":ref:`webserver-config`".
+
+Production deployments will also need a separate process to transcode media in
+the background. See ":ref:`systemd-service-files`" and
+":ref:`separate-celery`" sections of this manual.
 
 
 Video
@@ -121,10 +124,14 @@ good/bad/ugly):
 
 .. code-block:: bash
 
-    # Debian and co.
+    # Debian
     sudo apt install python3-gi gstreamer1.0-tools gir1.2-gstreamer-1.0 \
     gir1.2-gst-plugins-base-1.0 gstreamer1.0-plugins-{good,bad,ugly} \
     gstreamer1.0-libav python3-gst-1.0
+
+    # Fedora
+    sudo dnf install gstreamer1-plugins-{base,bad-free,good,ugly-free,openh264} \
+    python3-gobject python3-gstreamer1
 
 .. note::
 
@@ -141,23 +148,45 @@ Run::
 Restart MediaGoblin (and Celery if applicable). Now you should be able to submit
 videos, and MediaGoblin should transcode them.
 
-.. note::
+On production deployments, you will need to increase Nginx's
+``client_max_body_size`` to allow larger files to be uploaded, or you'll get a
+"413 Request Entity Too Large" error. See ":ref:`webserver-config`".
 
-   You will likely need to increase the ``client_max_body_size`` setting in
-   Nginx to upload larger videos.
-   
-   You almost certainly want to separate Celery from the normal
-   paste process or your users will probably find that their connections
-   time out as the video transcodes.  To set that up, check out the
-   ":doc:`production-deployments`" section of this manual.
+Production deployments will also need a separate process to transcode media in
+the background. To set that up, check out the ":doc:`deploying`" and
+":doc:`production-deployments`" sections of this manual.
 
+Configuring video
+-----------------
+
+``available_resolutions``
+  The list of resolutions that the video should be transcoded to, in the order
+  of transcoding. Choose among ``144p``, ``240p``, ``360p``, ``480p``, ``720p``
+  and ``1080p``. The default is ``480p,360p,720p``.
+
+``default_resolution``
+  This is the initial resolution used by the video player. The default is
+  ``480p``. For example::
+
+    [[mediagoblin.media_types.video]]
+    available_resolutions = 144p,240p
+    default_resolution = 144p
+    
 
 Raw image
 =========
 
-To enable raw image you need to install pyexiv2::
+MediaGoblin can extract and display the JPEG preview from RAW images.
 
-    # Debian and co.
+To enable raw image you need to install the Python library ``py3exiv2``. This
+library is not currently available for Debian 10 or 11 but can be installed from
+the Python Package Index after installing the build dependencies::
+
+    # Debian 10/11
+    sudo apt install libexiv2-dev libboost-python-devn
+    ./bin/pip install py3pyexiv2
+
+    # Debian 12 (currently not released)
     sudo apt install python3-pyexiv2
 
 Add ``[[mediagoblin.media_types.raw_image]]`` under the ``[plugins]``
@@ -165,10 +194,10 @@ section in your ``mediagoblin.ini`` and restart MediaGoblin.
 
 Run::
 
-    $ ./bin/gmg dbupdate
+    ./bin/gmg dbupdate
 
-Restart MediaGoblin (and Celery if applicable). Now you should be able to submit
-raw images, and MediaGoblin should extract the JPEG preview from them.
+Restart MediaGoblin (and Celery if applicable). You should now be able to submit
+raw images.
 
 
 ASCII art
@@ -236,8 +265,7 @@ support. This will result in a much smaller list of dependencies.
 
 pdf.js relies on git submodules, so be sure you have fetched them::
 
-    $ git submodule init
-    $ git submodule update
+    $ git submodule update --init
 
 This feature has been tested on Fedora with:
  poppler-utils-0.20.2-9.fc18.x86_64

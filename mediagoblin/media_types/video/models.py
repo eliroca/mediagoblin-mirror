@@ -86,7 +86,7 @@ class VideoData(Base):
             if video_codec == "vp8 video":
                 video_codec = "vp8"
 
-            return '%s; codecs="%s, %s"' % (
+            return '{}; codecs="{}, {}"'.format(
                 mimetype, video_codec, audio_codec)
         else:
             return video.VideoMediaManager.default_webm_type

@@ -19,8 +19,6 @@ import os
 import pkg_resources
 import shutil
 
-import six
-
 from paste.deploy import loadapp
 from webtest import TestApp
 
@@ -39,7 +37,7 @@ from mediagoblin.tools.crypto import random_string
 from datetime import datetime
 
 
-MEDIAGOBLIN_TEST_DB_NAME = u'__mediagoblin_tests__'
+MEDIAGOBLIN_TEST_DB_NAME = '__mediagoblin_tests__'
 TEST_SERVER_CONFIG = pkg_resources.resource_filename(
     'mediagoblin.tests', 'test_paste.ini')
 TEST_APP_CONFIG = pkg_resources.resource_filename(
@@ -147,20 +145,20 @@ def install_fixtures_simple(db, fixtures):
     """
     Very simply install fixtures in the database
     """
-    for collection_name, collection_fixtures in six.iteritems(fixtures):
+    for collection_name, collection_fixtures in fixtures.items():
         collection = db[collection_name]
         for fixture in collection_fixtures:
             collection.insert(fixture)
 
 
-def fixture_add_user(username=u'chris', password=u'toast',
+def fixture_add_user(username='chris', password='toast',
                      privileges=[], wants_comment_notification=True):
     # Reuse existing user or create a new one
     test_user = LocalUser.query.filter(LocalUser.username==username).first()
     if test_user is None:
         test_user = LocalUser()
     test_user.username = username
-    test_user.email = username + u'@example.com'
+    test_user.email = username + '@example.com'
     if password is not None:
         test_user.pw_hash = gen_password_hash(password)
     test_user.wants_comment_notification = wants_comment_notification
@@ -218,9 +216,9 @@ def fixture_add_comment_notification(entry, subject, user,
     return cn
 
 
-def fixture_media_entry(title=u"Some title", slug=None,
+def fixture_media_entry(title="Some title", slug=None,
                         uploader=None, save=True, gen_slug=True,
-                        state=u'unprocessed', fake_upload=True,
+                        state='unprocessed', fake_upload=True,
                         expunge=True):
     """
     Add a media entry for testing purposes.
@@ -237,14 +235,14 @@ def fixture_media_entry(title=u"Some title", slug=None,
     entry.title = title
     entry.slug = slug
     entry.actor = uploader
-    entry.media_type = u'image'
+    entry.media_type = 'image'
     entry.state = state
 
     if fake_upload:
         entry.media_files = {'thumb': ['a', 'b', 'c.jpg'],
                              'medium': ['d', 'e', 'f.png'],
                              'original': ['g', 'h', 'i.png']}
-        entry.media_type = u'mediagoblin.media_types.image'
+        entry.media_type = 'mediagoblin.media_types.image'
 
     if gen_slug:
         entry.generate_slug()
@@ -260,7 +258,7 @@ def fixture_media_entry(title=u"Some title", slug=None,
     return entry
 
 
-def fixture_add_collection(name=u"My first Collection", user=None,
+def fixture_add_collection(name="My first Collection", user=None,
                            collection_type=Collection.USER_DEFINED_TYPE):
     if user is None:
         user = fixture_add_user()
