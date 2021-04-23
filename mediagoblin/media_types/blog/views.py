@@ -19,12 +19,10 @@ _log = logging.getLogger(__name__)
 
 from datetime import datetime
 
-import six
-
 from werkzeug.exceptions import Forbidden
 from mediagoblin.tools import pluginapi
 
-from mediagoblin import mg_globals
+from mediagoblin import messages, mg_globals
 
 from mediagoblin.media_types.blog import forms as blog_forms
 from mediagoblin.media_types.blog.models import Blog, BlogPostData
@@ -32,7 +30,6 @@ from mediagoblin.media_types.blog.lib import (
         may_edit_blogpost, set_blogpost_state, get_all_blogposts_of_blog,
         get_blog_by_slug)
 
-from mediagoblin.messages import add_message, SUCCESS, ERROR
 from mediagoblin.decorators import (require_active_login, active_user_from_url,
                             get_media_entry_by_id, user_may_alter_collection,
                             get_user_collection, uses_pagination)
@@ -77,8 +74,8 @@ def blog_edit(request):
             if request.method=='POST' and form.validate():
                 _log.info("Here")
                 blog = request.db.Blog()
-                blog.title = six.text_type(form.title.data)
-                blog.description = six.text_type(cleaned_markdown_conversion((form.description.data)))
+                blog.title = str(form.title.data)
+                blog.description = str(cleaned_markdown_conversion(form.description.data))
                 blog.author = request.user.id
                 blog.generate_slug()
 
@@ -87,8 +84,10 @@ def blog_edit(request):
                         user=request.user.username
                        )
         else:
-            add_message(request, ERROR, "Welcome! You already have created \
-                                                        maximum number of blogs.")
+            messages.add_message(
+                request,
+                messages.ERROR,
+                "Welcome! You already have created maximum number of blogs.")
             return redirect(request, "mediagoblin.media_types.blog.blog_admin_dashboard",
                         user=request.user.username)
 
@@ -114,13 +113,16 @@ def blog_edit(request):
                      'app_config': mg_globals.app_config})
         else:
             if request.method == 'POST' and form.validate():
-                blog.title = six.text_type(form.title.data)
-                blog.description = six.text_type(cleaned_markdown_conversion((form.description.data)))
+                blog.title = str(form.title.data)
+                blog.description = str(cleaned_markdown_conversion(form.description.data))
                 blog.author = request.user.id
                 blog.generate_slug()
 
                 blog.save()
-                add_message(request, SUCCESS, "Your blog is updated.")
+                messages.add_message(
+                    request,
+                    messages.SUCCESS,
+                    "Your blog is updated.")
                 return redirect(request, "mediagoblin.media_types.blog.blog-dashboard",
                         user=request.user.username,
                         blog_slug=blog.slug)
@@ -139,10 +141,10 @@ def blogpost_create(request):
 
         blogpost = request.db.MediaEntry()
         blogpost.media_type = 'mediagoblin.media_types.blogpost'
-        blogpost.title = six.text_type(form.title.data)
-        blogpost.description = six.text_type(cleaned_markdown_conversion((form.description.data)))
+        blogpost.title = str(form.title.data)
+        blogpost.description = str(cleaned_markdown_conversion(form.description.data))
         blogpost.tags =  convert_to_tag_list_of_dicts(form.tags.data)
-        blogpost.license = six.text_type(form.license.data) or None
+        blogpost.license = str(form.license.data) or None
         blogpost.actor = request.user.id
         blogpost.generate_slug()
 
@@ -155,7 +157,10 @@ def blogpost_create(request):
         blog_post_data.media_entry = blogpost.id
         blog_post_data.save()
 
-        add_message(request, SUCCESS, _('Woohoo! Submitted!'))
+        messages.add_message(
+            request,
+            messages.SUCCESS,
+            _('Woohoo! Submitted!'))
         add_comment_subscription(request.user, blogpost)
         return redirect(request, "mediagoblin.media_types.blog.blog-dashboard",
                         user=request.user.username,
@@ -189,15 +194,18 @@ def blogpost_edit(request):
 
     form = blog_forms.BlogPostEditForm(request.form, **defaults)
     if request.method == 'POST' and form.validate():
-        blogpost.title = six.text_type(form.title.data)
-        blogpost.description = six.text_type(cleaned_markdown_conversion((form.description.data)))
+        blogpost.title = str(form.title.data)
+        blogpost.description = str(cleaned_markdown_conversion(form.description.data))
         blogpost.tags =  convert_to_tag_list_of_dicts(form.tags.data)
-        blogpost.license = six.text_type(form.license.data)
+        blogpost.license = str(form.license.data)
         set_blogpost_state(request, blogpost)
         blogpost.generate_slug()
         blogpost.save()
 
-        add_message(request, SUCCESS, _('Woohoo! edited blogpost is submitted'))
+        messages.add_message(
+            request,
+            messages.SUCCESS,
+            _('Woohoo! edited blogpost is submitted'))
         return redirect(request, "mediagoblin.media_types.blog.blog-dashboard",
                         user=request.user.username,
                         blog_slug=blog.slug)
@@ -223,7 +231,7 @@ def blog_dashboard(request, page, url_user=None):
     blogs = request.db.Blog.query.filter_by(author=url_user.id)
     config = pluginapi.get_config('mediagoblin.media_types.blog')
     max_blog_count = config['max_blog_count']
-    if request.user and (request.user.id == url_user.id or request.user.has_privilege(u'admin')):
+    if request.user and (request.user.id == url_user.id or request.user.has_privilege('admin')):
         if blog_slug:
             blog = get_blog_by_slug(request, blog_slug)
             if not blog:
@@ -266,7 +274,7 @@ def blog_post_listing(request, page, url_user=None):
     if not blog:
         return render_404(request)
 
-    all_blog_posts = blog.get_all_blog_posts(u'processed').order_by(MediaEntry.created.desc())
+    all_blog_posts = blog.get_all_blog_posts('processed').order_by(MediaEntry.created.desc())
     pagination = Pagination(page, all_blog_posts)
     pagination.per_page = 8
     blog_posts_on_a_page = pagination()
@@ -287,7 +295,7 @@ def draft_view(request):
     blog_post_slug = request.matchdict.get('blog_post_slug', None)
     user = request.matchdict.get('user')
     blog = get_blog_by_slug(request, blog_slug, author=request.user.id)
-    blogpost = request.db.MediaEntry.query.filter_by(state = u'failed', actor=request.user.id, slug=blog_post_slug).first()
+    blogpost = request.db.MediaEntry.query.filter_by(state = 'failed', actor=request.user.id, slug=blog_post_slug).first()
 
     if not blog or not blogpost:
         return render_404(request)
@@ -313,27 +321,32 @@ def blog_delete(request, **kwargs):
     blog_slug = request.matchdict.get('blog_slug', None)
     blog = get_blog_by_slug(request, blog_slug, author=owner_user.id)
     if not blog:
-        return render_404(reequest)
+        return render_404(request)
 
     form = blog_forms.ConfirmDeleteForm(request.form)
-    if request.user.id == blog.author or request.user.has_privilege(u'admin'):
+    if request.user.id == blog.author or request.user.has_privilege('admin'):
         if request.method == 'POST' and form.validate():
             if form.confirm.data is True:
                 blog.delete()
-                add_message(
-                request, SUCCESS, _('You deleted the Blog.'))
+                messages.add_message(
+                    request,
+                    messages.SUCCESS,
+                    _('You deleted the Blog.'))
                 return redirect(request, "mediagoblin.media_types.blog.blog_admin_dashboard",
                         user=request.user.username)
             else:
-                add_message(
-                request, ERROR,
-                _("The media was not deleted because you didn't check that you were sure."))
+                messages.add_message(
+                    request,
+                    messages.ERROR,
+                    _("The media was not deleted because you didn't check "
+                      "that you were sure."))
                 return redirect(request, "mediagoblin.media_types.blog.blog_admin_dashboard",
                         user=request.user.username)
         else:
-            if request.user.has_privilege(u'admin'):
-                add_message(
-                    request, WARNING,
+            if request.user.has_privilege('admin'):
+                messages.add_message(
+                    request,
+                    messages.WARNING,
                     _("You are about to delete another user's Blog. "
                       "Proceed with caution."))
             return render_to_response(
@@ -343,9 +356,10 @@ def blog_delete(request, **kwargs):
             'form':form
             })
     else:
-        add_message(
-        request, ERROR,
-        _("The blog was not deleted because you have no rights."))
+        messages.add_message(
+            request,
+            messages.ERROR,
+            _("The blog was not deleted because you have no rights."))
         return redirect(request, "mediagoblin.media_types.blog.blog_admin_dashboard",
         user=request.user.username)
 
@@ -360,13 +374,15 @@ def blog_about_view(request):
     user = request.db.LocalUser.query.filter(
         LocalUser.username==url_user
     ).first()
-    blog = get_blog_by_slug(request, blog_slug, author=user.id)
+
+    if user:
+        blog = get_blog_by_slug(request, blog_slug, author=user.id)
 
     if not user or not blog:
         return render_404(request)
 
     else:
-        blog_posts_processed = blog.get_all_blog_posts(u'processed').count()
+        blog_posts_processed = blog.get_all_blog_posts('processed').count()
         return render_to_response(
                 request,
                 'mediagoblin/blog/blog_about.html',

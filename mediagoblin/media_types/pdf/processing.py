@@ -169,7 +169,7 @@ def check_prerequisites():
     return True
 
 def sniff_handler(media_file, filename):
-    _log.info('Sniffing {0}'.format(MEDIA_TYPE))
+    _log.info('Sniffing {}'.format(MEDIA_TYPE))
     if not check_prerequisites():
         return None
 
@@ -185,7 +185,7 @@ def create_pdf_thumb(original, thumb_filename, width, height):
     executable = where('pdftocairo')
     args = [executable, '-scale-to', str(min(width, height)),
             '-singlefile', '-png', original, thumb_filename]
-    _log.debug('calling {0}'.format(repr(' '.join(args))))
+    _log.debug('calling {}'.format(repr(' '.join(args))))
     Popen(executable=executable, args=args).wait()
 
 def pdf_info(original):
@@ -303,7 +303,7 @@ class CommonPdfProcessor(MediaProcessor):
         args = [executable, '-scale-to', str(min(thumb_size)),
                 '-singlefile', '-png', self.pdf_filename, thumb_filename]
 
-        _log.debug('calling {0}'.format(repr(' '.join(args))))
+        _log.debug('calling {}'.format(repr(' '.join(args))))
         Popen(executable=executable, args=args).wait()
 
         # since pdftocairo added '.png', we need to include it with the
@@ -355,7 +355,7 @@ class CommonPdfProcessor(MediaProcessor):
         args = [executable, '-scale-to', str(min(size)),
                 '-singlefile', '-png', self.pdf_filename, filename]
 
-        _log.debug('calling {0}'.format(repr(' '.join(args))))
+        _log.debug('calling {}'.format(repr(' '.join(args))))
         Popen(executable=executable, args=args).wait()
 
         # since pdftocairo added '.png', we need to include it with the
@@ -467,6 +467,6 @@ class Resizer(CommonPdfProcessor):
 
 class PdfProcessingManager(ProcessingManager):
     def __init__(self):
-        super(PdfProcessingManager, self).__init__()
+        super().__init__()
         self.add_processor(InitialProcessor)
         self.add_processor(Resizer)

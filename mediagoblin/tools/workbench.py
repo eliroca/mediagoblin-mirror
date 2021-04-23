@@ -18,16 +18,11 @@ import os
 import shutil
 import tempfile
 
-import six
-
-from mediagoblin._compat import py2_unicode
-
 # Actual workbench stuff
 # ----------------------
 
 
-@py2_unicode
-class Workbench(object):
+class Workbench:
     """
     Represent the directory for the workbench
 
@@ -42,7 +37,7 @@ class Workbench(object):
         self.dir = dir
 
     def __str__(self):
-        return six.text_type(self.dir)
+        return str(self.dir)
 
     def __repr__(self):
         try:
@@ -137,7 +132,7 @@ class Workbench(object):
         self.destroy()
 
 
-class WorkbenchManager(object):
+class WorkbenchManager:
     """
     A system for generating and destroying workbenches.
 

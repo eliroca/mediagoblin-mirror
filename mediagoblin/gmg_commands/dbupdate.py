@@ -16,11 +16,12 @@
 
 import logging
 
-import six
+from alembic import command
 from sqlalchemy.orm import sessionmaker
 
 from mediagoblin.db.open import setup_connection_and_db_from_config
-from mediagoblin.db.migration_tools import MigrationManager, AlembicMigrationManager
+from mediagoblin.db.migration_tools import (
+    MigrationManager, build_alembic_config, populate_table_foundations)
 from mediagoblin.init import setup_global_and_app_config
 from mediagoblin.tools.common import import_component
 
@@ -34,16 +35,15 @@ def dbupdate_parse_setup(subparser):
     pass
 
 
-class DatabaseData(object):
-    def __init__(self, name, models, foundations, migrations):
+class DatabaseData:
+    def __init__(self, name, models, migrations):
         self.name = name
         self.models = models
-        self.foundations = foundations
         self.migrations = migrations
 
     def make_migration_manager(self, session):
         return MigrationManager(
-            self.name, self.models, self.foundations, self.migrations, session)
+            self.name, self.models, self.migrations, session)
 
 
 def gather_database_data(plugins):
@@ -60,60 +60,81 @@ def gather_database_data(plugins):
     # Add main first
     from mediagoblin.db.models import MODELS as MAIN_MODELS
     from mediagoblin.db.migrations import MIGRATIONS as MAIN_MIGRATIONS
-    from mediagoblin.db.models import FOUNDATIONS as MAIN_FOUNDATIONS
 
     managed_dbdata.append(
         DatabaseData(
-            u'__main__', MAIN_MODELS, MAIN_FOUNDATIONS, MAIN_MIGRATIONS))
+            '__main__', MAIN_MODELS, MAIN_MIGRATIONS))
 
     for plugin in plugins:
         try:
-            models = import_component('{0}.models:MODELS'.format(plugin))
+            models = import_component('{}.models:MODELS'.format(plugin))
         except ImportError as exc:
-            _log.debug('No models found for {0}: {1}'.format(
+            _log.debug('No models found for {}: {}'.format(
                 plugin,
                 exc))
 
             models = []
         except AttributeError as exc:
-            _log.warning('Could not find MODELS in {0}.models, have you '
-                         'forgotten to add it? ({1})'.format(plugin, exc))
+            _log.warning('Could not find MODELS in {}.models, have you '
+                         'forgotten to add it? ({})'.format(plugin, exc))
             models = []
 
         try:
-            migrations = import_component('{0}.migrations:MIGRATIONS'.format(
+            migrations = import_component('{}.migrations:MIGRATIONS'.format(
                 plugin))
         except ImportError as exc:
-            _log.debug('No migrations found for {0}: {1}'.format(
+            _log.debug('No migrations found for {}: {}'.format(
                 plugin,
                 exc))
 
             migrations = {}
         except AttributeError as exc:
-            _log.debug('Could not find MIGRATIONS in {0}.migrations, have you'
-                       'forgotten to add it? ({1})'.format(plugin, exc))
+            _log.debug('Could not find MIGRATIONS in {}.migrations, have you'
+                       'forgotten to add it? ({})'.format(plugin, exc))
             migrations = {}
-
-        try:
-            foundations = import_component(
-                '{0}.models:FOUNDATIONS'.format(plugin))
-        except ImportError as exc:
-            foundations = {}
-        except AttributeError as exc:
-            foundations = {}
 
         if models:
             managed_dbdata.append(
-                DatabaseData(plugin, models, foundations, migrations))
+                DatabaseData(plugin, models, migrations))
 
     return managed_dbdata
+
+
+def run_foundations(db, global_config):
+    """
+    Gather foundations data and run it.
+    """
+    from mediagoblin.db.models import FOUNDATIONS as MAIN_FOUNDATIONS
+    all_foundations = [("__main__", MAIN_FOUNDATIONS)]
+
+    Session = sessionmaker(bind=db.engine)
+    session = Session()
+
+    plugins = global_config.get('plugins', {})
+
+    for plugin in plugins:
+        try:
+            foundations = import_component(
+                '{}.models:FOUNDATIONS'.format(plugin))
+            all_foundations.append((plugin, foundations))
+        except ImportError as exc:
+            continue
+        except AttributeError as exc:
+            continue
+
+    for name, foundations in all_foundations:
+        populate_table_foundations(session, foundations, name)
 
 
 def run_alembic_migrations(db, app_config, global_config):
     """Initialize a database and runs all Alembic migrations."""
     Session = sessionmaker(bind=db.engine)
-    manager = AlembicMigrationManager(Session())
-    manager.init_or_migrate()
+    session = Session()
+    cfg = build_alembic_config(global_config, None, session)
+
+    res = command.upgrade(cfg, 'heads')
+    session.commit()
+    return res
 
 
 def run_dbupdate(app_config, global_config):
@@ -125,13 +146,29 @@ def run_dbupdate(app_config, global_config):
     """
     # Set up the database
     db = setup_connection_and_db_from_config(app_config, migrations=True)
-    # Run the migrations
-    # TODO: rename to run_legacy_migrations
-    run_all_migrations(db, app_config, global_config)
 
-    # TODO: Make this happen regardless of python 2 or 3 once ensured
-    # to be "safe"!
+    # Do we have migrations
+    should_run_sqam_migrations = db.engine.has_table("core__migrations") and \
+                                 sqam_migrations_to_run(db, app_config,
+                                                        global_config)
+
+    # Looks like a fresh database!
+    # (We set up this variable here because doing "run_all_migrations" below
+    # will change things.)
+    fresh_database = (
+        not db.engine.has_table("core__migrations") and
+        not db.engine.has_table("alembic_version"))
+
+    # Run the migrations
+    if should_run_sqam_migrations:
+        run_all_migrations(db, app_config, global_config)
+
     run_alembic_migrations(db, app_config, global_config)
+
+    # If this was our first time initializing the database,
+    # we must lay down the foundations
+    if fresh_database:
+        run_foundations(db, global_config)
 
 
 def run_all_migrations(db, app_config, global_config):
@@ -155,6 +192,42 @@ def run_all_migrations(db, app_config, global_config):
     for dbdata in dbdatas:
         migration_manager = dbdata.make_migration_manager(Session())
         migration_manager.init_or_migrate()
+
+
+def sqam_migrations_to_run(db, app_config, global_config):
+    """
+    Check whether any plugins have sqlalchemy-migrate migrations left to run.
+
+    This is a kludge so we can transition away from sqlalchemy-migrate
+    except where necessary.
+    """
+    # @@: This shares a lot of code with run_all_migrations, but both
+    # are legacy and will be removed at some point.
+
+    # Gather information from all media managers / projects
+    dbdatas = gather_database_data(
+        list(global_config.get('plugins', {}).keys()))
+
+    Session = sessionmaker(bind=db.engine)
+
+    # We can bail out early if it turns out that sqlalchemy-migrate
+    # was never installed with any migrations
+    from mediagoblin.db.models import MigrationData
+    if Session().query(MigrationData).filter_by(
+            name="__main__").first() is None:
+        return False
+
+    # Setup media managers for all dbdata, run init/migrate and print info
+    # For each component, create/migrate tables
+    for dbdata in dbdatas:
+        migration_manager = dbdata.make_migration_manager(Session())
+        if migration_manager.migrations_to_run():
+            # If *any* migration managers have migrations to run,
+            # we'll have to run them.
+            return True
+
+    # Otherwise, scot free!
+    return False
 
 
 def dbupdate(args):

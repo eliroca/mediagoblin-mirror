@@ -16,9 +16,7 @@
 
 import logging
 
-import six
-
-from six.moves.urllib.parse import urlparse
+from urllib.parse import urlparse
 from werkzeug.routing import Map, Rule
 
 from mediagoblin.tools.common import import_component
@@ -44,17 +42,17 @@ class MGRoute(Rule):
         if not (self.match_slash or path.endswith("/")):
             path = path + "/"
 
-        return super(MGRoute, self).match(path, *args, **kwargs)
+        return super().match(path, *args, **kwargs)
 
 
 def endpoint_to_controller(rule):
     endpoint = rule.endpoint
     view_func = rule.gmg_controller
 
-    _log.debug('endpoint: {0} view_func: {1}'.format(endpoint, view_func))
+    _log.debug('endpoint: {} view_func: {}'.format(endpoint, view_func))
 
     # import the endpoint, or if it's already a callable, call that
-    if isinstance(view_func, six.string_types):
+    if isinstance(view_func, str):
         view_func = import_component(view_func)
         rule.gmg_controller = view_func
 
@@ -73,7 +71,7 @@ def mount(mountpoint, routes):
     Mount a bunch of routes to this mountpoint
     """
     for endpoint, url, controller in routes:
-        url = "%s/%s" % (mountpoint.rstrip('/'), url.lstrip('/'))
+        url = "{}/{}".format(mountpoint.rstrip('/'), url.lstrip('/'))
         add_route(endpoint, url, controller)
 
 def extract_url_arguments(url, urlmap):

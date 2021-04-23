@@ -17,8 +17,6 @@
 import json
 import logging
 
-import six
-
 from werkzeug.exceptions import BadRequest
 from werkzeug.wrappers import Response
 
@@ -52,21 +50,18 @@ def post_entry(request):
         _log.debug('File field not found')
         raise BadRequest()
 
-    upload_limit, max_file_size = get_upload_file_limits(request.user)
-
     callback_url = request.form.get('callback_url')
     if callback_url:
-        callback_url = six.text_type(callback_url)
+        callback_url = str(callback_url)
     try:
         entry = submit_media(
             mg_app=request.app, user=request.user,
             submitted_file=request.files['file'],
             filename=request.files['file'].filename,
-            title=six.text_type(request.form.get('title')),
-            description=six.text_type(request.form.get('description')),
-            license=six.text_type(request.form.get('license', '')),
-            tags_string=six.text_type(request.form.get('tags', '')),
-            upload_limit=upload_limit, max_file_size=max_file_size,
+            title=str(request.form.get('title')),
+            description=str(request.form.get('description')),
+            license=str(request.form.get('license', '')),
+            tags_string=str(request.form.get('tags', '')),
             callback_url=callback_url)
 
         return json_response(get_entry_serializable(entry, request.urlgen))
@@ -74,7 +69,7 @@ def post_entry(request):
     # Handle upload limit issues
     except FileUploadLimit:
         raise BadRequest(
-            _(u'Sorry, the file size is too big.'))
+            _('Sorry, the file size is too big.'))
     except UserUploadLimit:
         raise BadRequest(
             _('Sorry, uploading this file will put you over your'
@@ -102,7 +97,7 @@ def get_entries(request):
     entries = request.db.MediaEntry.query
 
     # TODO: Make it possible to fetch unprocessed media, or media in-processing
-    entries = entries.filter_by(state=u'processed')
+    entries = entries.filter_by(state='processed')
 
     # TODO: Add sort order customization
     entries = entries.order_by(request.db.MediaEntry.created.desc())

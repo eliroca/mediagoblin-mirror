@@ -19,7 +19,7 @@ import pytest
 from mediagoblin import mg_globals
 
 
-class TestGlobals(object):
+class TestGlobals:
     def setup(self):
         self.old_database = mg_globals.database
 

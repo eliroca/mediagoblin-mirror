@@ -20,8 +20,8 @@ GNU MediaGoblin is a platform for sharing photos, video and other media
 in an environment that respects our freedom and independence.
 
 This is a Free Software project. It is built by contributors for all
-to use and enjoy. If you're intrested in contributing, see `the wiki
-<http://wiki.mediagoblin.org/>`_ which has pages that talk about the
+to use and enjoy. If you're interested in contributing, see `the wiki
+<https://web.archive.org/web/20200817190402/https://wiki.mediagoblin.org/>`_ which has pages that talk about the
 ways someone can contribute.
 
 
@@ -39,6 +39,7 @@ MediaGoblin website.  It is written for site administrators.
    siteadmin/deploying
    siteadmin/production-deployments
    siteadmin/configuration
+   siteadmin/upgrading
    siteadmin/media-types
    siteadmin/help
    siteadmin/relnotes
@@ -55,14 +56,15 @@ Part 2: Core plugin documentation
 .. toctree::
    :maxdepth: 1
 
-   plugindocs/flatpagesfile
-   plugindocs/sampleplugin
-   plugindocs/trim_whitespace
-   plugindocs/raven
    plugindocs/basic_auth
+   plugindocs/flatpagesfile
+   plugindocs/ldap
    plugindocs/openid
    plugindocs/persona
-   plugindocs/ldap
+   plugindocs/raven
+   plugindocs/sampleplugin
+   plugindocs/subtitles
+   plugindocs/trim_whitespace
 
 
 Part 3: Plugin Writer's Guide
@@ -93,6 +95,7 @@ This chapter contains various information for developers.
 
    devel/codebase
    devel/storage
+   devel/release
    devel/originaldesigndecisions
    devel/migrations
 

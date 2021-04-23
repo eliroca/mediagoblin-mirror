@@ -53,7 +53,7 @@ redirect_uri
 
 
 Response
-^^^^^^^^
+--------
 
 You will get back a response:
 
@@ -67,10 +67,10 @@ expires_at
     This is time that the client credentials expire. If this is 0 the client registration does not expire.
 
 Examples
---------
+~~~~~~~~
 
 Register Client
-^^^^^^^^^^^^^^^
+---------------
 
 To register a client for the first time, this is the minimum you must supply::
 
@@ -89,7 +89,7 @@ A Response will look like::
 
 
 Updating Client
-^^^^^^^^^^^^^^^
+---------------
 
 Using the response we got above we can update the information and add new information we may have opted not to supply::
 
@@ -113,7 +113,7 @@ The response will just return back the client_id and client_secret you sent::
 
 
 Possible Registration Errors
-----------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 There are a number of errors you could get back, This explains what could cause some of them:
 
@@ -144,7 +144,7 @@ Only set client_id for update.
 Only set client_secret for update.
     This should only be given when you update.
 
-Logo URL <url> is not a valid URL
+Logo URL <URL> is not a valid URL
     This is when the URL specified did not meet the validation.
 
 contacts must be a string of space-separated email addresses.
@@ -171,7 +171,7 @@ We are not using OAuth2 as we want to stay completely compatible with pump.io.
 Endpoints
 ---------
 
-These are the endpoints you need to use for the oauth requests:
+These are the endpoints you need to use for the OAuth requests:
 
 `/oauth/request_token` is for getting the request token.
 

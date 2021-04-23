@@ -71,6 +71,11 @@ def mark_notification_seen(notification):
 
 def mark_comment_notification_seen(comment_id, user):
     comment = Comment.query.get(comment_id)
+
+    # If there is no comment, there is no notification
+    if comment == None:
+        return
+
     comment_gmr = GenericModelReference.query.filter_by(
         obj_pk=comment.id,
         model_type=comment.__tablename__
@@ -85,7 +90,7 @@ def mark_comment_notification_seen(comment_id, user):
         object_id=comment_gmr.id
     ).first()
 
-    _log.debug(u'Marking {0} as seen.'.format(notification))
+    _log.debug('Marking {} as seen.'.format(notification))
 
     mark_notification_seen(notification)
 

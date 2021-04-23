@@ -14,10 +14,13 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import six
-
 from exifread import process_file
 from exifread.utils import Ratio
+
+try:
+    from PIL import Image
+except ImportError:
+    import Image
 
 from mediagoblin.processing import BadMediaFail
 from mediagoblin.tools.translate import pass_to_ugettext as _
@@ -61,12 +64,12 @@ def exif_fix_image_orientation(im, exif_tags):
     # Rotate image
     if 'Image Orientation' in exif_tags:
         rotation_map = {
-            3: 180,
-            6: 270,
-            8: 90}
+            3: Image.ROTATE_180,
+            6: Image.ROTATE_270,
+            8: Image.ROTATE_90}
         orientation = exif_tags['Image Orientation'].values[0]
         if orientation in rotation_map:
-            im = im.rotate(
+            im = im.transpose(
                 rotation_map[orientation])
 
     return im
@@ -79,7 +82,7 @@ def extract_exif(filename):
     try:
         with open(filename, 'rb') as image:
             return process_file(image, details=False)
-    except IOError:
+    except OSError:
         raise BadMediaFail(_('Could not read the image file.'))
 
 
@@ -95,8 +98,8 @@ def clean_exif(exif):
         'JPEGThumbnail',
         'Thumbnail JPEGInterchangeFormat']
 
-    return dict((key, _ifd_tag_to_dict(value)) for (key, value)
-            in six.iteritems(exif) if key not in disabled_tags)
+    return {key: _ifd_tag_to_dict(value) for (key, value)
+            in exif.items() if key not in disabled_tags}
 
 
 def _ifd_tag_to_dict(tag):
@@ -112,7 +115,7 @@ def _ifd_tag_to_dict(tag):
         'field_length': tag.field_length,
         'values': None}
 
-    if isinstance(tag.printable, six.binary_type):
+    if isinstance(tag.printable, bytes):
         # Force it to be decoded as UTF-8 so that it'll fit into the DB
         data['printable'] = tag.printable.decode('utf8', 'replace')
 
@@ -120,7 +123,7 @@ def _ifd_tag_to_dict(tag):
         data['values'] = [_ratio_to_list(val) if isinstance(val, Ratio) else val
                 for val in tag.values]
     else:
-        if isinstance(tag.values, six.binary_type):
+        if isinstance(tag.values, bytes):
             # Force UTF-8, so that it fits into the DB
             data['values'] = tag.values.decode('utf8', 'replace')
         else:
@@ -135,7 +138,7 @@ def _ratio_to_list(ratio):
 
 def get_useful(tags):
     from collections import OrderedDict
-    return OrderedDict((key, tag) for (key, tag) in six.iteritems(tags))
+    return OrderedDict((key, tag) for (key, tag) in tags.items())
 
 
 def get_gps_data(tags):
@@ -157,7 +160,7 @@ def get_gps_data(tags):
             'latitude': tags['GPS GPSLatitude'],
             'longitude': tags['GPS GPSLongitude']}
 
-        for key, dat in six.iteritems(dms_data):
+        for key, dat in dms_data.items():
             gps_data[key] = (
                 lambda v:
                     safe_gps_ratio_divide(v[0]) \
@@ -175,18 +178,14 @@ def get_gps_data(tags):
         pass
 
     try:
-        gps_data['direction'] = (
-            lambda d:
-                float(d.num) / float(d.den)
-            )(tags['GPS GPSImgDirection'].values[0])
+        direction = tags['GPS GPSImgDirection'].values[0]
+        gps_data['direction'] = safe_gps_ratio_divide(direction)
     except KeyError:
         pass
 
     try:
-        gps_data['altitude'] = (
-            lambda a:
-                float(a.num) / float(a.den)
-            )(tags['GPS GPSAltitude'].values[0])
+        altitude = tags['GPS GPSAltitude'].values[0]
+        gps_data['altitude'] = safe_gps_ratio_divide(altitude)
     except KeyError:
         pass
 

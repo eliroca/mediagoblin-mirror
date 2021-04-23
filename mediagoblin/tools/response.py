@@ -16,7 +16,6 @@
 
 import json
 
-import six
 import werkzeug.utils
 from werkzeug.wrappers import Response as wz_Response
 from mediagoblin.tools.template import render_template
@@ -27,7 +26,7 @@ from datetime import date
 
 class Response(wz_Response):
     """Set default response mimetype to HTML, otherwise we get text/plain"""
-    default_mimetype = u'text/html'
+    default_mimetype = 'text/html'
 
 
 def render_to_response(request, template, context, status=200, mimetype=None):
@@ -106,7 +105,7 @@ def render_http_exception(request, exc, description):
     elif stock_desc and exc.code == 404:
         return render_404(request)
 
-    return render_error(request, title='{0} {1}'.format(exc.code, exc.name),
+    return render_error(request, title='{} {}'.format(exc.code, exc.name),
                         err_msg=description,
                         status=exc.code)
 
@@ -154,7 +153,7 @@ def json_response(serializable, _disable_cors=False, *args, **kw):
                 'Access-Control-Allow-Origin': '*',
                 'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
                 'Access-Control-Allow-Headers': 'Content-Type, X-Requested-With'}
-        for key, value in six.iteritems(cors_headers):
+        for key, value in cors_headers.items():
             response.headers.set(key, value)
 
     return response

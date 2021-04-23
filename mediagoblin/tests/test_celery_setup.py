@@ -48,14 +48,12 @@ def test_setup_celery_from_config():
     assert isinstance(fake_celery_module.CELERYD_ETA_SCHEDULER_PRECISION, float)
     assert fake_celery_module.CELERY_RESULT_PERSISTENT is True
     assert fake_celery_module.CELERY_IMPORTS == [
-        'foo.bar.baz', 'this.is.an.import', 'mediagoblin.processing.task', \
-        'mediagoblin.notifications.task', 'mediagoblin.submit.task']
+        'foo.bar.baz', 'this.is.an.import', 'mediagoblin.processing.task',
+        'mediagoblin.notifications.task', 'mediagoblin.submit.task',
+        'mediagoblin.media_types.video.processing']
     assert fake_celery_module.CELERY_RESULT_BACKEND == 'database'
     assert fake_celery_module.CELERY_RESULT_DBURI == (
         'sqlite:///' +
         pkg_resources.resource_filename('mediagoblin.tests', 'celery.db'))
 
-    assert fake_celery_module.BROKER_TRANSPORT == 'sqlalchemy'
-    assert fake_celery_module.BROKER_URL == (
-        'sqlite:///' +
-        pkg_resources.resource_filename('mediagoblin.tests', 'kombu.db'))
+    assert fake_celery_module.BROKER_URL == 'amqp://'

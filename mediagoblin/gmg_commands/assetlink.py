@@ -85,7 +85,7 @@ def link_theme_assets(theme, link_dir, printer=simple_printer):
     os.symlink(
         theme['assets_dir'].rstrip(os.path.sep),
         link_dir)
-    printer("Linked the theme's asset directory:\n  %s\nto:\n  %s\n" % (
+    printer("Linked the theme's asset directory:\n  {}\nto:\n  {}\n".format(
         theme['assets_dir'], link_dir))
 
 
@@ -128,7 +128,7 @@ def link_plugin_assets(plugin_static, plugins_link_dir, printer=simple_printer):
     os.symlink(
         plugin_static.file_path.rstrip(os.path.sep),
         link_dir)
-    printer('Linked asset directory for plugin "%s":\n  %s\nto:\n  %s\n' % (
+    printer('Linked asset directory for plugin "{}":\n  {}\nto:\n  {}\n'.format(
         plugin_static.name,
         plugin_static.file_path.rstrip(os.path.sep),
         link_dir))

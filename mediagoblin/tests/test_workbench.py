@@ -24,7 +24,7 @@ from mediagoblin.decorators import get_workbench
 from mediagoblin.tests.test_storage import get_tmp_filestorage, cleanup_storage
 
 
-class TestWorkbench(object):
+class TestWorkbench:
     def setup(self):
         self.workbench_base = tempfile.mkdtemp(prefix='gmg_workbench_testing')
         self.workbench_manager = workbench.WorkbenchManager(

@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import six.moves.urllib.parse as urlparse
+import urllib.parse as urlparse
 
 from mediagoblin.db.models import User, LocalUser
 from mediagoblin.plugins.basic_auth import tools as auth_tools
@@ -68,13 +68,13 @@ def test_bcrypt_gen_password_hash():
 def test_change_password(test_app):
         """Test changing password correctly and incorrectly"""
         test_user = fixture_add_user(
-            password=u'toast',
-            privileges=[u'active'])
+            password='toast',
+            privileges=['active'])
 
         test_app.post(
             '/auth/login/', {
-                'username': u'chris',
-                'password': u'toast'})
+                'username': 'chris',
+                'password': 'toast'})
 
         # test that the password can be changed
         res = test_app.post(
@@ -88,7 +88,7 @@ def test_change_password(test_app):
         assert urlparse.urlsplit(res.location)[2] == '/edit/account/'
 
         # test_user has to be fetched again in order to have the current values
-        test_user = LocalUser.query.filter(LocalUser.username==u'chris').first()
+        test_user = LocalUser.query.filter(LocalUser.username=='chris').first()
         assert auth_tools.bcrypt_check_password('123456', test_user.pw_hash)
 
         # test that the password cannot be changed if the given
@@ -100,5 +100,5 @@ def test_change_password(test_app):
                 'new_password': '098765',
                 })
 
-        test_user = LocalUser.query.filter(LocalUser.username==u'chris').first()
+        test_user = LocalUser.query.filter(LocalUser.username=='chris').first()
         assert not auth_tools.bcrypt_check_password('098765', test_user.pw_hash)

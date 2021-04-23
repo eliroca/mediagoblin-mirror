@@ -16,8 +16,6 @@
 import base64
 import time
 
-import six
-
 from openid.association import Association as OIDAssociation
 from openid.store.interface import OpenIDStore
 from openid.store import nonce
@@ -36,12 +34,12 @@ class SQLAlchemyOpenIDStore(OpenIDStore):
 
         if not assoc:
             assoc = Association()
-            assoc.server_url = six.text_type(server_url)
+            assoc.server_url = str(server_url)
             assoc.handle = association.handle
 
         # django uses base64 encoding, python-openid uses a blob field for
         # secret
-        assoc.secret = six.text_type(base64.encodestring(association.secret))
+        assoc.secret = str(base64.encodestring(association.secret))
         assoc.issued = association.issued
         assoc.lifetime = association.lifetime
         assoc.assoc_type = association.assoc_type

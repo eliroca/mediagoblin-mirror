@@ -14,13 +14,13 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import print_function, unicode_literals
 
-import six
+from email.mime.text import MIMEText
+import socket
+import logging
 import smtplib
 import sys
 from mediagoblin import mg_globals, messages
-from mediagoblin._compat import MIMEText
 from mediagoblin.tools import common
 
 ### ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -54,7 +54,15 @@ EMAIL_TEST_INBOX = []
 EMAIL_TEST_MBOX_INBOX = []
 
 
-class FakeMhost(object):
+class MailError(Exception):
+    """ General exception for mail errors """
+
+
+class NoSMTPServerError(MailError):
+    pass
+
+
+class FakeMhost:
     """
     Just a fake mail host so we can capture and test messages
     from send_email
@@ -101,20 +109,34 @@ def send_email(from_addr, to_addrs, subject, message_body):
         else:
             smtp_init = smtplib.SMTP
 
-        mhost = smtp_init(
-            mg_globals.app_config['email_smtp_host'],
-            mg_globals.app_config['email_smtp_port'])
+        try:
+            mhost = smtp_init(
+                mg_globals.app_config['email_smtp_host'],
+                mg_globals.app_config['email_smtp_port'])
+        except OSError as original_error:
+            error_message = "Couldn't contact mail server on <{}>:<{}>".format(
+                mg_globals.app_config['email_smtp_host'],
+                mg_globals.app_config['email_smtp_port'])
+            logging.debug(original_error)
+            raise NoSMTPServerError(error_message)
 
         # SMTP.__init__ Issues SMTP.connect implicitly if host
         if not mg_globals.app_config['email_smtp_host']:  # e.g. host = ''
-            mhost.connect()  # We SMTP.connect explicitly
+            try:
+                mhost.connect()  # We SMTP.connect explicitly
+            except OSError as original_error:
+                error_message = "Couldn't contact mail server on <{}>:<{}>".format(
+                    mg_globals.app_config['email_smtp_host'],
+                    mg_globals.app_config['email_smtp_port'])
+                logging.debug(original_error)
+                raise NoSMTPServerError(error_message)
 
         try:
             mhost.starttls()
         except smtplib.SMTPException:
             # Only raise an exception if we're forced to
             if mg_globals.app_config['email_smtp_force_starttls']:
-                six.reraise(*sys.exc_info())
+                raise
 
     if ((not common.TESTS_ENABLED)
         and (mg_globals.app_config['email_smtp_user']
@@ -163,6 +185,8 @@ def email_debug_message(request):
     """
     if mg_globals.app_config['email_debug_mode']:
         # DEBUG message, no need to translate
-        messages.add_message(request, messages.DEBUG,
+        messages.add_message(
+            request,
+            messages.DEBUG,
             "This instance is running in email debug mode. "
             "The email will be on the console of the server process.")

@@ -14,10 +14,10 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import unicode_literals
 
 import logging
 import os
+import pkg_resources
 
 from alembic import command
 from alembic.config import Config
@@ -92,7 +92,7 @@ class MigrationManager(object):
     to the latest migrations, etc.
     """
 
-    def __init__(self, name, models, foundations, migration_registry, session,
+    def __init__(self, name, models, migration_registry, session,
                  printer=simple_printer):
         """
         Args:
@@ -103,7 +103,6 @@ class MigrationManager(object):
         """
         self.name = name
         self.models = models
-        self.foundations = foundations
         self.session = session
         self.migration_registry = migration_registry
         self._sorted_migrations = None
@@ -197,24 +196,12 @@ class MigrationManager(object):
             # Maybe in the future just print out a "Yikes!" or something?
             if model.__table__.exists(self.session.bind):
                 raise TableAlreadyExists(
-                    u"Intended to create table '%s' but it already exists" %
+                    "Intended to create table '%s' but it already exists" %
                     model.__table__.name)
 
         self.migration_model.metadata.create_all(
             self.session.bind,
             tables=[model.__table__ for model in self.models])
-
-    def populate_table_foundations(self):
-        """
-        Create the table foundations (default rows) as layed out in FOUNDATIONS
-            in mediagoblin.db.models
-        """
-        for Model, rows in self.foundations.items():
-            self.printer(u'   + Laying foundations for %s table\n' %
-                (Model.__name__))
-            for parameters in rows:
-                new_row = Model(**parameters)
-                self.session.add(new_row)
 
     def create_new_migration_record(self):
         """
@@ -232,26 +219,26 @@ class MigrationManager(object):
         """
         if self.database_current_migration is None:
             self.printer(
-                    u'~> Woulda initialized: %s\n' % self.name_for_printing())
-            return u'inited'
+                    '~> Woulda initialized: %s\n' % self.name_for_printing())
+            return 'inited'
 
         migrations_to_run = self.migrations_to_run()
         if migrations_to_run:
             self.printer(
-                u'~> Woulda updated %s:\n' % self.name_for_printing())
+                '~> Woulda updated %s:\n' % self.name_for_printing())
 
             for migration_number, migration_func in migrations_to_run():
                 self.printer(
-                    u'   + Would update %s, "%s"\n' % (
+                    '   + Would update {}, "{}"\n'.format(
                         migration_number, migration_func.func_name))
 
-            return u'migrated'
+            return 'migrated'
 
     def name_for_printing(self):
-        if self.name == u'__main__':
-            return u"main mediagoblin tables"
+        if self.name == '__main__':
+            return "main mediagoblin tables"
         else:
-            return u'plugin "%s"' % self.name
+            return 'plugin "%s"' % self.name
 
     def init_or_migrate(self):
         """
@@ -274,37 +261,36 @@ class MigrationManager(object):
         #  - print / inform the user
         #  - return 'inited'
         if migration_number is None:
-            self.printer(u"-> Initializing %s... " % self.name_for_printing())
+            self.printer("-> Initializing %s... " % self.name_for_printing())
 
             self.init_tables()
             # auto-set at latest migration number
             self.create_new_migration_record()
-            self.printer(u"done.\n")
-            self.populate_table_foundations()
+            self.printer("done.\n")
             self.set_current_migration()
-            return u'inited'
+            return 'inited'
 
         # Run migrations, if appropriate.
         migrations_to_run = self.migrations_to_run()
         if migrations_to_run:
             self.printer(
-                u'-> Updating %s:\n' % self.name_for_printing())
+                '-> Updating %s:\n' % self.name_for_printing())
             for migration_number, migration_func in migrations_to_run:
                 self.printer(
-                    u'   + Running migration %s, "%s"... ' % (
+                    '   + Running migration {}, "{}"... '.format(
                         migration_number, migration_func.__name__))
                 migration_func(self.session)
                 self.set_current_migration(migration_number)
                 self.printer('done.\n')
 
-            return u'migrated'
+            return 'migrated'
 
         # Otherwise return None.  Well it would do this anyway, but
         # for clarity... ;)
         return None
 
 
-class RegisterMigration(object):
+class RegisterMigration:
     """
     Tool for registering migrations
 
@@ -404,3 +390,52 @@ def model_iteration_hack(db, query):
     return db.execute(query)
 
 
+def populate_table_foundations(session, foundations, name,
+                               printer=simple_printer):
+    """
+    Create the table foundations (default rows) as layed out in FOUNDATIONS
+        in mediagoblin.db.models
+    """
+    printer('Laying foundations for %s:\n' % name)
+    for Model, rows in foundations.items():
+        printer('   + Laying foundations for %s table\n' %
+            (Model.__name__))
+        for parameters in rows:
+            new_row = Model(**parameters)
+            session.add(new_row)
+
+    session.commit()
+
+
+def build_alembic_config(global_config, cmd_options, session):
+    """
+    Build up a config that the alembic tooling can use based on our
+    configuration.  Initialize the database session appropriately
+    as well.
+    """
+    alembic_dir = os.path.join(os.path.dirname(__file__), 'migrations')
+    alembic_cfg_path = os.path.join(alembic_dir, 'alembic.ini')
+    cfg = Config(alembic_cfg_path,
+                 cmd_opts=cmd_options)
+    cfg.attributes["session"] = session
+
+    version_locations = [
+        pkg_resources.resource_filename(
+            "mediagoblin.db", os.path.join("migrations", "versions")),
+    ]
+
+    cfg.set_main_option("sqlalchemy.url", str(session.get_bind().url))
+
+    for plugin in global_config.get("plugins", []):
+        plugin_migrations = pkg_resources.resource_filename(
+            plugin, "migrations")
+        is_migrations_dir = (os.path.exists(plugin_migrations) and
+                             os.path.isdir(plugin_migrations))
+        if is_migrations_dir:
+            version_locations.append(plugin_migrations)
+
+    cfg.set_main_option(
+        "version_locations",
+        " ".join(version_locations))
+
+    return cfg

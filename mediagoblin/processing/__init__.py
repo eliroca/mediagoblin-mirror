@@ -24,8 +24,6 @@ except:
 import logging
 import os
 
-import six
-
 from mediagoblin import mg_globals as mgg
 from mediagoblin.db.util import atomic_update
 from mediagoblin.db.models import MediaEntry
@@ -35,24 +33,29 @@ from mediagoblin.tools.translate import lazy_pass_to_ugettext as _
 _log = logging.getLogger(__name__)
 
 
-class ProgressCallback(object):
+class ProgressCallback:
     def __init__(self, entry):
         self.entry = entry
 
-    def __call__(self, progress):
+    def __call__(self, progress, default_quality_progress=None):
         if progress:
-            self.entry.transcoding_progress = progress
+            if 100 - (self.entry.transcoding_progress + progress) < 0.01:
+                self.entry.transcoding_progress = 100
+            else:
+                self.entry.transcoding_progress += round(progress, 2)
+            if default_quality_progress:
+                self.entry.main_transcoding_progress = default_quality_progress
             self.entry.save()
 
 
 def create_pub_filepath(entry, filename):
     return mgg.public_store.get_unique_filepath(
             ['media_entries',
-             six.text_type(entry.id),
+             str(entry.id),
              filename])
 
 
-class FilenameBuilder(object):
+class FilenameBuilder:
     """Easily slice and dice filenames.
 
     Initialize this class with an original file path, then use the fill()
@@ -85,7 +88,7 @@ class FilenameBuilder(object):
 
 
 
-class MediaProcessor(object):
+class MediaProcessor:
     """A particular processor for this media type.
 
     While the ProcessingManager handles all types of MediaProcessing
@@ -187,7 +190,7 @@ class ProcessingManagerDoesNotExist(ProcessingKeyError): pass
 
 
 
-class ProcessingManager(object):
+class ProcessingManager:
     """Manages all the processing actions available for a media type
 
     Specific processing actions, MediaProcessor subclasses, are added
@@ -257,6 +260,12 @@ class ProcessingManager(object):
 
         return processor
 
+    def workflow(self, entry, feed_url, reprocess_action, reprocess_info=None):
+        """
+        Returns the Celery command needed to proceed with media processing
+        """
+        return None
+
 
 def request_from_args(args, which_args):
     """
@@ -279,7 +288,7 @@ def get_processing_manager_for_type(media_type):
     manager_class = hook_handle(('reprocess_manager', media_type))
     if not manager_class:
         raise ProcessingManagerDoesNotExist(
-            "A processing manager does not exist for {0}".format(media_type))
+            "A processing manager does not exist for {}".format(media_type))
     manager = manager_class()
 
     return manager
@@ -320,19 +329,19 @@ def mark_entry_failed(entry_id, exc):
         # metadata the user might have supplied.
         atomic_update(mgg.database.MediaEntry,
             {'id': entry_id},
-            {u'state': u'failed',
-             u'fail_error': six.text_type(exc.exception_path),
-             u'fail_metadata': exc.metadata})
+            {'state': 'failed',
+             'fail_error': str(exc.exception_path),
+             'fail_metadata': exc.metadata})
     else:
         _log.warn("No idea what happened here, but it failed: %r", exc)
         # Looks like no, let's record it so that admin could ask us about the
         # reason
         atomic_update(mgg.database.MediaEntry,
             {'id': entry_id},
-            {u'state': u'failed',
-             u'fail_error': u'Unhandled exception: {0}'.format(
-                 six.text_type(exc)),
-             u'fail_metadata': {}})
+            {'state': 'failed',
+             'fail_error': 'Unhandled exception: {}'.format(
+                 str(exc)),
+             'fail_metadata': {}})
 
 
 def get_process_filename(entry, workbench, acceptable_files):
@@ -380,7 +389,7 @@ def store_public(entry, keyname, local_file, target_name=None,
     try:
         mgg.public_store.copy_local_to_storage(local_file, target_filepath)
     except Exception as e:
-        _log.error(u'Exception happened: {0}'.format(e))
+        _log.error('Exception happened: {}'.format(e))
         raise PublicStoreFail(keyname=keyname)
     # raise an error if the file failed to copy
     if not mgg.public_store.file_exists(target_filepath):
@@ -389,7 +398,7 @@ def store_public(entry, keyname, local_file, target_name=None,
     entry.media_files[keyname] = target_filepath
 
 
-def copy_original(entry, orig_filename, target_name, keyname=u"original"):
+def copy_original(entry, orig_filename, target_name, keyname="original"):
     store_public(entry, keyname, orig_filename, target_name)
 
 
@@ -402,16 +411,16 @@ class BaseProcessingFail(Exception):
     and provide the exception_path and general_message applicable to
     this error.
     """
-    general_message = u''
+    general_message = ''
 
     @property
     def exception_path(self):
-        return u"%s:%s" % (
+        return "{}:{}".format(
             self.__class__.__module__, self.__class__.__name__)
 
     def __init__(self, message=None, **metadata):
         if message is not None:
-            super(BaseProcessingFail, self).__init__(message)
+            super().__init__(message)
             metadata['message'] = message
         self.metadata = metadata
 
@@ -420,7 +429,7 @@ class BadMediaFail(BaseProcessingFail):
     Error that should be raised when an inappropriate file was given
     for the media type specified.
     """
-    general_message = _(u'Invalid file given for media type.')
+    general_message = _('Invalid file given for media type.')
 
 
 class PublicStoreFail(BaseProcessingFail):
@@ -435,4 +444,4 @@ class ProcessFileNotFound(BaseProcessingFail):
     Error that should be raised when an acceptable file for processing
     is not found.
     """
-    general_message = _(u'An acceptable processing file was not found')
+    general_message = _('An acceptable processing file was not found')

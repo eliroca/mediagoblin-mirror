@@ -56,7 +56,7 @@ dnl # * x.y.dev  - dev
 dnl 
 dnl # see http://www.python.org/dev/peps/pep-0386/
 
-AC_INIT([mediagoblin], [0.8.2.dev], [cwebber@gnu.org])
+AC_INIT([mediagoblin], [0.12.0], [mediagoblin-devel@gnu.org])
 
 
 dnl----
@@ -79,26 +79,10 @@ dnl
 dnl In this section, we check for the presence of important commands
 dnl and programs.
 
-dnl--A bit simpler python init----------------------------------------
-dnl Expect python2.7 or python2.6 unless --with-python3 is given.
-dnl----
-
-
-AC_ARG_WITH([python3],
-	[AS_HELP_STRING([--with-python3], [Set up to use Python 3 by default.])],
-	[],
-	[with_python3=no])
-AS_IF([test "x$with_python3" != xno],
-        AC_CHECK_PROGS([PYTHON], [python3], [none])
-        AC_SUBST([USE_PYTHON3], [true])
-	AS_IF([test "x$PYTHON" = xnone],
-              [AC_MSG_FAILURE(
-		[--with-python3 given but no acceptable python3 could be found])]),
-      AC_CHECK_PROGS([PYTHON], [python2.7], [none])
-      AC_SUBST([USE_PYTHON3], [false])
-      AS_IF([test "x$PYTHON" = xnone],
-              [AC_MSG_FAILURE(
-		[No acceptable python (2.7) could be found])]))
+AC_CHECK_PROGS([PYTHON], [python3], [none])
+AS_IF([test "x$PYTHON" = xnone],
+	    [AC_MSG_FAILURE(
+		[No acceptable python3 could be found])])
 
 dnl----
 dnl With the following set of macros, we implement an option 

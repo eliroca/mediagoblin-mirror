@@ -14,15 +14,16 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import division, print_function
 
 import os
 import sys
 import logging
 import multiprocessing
 
+from mediagoblin import mg_globals as mgg
 from mediagoblin.media_types.tools import discover
 from mediagoblin.tools.translate import lazy_pass_to_ugettext as _
+from .util import ACCEPTED_RESOLUTIONS
 
 #os.environ['GST_DEBUG'] = '4,python:4'
 
@@ -31,9 +32,10 @@ sys.argv = []
 
 import gi
 gi.require_version('Gst', '1.0')
-from gi.repository import GObject, Gst
+from gi.repository import GLib, Gst
 Gst.init(None)
 # init before import to work around https://bugzilla.gnome.org/show_bug.cgi?id=736260
+gi.require_version('GstPbutils', '1.0')
 from gi.repository import GstPbutils
 
 sys.argv = old_argv
@@ -60,7 +62,7 @@ def capture_thumb(video_path, dest_path, width=None, height=None, percent=0.5):
         '''This is a callback to dynamically add element to pipeline'''
         caps = pad.query_caps(None)
         name = caps.to_string()
-        _log.debug('on_pad_added: {0}'.format(name))
+        _log.debug('on_pad_added: {}'.format(name))
         if name.startswith('video') and not connect_to.is_linked():
             pad.link(connect_to)
 
@@ -68,7 +70,7 @@ def capture_thumb(video_path, dest_path, width=None, height=None, percent=0.5):
     # ! CAPS ! appsink
     pipeline = Gst.Pipeline()
     uridecodebin = Gst.ElementFactory.make('uridecodebin', None)
-    uridecodebin.set_property('uri', 'file://{0}'.format(video_path))
+    uridecodebin.set_property('uri', 'file://{}'.format(video_path))
     videoconvert = Gst.ElementFactory.make('videoconvert', None)
     uridecodebin.connect('pad-added', pad_added,
                          videoconvert.get_static_pad('sink'))
@@ -102,7 +104,7 @@ def capture_thumb(video_path, dest_path, width=None, height=None, percent=0.5):
     # timeout of 3 seconds below was set experimentally
     state = pipeline.get_state(Gst.SECOND * 3)
     if state[0] != Gst.StateChangeReturn.SUCCESS:
-        _log.warning('state change failed, {0}'.format(state))
+        _log.warning('state change failed, {}'.format(state))
         return
 
     # get duration
@@ -112,7 +114,7 @@ def capture_thumb(video_path, dest_path, width=None, height=None, percent=0.5):
         return
 
     seek_to = int(duration * int(percent * 100) / 100)
-    _log.debug('Seeking to {0} of {1}'.format(
+    _log.debug('Seeking to {} of {}'.format(
             float(seek_to) / Gst.SECOND, float(duration) / Gst.SECOND))
     seek = pipeline.seek_simple(Gst.Format.TIME, Gst.SeekFlags.FLUSH, seek_to)
     if not seek:
@@ -137,13 +139,13 @@ def capture_thumb(video_path, dest_path, width=None, height=None, percent=0.5):
     im = Image.frombytes('RGB', (width, height),
                          buffer.extract_dup(0, buffer.get_size()))
     im.save(dest_path)
-    _log.info('thumbnail saved to {0}'.format(dest_path))
+    _log.info('thumbnail saved to {}'.format(dest_path))
 
     # cleanup
     pipeline.set_state(Gst.State.NULL)
 
 
-class VideoTranscoder(object):
+class VideoTranscoder:
     '''
     Video transcoder
 
@@ -153,10 +155,10 @@ class VideoTranscoder(object):
     '''
     def __init__(self):
         _log.info('Initializing VideoTranscoder...')
-        self.progress_percentage = None
-        self.loop = GObject.MainLoop()
+        self.progress_percentage = 0
+        self.loop = GLib.MainLoop()
 
-    def transcode(self, src, dst, **kwargs):
+    def transcode(self, src, dst, default_res, num_res, **kwargs):
         '''
         Transcode a video file into a 'medium'-sized version.
         '''
@@ -183,6 +185,10 @@ class VideoTranscoder(object):
         self.vorbis_quality = kwargs.get('vorbis_quality', 0.3)
 
         self._progress_callback = kwargs.get('progress_callback') or None
+
+        # Get number of resolutions available for the video
+        self.num_of_resolutions = num_res
+        self.default_resolution = default_res
 
         if not type(self.destination_dimensions) == tuple:
             raise Exception('dimensions must be tuple: (width, height)')
@@ -354,12 +360,21 @@ class VideoTranscoder(object):
                 # Update progress state if it has changed
                 (success, percent) = structure.get_int('percent')
                 if self.progress_percentage != percent and success:
+                    # FIXME: the code below is a workaround for structure.get_int('percent')
+                    # returning 0 when the transcoding gets over (100%)
+                    if self.progress_percentage > percent and percent == 0:
+                        percent = 100
+                    percent_increment = percent - self.progress_percentage
                     self.progress_percentage = percent
                     if self._progress_callback:
-                        self._progress_callback(percent)
-                    _log.info('{percent}% done...'.format(percent=percent))
+                        if ACCEPTED_RESOLUTIONS[self.default_resolution] == self.destination_dimensions:
+                            self._progress_callback(percent_increment/self.num_of_resolutions, percent)
+                        else:
+                            self._progress_callback(percent_increment/self.num_of_resolutions)
+                    _log.info('{percent}% of {dest} resolution done..'
+                              '.'.format(percent=percent, dest=self.destination_dimensions))
         elif message.type == Gst.MessageType.ERROR:
-            _log.error('Got error: {0}'.format(message.parse_error()))
+            _log.error('Got error: {}'.format(message.parse_error()))
             self.dst_data = None
             self.__stop()
 
@@ -371,11 +386,11 @@ class VideoTranscoder(object):
             self.pipeline.set_state(Gst.State.NULL)
 
         # This kills the loop, mercifully
-        GObject.idle_add(self.__stop_mainloop)
+        GLib.idle_add(self.__stop_mainloop)
 
     def __stop_mainloop(self):
         '''
-        Wrapper for GObject.MainLoop.quit()
+        Wrapper for GLib.MainLoop.quit()
 
         This wrapper makes us able to see if self.loop.quit has been called
         '''

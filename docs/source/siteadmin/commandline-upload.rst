@@ -11,9 +11,9 @@
    Dedication along with this software. If not, see
    <http://creativecommons.org/publicdomain/zero/1.0/>.
 
-======================
-Command-line uploading
-======================
+================================
+Command-line and batch uploading
+================================
 
 If you're a site administrator and have access to the server then you
 can use the 'addmedia' task. If you're just a user and want to upload
@@ -37,6 +37,7 @@ Here's a longer example that makes use of more options::
   ./bin/gmg addmedia aveyah awesome_spaceship.png \
       --title "My awesome spaceship" \
       --description "Flying my awesome spaceship, since I'm an awesome pilot" \
+      --collection-slug i-m-an-awesome-pilot \
       --license "http://creativecommons.org/licenses/by-sa/3.0/" \
       --tags "spaceships, pilots, awesome" \
       --slug "awesome-spaceship"
@@ -45,9 +46,8 @@ You can also pass in the `--celery` option if you would prefer that
 your media be passed over to celery to be processed rather than be
 processed immediately.
 
-============================
-Command-line batch uploading
-============================
+Batch uploading
+===============
 
 There's another way to submit media, and it can be much more powerful, although
 it is a bit more complex.
@@ -57,7 +57,7 @@ it is a bit more complex.
 This is an example of what a script may look like. The important part here is
 that you have to create the 'metadata.csv' file.::
 
-  media:location,dcterms:title,dcterms:creator,dcterms:type
+  location,dc:title,dc:creator,dc:type
   "http://www.example.net/path/to/nap.png","Goblin taking a nap",,"Image"
   "http://www.example.net/path/to/snore.ogg","Goblin Snoring","Me","Audio"
 
@@ -65,14 +65,14 @@ The above is an example of a very simple metadata.csv file. The batchaddmedia
 script would read this and attempt to upload only two pieces of media, and would
 be able to automatically name them appropriately.
 
-The csv file
+The CSV file
 ============
 The location column
 -------------------
 The location column is the one column that is absolutely necessary for
 uploading your media. This gives a path to each piece of media you upload. This
 can either a path to a local file or a direct link to remote media (with the
-link in http format). As you can see in the example above the (fake) media was
+link in HTTP format). As you can see in the example above the (fake) media was
 stored remotely on "www.example.net".
 
 Other internal nodes
@@ -83,9 +83,10 @@ provide default information for your media entry, but as you'll see below, it's
 just as easy to provide this information through the correct metadata columns.
 
 - **id** is used to identify the media entry to the user in case of an error in the batchaddmedia script.
-- **license** is used to set a license for your piece a media for mediagoblin's use. This must be a URI.
-- **title** will set the title displayed to mediagoblin users.
+- **license** is used to set a license for your piece a media for MediaGoblin's use. This must be a URI.
+- **title** will set the title displayed to MediaGoblin users.
 - **description** will set a description of your media.
+- **collection-slug** will add the media to a collection, if a collection with the given slug exists.
 
 Metadata columns
 ----------------
@@ -106,7 +107,7 @@ information of uploaded media entries.
 - **dc:title** sets a title for your media entry.
 - **dc:description** sets a description of your media entry.
 
-If both a metadata column and an internal node for the title are provided, mediagoblin
+If both a metadata column and an internal node for the title are provided, MediaGoblin
 will use the internal node as the media entry's display name. This makes it so
 that if you want to display a piece of media with a different title
 than the one provided in its metadata, you can just provide different data for

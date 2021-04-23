@@ -79,12 +79,12 @@ def change_metadata_format(db):
                 'videolength': 'length',
                 }
 
-        new_metadata['video'] = [dict((v, metadata.get(k))
-                for k, v in video_key_map.items() if metadata.get(k))]
-        new_metadata['audio'] = [dict((v, metadata.get(k))
-                for k, v in audio_key_map.items() if metadata.get(k))]
-        new_metadata['common'] = dict((v, metadata.get(k))
-                for k, v in common_key_map.items() if metadata.get(k))
+        new_metadata['video'] = [{v: metadata.get(k)
+                for k, v in video_key_map.items() if metadata.get(k)}]
+        new_metadata['audio'] = [{v: metadata.get(k)
+                for k, v in audio_key_map.items() if metadata.get(k)}]
+        new_metadata['common'] = {v: metadata.get(k)
+                for k, v in common_key_map.items() if metadata.get(k)}
 
         # 'mimetype' should be in tags
         new_metadata['common']['tags'] = {'mimetype': metadata.get('mimetype')}

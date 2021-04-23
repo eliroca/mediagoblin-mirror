@@ -16,13 +16,12 @@
 
 import pkg_resources
 import pytest
-import six
 try:
-    import mock
+    from unittest import mock
 except ImportError:
     import unittest.mock as mock
 
-import six.moves.urllib.parse as urlparse
+import urllib.parse as urlparse
 
 pytest.importorskip("requests")
 
@@ -43,7 +42,7 @@ def persona_plugin_app(request):
             'persona_appconfig.ini'))
 
 
-class TestPersonaPlugin(object):
+class TestPersonaPlugin:
     def test_authentication_views(self, persona_plugin_app):
         res = persona_plugin_app.get('/auth/login/')
 
@@ -61,7 +60,7 @@ class TestPersonaPlugin(object):
 
         assert urlparse.urlsplit(res.location)[2] == '/auth/login/'
 
-        @mock.patch('mediagoblin.plugins.persona.views._get_response', mock.Mock(return_value=u'test@example.com'))
+        @mock.patch('mediagoblin.plugins.persona.views._get_response', mock.Mock(return_value='test@example.com'))
         def _test_registration():
             # No register users
             template.clear_test_template_context()
@@ -72,8 +71,8 @@ class TestPersonaPlugin(object):
             context = template.TEMPLATE_TEST_CONTEXT['mediagoblin/auth/register.html']
             register_form = context['register_form']
 
-            assert register_form.email.data == u'test@example.com'
-            assert register_form.persona_email.data == u'test@example.com'
+            assert register_form.email.data == 'test@example.com'
+            assert register_form.persona_email.data == 'test@example.com'
 
             template.clear_test_template_context()
             res = persona_plugin_app.post(
@@ -83,9 +82,9 @@ class TestPersonaPlugin(object):
             context = template.TEMPLATE_TEST_CONTEXT['mediagoblin/auth/register.html']
             register_form = context['register_form']
 
-            assert register_form.username.errors == [u'This field is required.']
-            assert register_form.email.errors == [u'This field is required.']
-            assert register_form.persona_email.errors == [u'This field is required.']
+            assert register_form.username.errors == ['This field is required.']
+            assert register_form.email.errors == ['This field is required.']
+            assert register_form.persona_email.errors == ['This field is required.']
 
             # Successful register
             template.clear_test_template_context()
@@ -111,21 +110,21 @@ class TestPersonaPlugin(object):
             context = template.TEMPLATE_TEST_CONTEXT['mediagoblin/auth/register.html']
             register_form = context['register_form']
 
-            assert register_form.persona_email.errors == [u'Sorry, an account is already registered to that Persona email.']
+            assert register_form.persona_email.errors == ['Sorry, an account is already registered to that Persona email.']
 
             # Logout
             persona_plugin_app.get('/auth/logout/')
 
             # Get user and detach from session
             test_user = mg_globals.database.LocalUser.query.filter(
-                LocalUser.username==u'chris'
+                LocalUser.username=='chris'
             ).first()
             active_privilege = Privilege.query.filter(
-                Privilege.privilege_name==u'active').first()
+                Privilege.privilege_name=='active').first()
             test_user.all_privileges.append(active_privilege)
             test_user.save()
             test_user = mg_globals.database.LocalUser.query.filter(
-                LocalUser.username==u'chris'
+                LocalUser.username=='chris'
             ).first()
             Session.expunge(test_user)
 
@@ -148,11 +147,11 @@ class TestPersonaPlugin(object):
             # Make sure user is in the session
             context = template.TEMPLATE_TEST_CONTEXT['mediagoblin/root.html']
             session = context['request'].session
-            assert session['user_id'] == six.text_type(test_user.id)
+            assert session['user_id'] == str(test_user.id)
 
         _test_registration()
 
-        @mock.patch('mediagoblin.plugins.persona.views._get_response', mock.Mock(return_value=u'new@example.com'))
+        @mock.patch('mediagoblin.plugins.persona.views._get_response', mock.Mock(return_value='new@example.com'))
         def _test_edit_persona():
             # Try and delete only Persona email address
             template.clear_test_template_context()
@@ -164,7 +163,7 @@ class TestPersonaPlugin(object):
             context = template.TEMPLATE_TEST_CONTEXT['mediagoblin/plugins/persona/edit.html']
             form = context['form']
 
-            assert form.email.errors == [u"You can't delete your only Persona email address unless you have a password set."]
+            assert form.email.errors == ["You can't delete your only Persona email address unless you have a password set."]
 
             template.clear_test_template_context()
             res = persona_plugin_app.post(
@@ -174,7 +173,7 @@ class TestPersonaPlugin(object):
             context = template.TEMPLATE_TEST_CONTEXT['mediagoblin/plugins/persona/edit.html']
             form = context['form']
 
-            assert form.email.errors == [u'This field is required.']
+            assert form.email.errors == ['This field is required.']
 
             # Try and delete Persona not owned by the user
             template.clear_test_template_context()
@@ -186,7 +185,7 @@ class TestPersonaPlugin(object):
             context = template.TEMPLATE_TEST_CONTEXT['mediagoblin/plugins/persona/edit.html']
             form = context['form']
 
-            assert form.email.errors == [u'That Persona email address is not registered to this account.']
+            assert form.email.errors == ['That Persona email address is not registered to this account.']
 
             res = persona_plugin_app.get('/edit/persona/add/')
 
@@ -210,7 +209,7 @@ class TestPersonaPlugin(object):
 
         _test_edit_persona()
 
-        @mock.patch('mediagoblin.plugins.persona.views._get_response', mock.Mock(return_value=u'test1@example.com'))
+        @mock.patch('mediagoblin.plugins.persona.views._get_response', mock.Mock(return_value='test1@example.com'))
         def _test_add_existing():
             template.clear_test_template_context()
             res = persona_plugin_app.post(

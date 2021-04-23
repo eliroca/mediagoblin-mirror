@@ -18,7 +18,6 @@ from __future__ import absolute_import
 import dialback
 import datetime
 import urllib
-import six
 
 from oauthlib.oauth1.rfc5849.utils import UNICODE_ASCII_CHARACTER_SET
 from oauthlib.oauth1 import (RequestTokenEndpoint, AuthorizationEndpoint,
@@ -69,7 +68,7 @@ def client_register(request):
     else:
         dialback_request = None
 
-    if data is "":
+    if data == "":
         error = "Unknown Content-Type"
         return json_response({"error": error}, status=400)
 
@@ -147,7 +146,7 @@ def client_register(request):
 
     logo_uri = data.get("logo_uri", client.logo_url)
     if logo_uri is not None and not validate_url(logo_uri):
-        error = "Logo URI {0} is not a valid URI.".format(logo_uri)
+        error = "Logo URI {} is not a valid URI.".format(logo_uri)
         return json_response(
                 {"error": error},
                 status=400
@@ -159,7 +158,7 @@ def client_register(request):
 
     contacts = data.get("contacts", None)
     if contacts is not None:
-        if not isinstance(contacts, six.text_type):
+        if not isinstance(contacts, str):
             error = "Contacts must be a string of space-seporated email addresses."
             return json_response({"error": error}, status=400)
 
@@ -167,7 +166,7 @@ def client_register(request):
         for contact in contacts:
             if not validate_email(contact):
                 # not a valid email
-                error = "Email {0} is not a valid email.".format(contact)
+                error = "Email {} is not a valid email.".format(contact)
                 return json_response({"error": error}, status=400)
 
 
@@ -175,7 +174,7 @@ def client_register(request):
 
     redirect_uris = data.get("redirect_uris", None)
     if redirect_uris is not None:
-        if not isinstance(redirect_uris, six.text_type):
+        if not isinstance(redirect_uris, str):
             error = "redirect_uris must be space-seporated URLs."
             return json_response({"error": error}, status=400)
 
@@ -184,7 +183,7 @@ def client_register(request):
         for uri in redirect_uris:
             if not validate_url(uri):
                 # not a valid uri
-                error = "URI {0} is not a valid URI".format(uri)
+                error = "URI {} is not a valid URI".format(uri)
                 return json_response({"error": error}, status=400)
 
         client.redirect_uri = redirect_uris
@@ -232,12 +231,12 @@ def request_token(request):
 
     authorization = decode_authorization_header(data)
 
-    if authorization == dict() or u"oauth_consumer_key" not in authorization:
+    if authorization == dict() or "oauth_consumer_key" not in authorization:
         error = "Missing required parameter."
         return json_response({"error": error}, status=400)
 
     # check the client_id
-    client_id = authorization[u"oauth_consumer_key"]
+    client_id = authorization["oauth_consumer_key"]
     client = Client.query.filter_by(id=client_id).first()
 
     if client == None:
@@ -251,8 +250,8 @@ def request_token(request):
     tokens = rv.create_request_token(request, authorization)
 
     # store the nonce & timestamp before we return back
-    nonce = authorization[u"oauth_nonce"]
-    timestamp = authorization[u"oauth_timestamp"]
+    nonce = authorization["oauth_nonce"]
+    timestamp = authorization["oauth_timestamp"]
     timestamp = datetime.datetime.fromtimestamp(float(timestamp))
 
     nc = NonceTimestamp(nonce=nonce, timestamp=timestamp)
@@ -343,7 +342,7 @@ def authorize_finish(request):
                 )
 
     # okay we need to redirect them then!
-    querystring = "?oauth_token={0}&oauth_verifier={1}".format(
+    querystring = "?oauth_token={}&oauth_verifier={}".format(
             oauth_request.token,
             oauth_request.verifier
             )

@@ -14,12 +14,11 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import print_function
 
 from paste.deploy import loadapp, loadserver
 
 
-class ServeCommand(object):
+class ServeCommand:
 
     def loadserver(self, server_spec, name, relative_to, **kwargs):
         return loadserver(server_spec, name=name, relative_to=relative_to,

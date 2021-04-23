@@ -34,8 +34,8 @@ def test_404_for_non_existent(test_app):
 
 
 def test_user_deletes_other_comments(test_app):
-    user_a = fixture_add_user(u"chris_a")
-    user_b = fixture_add_user(u"chris_b")
+    user_a = fixture_add_user("chris_a")
+    user_b = fixture_add_user("chris_b")
 
     media_a = fixture_media_entry(uploader=user_a.id, save=False,
                                   expunge=False, fake_upload=False)
@@ -50,7 +50,7 @@ def test_user_deletes_other_comments(test_app):
         for m in (media_a, media_b):
             cmt = TextComment()
             cmt.actor = u.id
-            cmt.content = u"Some Comment"
+            cmt.content = "Some Comment"
             Session.add(cmt)
             # think i need this to get the command ID
             Session.flush()
@@ -94,12 +94,12 @@ def test_user_deletes_other_comments(test_app):
 
 
 def test_media_deletes_broken_attachment(test_app):
-    user_a = fixture_add_user(u"chris_a")
+    user_a = fixture_add_user("chris_a")
 
     media = fixture_media_entry(uploader=user_a.id, save=False, expunge=False)
     media.attachment_files.append(dict(
-            name=u"some name",
-            filepath=[u"does", u"not", u"exist"],
+            name="some name",
+            filepath=["does", "not", "exist"],
             ))
     Session.add(media)
     Session.flush()
@@ -151,7 +151,7 @@ def test_comments_removed_when_graveyarded(test_app):
     # Add the TextComment
     comment = TextComment()
     comment.actor = user.id
-    comment.content = u"This is a comment that will be deleted."
+    comment.content = "This is a comment that will be deleted."
     comment.save()
 
     # Add a link for the comment

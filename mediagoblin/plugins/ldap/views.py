@@ -14,8 +14,6 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import six
-
 from mediagoblin import mg_globals, messages
 from mediagoblin.auth.tools import register_user
 from mediagoblin.db.models import User, LocalUser
@@ -44,7 +42,7 @@ def login(request):
 
             if user:
                 # set up login in session
-                request.session['user_id'] = six.text_type(user.id)
+                request.session['user_id'] = str(user.id)
                 request.session.save()
 
                 if request.form.get('next'):

@@ -16,7 +16,7 @@
 
 import logging
 
-from six.moves.urllib import request, parse
+from urllib import request, parse
 
 import celery
 from celery.registry import tasks
@@ -38,7 +38,7 @@ def handle_push_urls(feed_url):
     Retry 3 times every 2 minutes if run in separate process before failing."""
     if not mgg.app_config["push_urls"]:
         return # Nothing to do
-    _log.debug('Notifying Push servers for feed {0}'.format(feed_url))
+    _log.debug('Notifying Push servers for feed {}'.format(feed_url))
     hubparameters = {
         'hub.mode': 'publish',
         'hub.url': feed_url}
@@ -57,7 +57,7 @@ def handle_push_urls(feed_url):
                 return handle_push_urls.retry(exc=exc, throw=False)
             except Exception as e:
                 # All retries failed, Failure is no tragedy here, probably.
-                _log.warn('Failed to notify PuSH server for feed {0}. '
+                _log.warn('Failed to notify PuSH server for feed {}. '
                           'Giving up.'.format(feed_url))
                 return False
 
@@ -69,6 +69,9 @@ class ProcessMedia(celery.Task):
     """
     Pass this entry off for processing.
     """
+
+    name = 'process_media'
+
     def run(self, media_id, feed_url, reprocess_action, reprocess_info=None):
         """
         Pass the media entry off to the appropriate processing function
@@ -92,18 +95,18 @@ class ProcessMedia(celery.Task):
             with processor_class(manager, entry) as processor:
                 # Initial state change has to be here because
                 # the entry.state gets recorded on processor_class init
-                entry.state = u'processing'
+                entry.state = 'processing'
                 entry.save()
 
-                _log.debug('Processing {0}'.format(entry))
+                _log.debug('Processing {}'.format(entry))
 
                 try:
                     processor.process(**reprocess_info)
                 except Exception as exc:
                     if processor.entry_orig_state == 'processed':
                         _log.error(
-                            'Entry {0} failed to process due to the following'
-                            ' error: {1}'.format(entry.id, exc))
+                            'Entry {} failed to process due to the following'
+                            ' error: {}'.format(entry.id, exc))
                         _log.info(
                             'Setting entry.state back to "processed"')
                         pass
@@ -112,7 +115,7 @@ class ProcessMedia(celery.Task):
 
             # We set the state to processed and save the entry here so there's
             # no need to save at the end of the processing stage, probably ;)
-            entry.state = u'processed'
+            entry.state = 'processed'
             entry.save()
 
             # Notify the PuSH servers as async task
@@ -127,7 +130,7 @@ class ProcessMedia(celery.Task):
 
         except ImportError as exc:
             _log.error(
-                'Entry {0} failed to process due to an import error: {1}'\
+                'Entry {} failed to process due to an import error: {}'\
                     .format(
                     entry.title,
                     exc))
@@ -137,7 +140,7 @@ class ProcessMedia(celery.Task):
 
         except Exception as exc:
             _log.error('An unhandled exception was raised while'
-                    + ' processing {0}'.format(
+                    + ' processing {}'.format(
                         entry))
 
             mark_entry_failed(entry.id, exc)

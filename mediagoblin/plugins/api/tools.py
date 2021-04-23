@@ -21,7 +21,7 @@ from functools import wraps
 from werkzeug.exceptions import Forbidden
 from werkzeug.wrappers import Response
 
-from six.moves.urllib.parse import urljoin
+from urllib.parse import urljoin
 
 from mediagoblin import mg_globals
 from mediagoblin.tools.pluginapi import PluginManager
@@ -30,7 +30,7 @@ from mediagoblin.storage.filestorage import BasicFileStorage
 _log = logging.getLogger(__name__)
 
 
-class Auth(object):
+class Auth:
     '''
     An object with two significant methods, 'trigger' and 'run'.
 
@@ -115,7 +115,7 @@ def api_auth(controller):
 
         for auth in PluginManager().get_hook_callables('auth'):
             if auth.trigger(request):
-                _log.debug('{0} believes it is capable of authenticating this request.'.format(auth))
+                _log.debug('{} believes it is capable of authenticating this request.'.format(auth))
                 auth_candidates.append(auth)
 
         # If we can't find any authentication methods, we should not let them
@@ -126,7 +126,7 @@ def api_auth(controller):
         # For now, just select the first one in the list
         auth = auth_candidates[0]
 
-        _log.debug('Using {0} to authorize request {1}'.format(
+        _log.debug('Using {} to authorize request {}'.format(
             auth, request.url))
 
         if not auth(request, *args, **kw):

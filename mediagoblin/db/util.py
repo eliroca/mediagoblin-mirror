@@ -49,7 +49,7 @@ def media_entries_for_tag_slug(dummy_db, tag_slug):
         .join(MediaEntry.tags_helper) \
         .join(MediaTag.tag_helper) \
         .filter(
-            (MediaEntry.state == u'processed')
+            (MediaEntry.state == 'processed')
             & (Tag.slug == tag_slug))
 
 

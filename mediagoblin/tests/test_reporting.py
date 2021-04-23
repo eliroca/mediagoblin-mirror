@@ -15,8 +15,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import pytest
-import six
-
 from mediagoblin.tools import template
 from mediagoblin.tests.tools import (fixture_add_user, fixture_media_entry,
         fixture_add_comment, fixture_add_comment_report)
@@ -28,10 +26,10 @@ class TestReportFiling:
     def _setup(self, test_app):
         self.test_app = test_app
 
-        fixture_add_user(u'allie',
-            privileges=[u'reporter',u'active'])
-        fixture_add_user(u'natalie',
-            privileges=[u'active', u'moderator'])
+        fixture_add_user('allie',
+            privileges=['reporter','active'])
+        fixture_add_user('natalie',
+            privileges=['active', 'moderator'])
 
     def login(self, username):
         self.test_app.post(
@@ -55,27 +53,27 @@ class TestReportFiling:
         return response, context_data
 
     def query_for_users(self):
-        return (LocalUser.query.filter(LocalUser.username==u'allie').first(),
-        LocalUser.query.filter(LocalUser.username==u'natalie').first())
+        return (LocalUser.query.filter(LocalUser.username=='allie').first(),
+        LocalUser.query.filter(LocalUser.username=='natalie').first())
 
     def testMediaReports(self):
-        self.login(u'allie')
+        self.login('allie')
         allie_user, natalie_user = self.query_for_users()
         allie_id = allie_user.id
 
         media_entry = fixture_media_entry(uploader=natalie_user.id,
-            state=u'processed')
+            state='processed')
 
         mid = media_entry.id
-        media_uri_slug = '/u/{0}/m/{1}/'.format(natalie_user.username,
+        media_uri_slug = '/u/{}/m/{}/'.format(natalie_user.username,
                                                 media_entry.slug)
 
         response = self.test_app.get(media_uri_slug + "report/")
         assert response.status == "200 OK"
 
         response, context = self.do_post(
-            {'report_reason':u'Testing Media Report',
-            'reporter_id':six.text_type(allie_id)},url= media_uri_slug + "report/")
+            {'report_reason':'Testing Media Report',
+            'reporter_id':str(allie_id)},url= media_uri_slug + "report/")
 
         assert response.status == "302 FOUND"
 
@@ -83,18 +81,18 @@ class TestReportFiling:
 
         allie_user, natalie_user = self.query_for_users()
         assert media_report is not None
-        assert media_report.report_content == u'Testing Media Report'
+        assert media_report.report_content == 'Testing Media Report'
         assert media_report.reporter_id == allie_id
         assert media_report.reported_user_id == natalie_user.id
         assert media_report.created is not None
 
     def testCommentReports(self):
-        self.login(u'allie')
+        self.login('allie')
         allie_user, natalie_user = self.query_for_users()
         allie_id = allie_user.id
 
         media_entry = fixture_media_entry(uploader=natalie_user.id,
-            state=u'processed')
+            state='processed')
         mid = media_entry.id
         fixture_add_comment(
             media_entry=media_entry,
@@ -102,7 +100,7 @@ class TestReportFiling:
         )
         comment = TextComment.query.first()
 
-        comment_uri_slug = '/u/{0}/m/{1}/c/{2}/'.format(natalie_user.username,
+        comment_uri_slug = '/u/{}/m/{}/c/{}/'.format(natalie_user.username,
                                                 media_entry.slug,
                                                 comment.id)
 
@@ -110,8 +108,8 @@ class TestReportFiling:
         assert response.status == "200 OK"
 
         response, context = self.do_post({
-            'report_reason':u'Testing Comment Report',
-            'reporter_id':six.text_type(allie_id)},url= comment_uri_slug + "report/")
+            'report_reason':'Testing Comment Report',
+            'reporter_id':str(allie_id)},url= comment_uri_slug + "report/")
 
         assert response.status == "302 FOUND"
 
@@ -119,33 +117,33 @@ class TestReportFiling:
 
         allie_user, natalie_user = self.query_for_users()
         assert comment_report is not None
-        assert comment_report.report_content == u'Testing Comment Report'
+        assert comment_report.report_content == 'Testing Comment Report'
         assert comment_report.reporter_id == allie_id
         assert comment_report.reported_user_id == natalie_user.id
         assert comment_report.created is not None
 
     def testArchivingReports(self):
-        self.login(u'natalie')
+        self.login('natalie')
         allie_user, natalie_user = self.query_for_users()
         allie_id, natalie_id = allie_user.id, natalie_user.id
 
         fixture_add_comment(author=allie_user.id,
-            comment=u'Comment will be removed')
+            comment='Comment will be removed')
         test_comment = TextComment.query.filter(
             TextComment.actor==allie_user.id).first()
         fixture_add_comment_report(comment=test_comment,
             reported_user=allie_user,
-            report_content=u'Testing Archived Reports #1',
+            report_content='Testing Archived Reports #1',
             reporter=natalie_user)
         comment_report = Report.query.filter(
             Report.reported_user==allie_user).first()
 
-        assert comment_report.report_content == u'Testing Archived Reports #1'
+        assert comment_report.report_content == 'Testing Archived Reports #1'
         response, context = self.do_post(
-            {'action_to_resolve':[u'userban', u'delete'],
+            {'action_to_resolve':['userban', 'delete'],
             'targeted_user':allie_user.id,
-            'resolution_content':u'This is a test of archiving reports.'},
-            url='/mod/reports/{0}/'.format(comment_report.id))
+            'resolution_content':'This is a test of archiving reports.'},
+            url='/mod/reports/{}/'.format(comment_report.id))
 
         assert response.status == "302 FOUND"
         allie_user, natalie_user = self.query_for_users()
@@ -155,11 +153,11 @@ class TestReportFiling:
 
         assert Report.query.count() != 0
         assert archived_report is not None
-        assert archived_report.report_content == u'Testing Archived Reports #1'
+        assert archived_report.report_content == 'Testing Archived Reports #1'
         assert archived_report.reporter_id == natalie_id
         assert archived_report.reported_user_id == allie_id
         assert archived_report.created is not None
         assert archived_report.resolved is not None
-        assert archived_report.result == u'''This is a test of archiving reports.
+        assert archived_report.result == '''This is a test of archiving reports.
 natalie banned user allie indefinitely.
 natalie deleted the comment.'''

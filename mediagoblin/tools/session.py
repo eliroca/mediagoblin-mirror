@@ -39,7 +39,7 @@ class Session(dict):
         self.save()
 
 
-class SessionManager(object):
+class SessionManager:
     def __init__(self, cookie_name='MGSession', namespace=None):
         if namespace is None:
             namespace = cookie_name

@@ -84,6 +84,15 @@ def read_mediagoblin_config(config_path, config_spec_path=CONFIG_SPEC_PATH):
         config_spec_path,
         encoding="UTF8", list_values=False, _inspec=True)
 
+    # HACK to get MediaGoblin running under Docker/Python 3. Without this line,
+    # `./bin/gmg dbupdate` fails as the configuration under 'DEFAULT' in
+    # config_spec still had %(here)s markers in it, when these should have been
+    # replaced with actual paths, resulting in
+    # "configobj.MissingInterpolationOption: missing option "here" in
+    # interpolation". This issue doesn't seem to appear when running on Guix,
+    # but adding this line also doesn't appear to cause problems on Guix.
+    _setup_defaults(config_spec, config_path)
+
     # Set up extra defaults that will be pushed into the rest of the
     # configs.  This is a combined extrapolation of defaults based on
     mainconfig_defaults = copy.copy(config_spec.get("DEFAULT", {}))
@@ -123,6 +132,7 @@ def read_mediagoblin_config(config_path, config_spec_path=CONFIG_SPEC_PATH):
     config = ConfigObj(
         config_path,
         configspec=config_spec,
+        encoding="UTF8",
         interpolation="ConfigParser")
 
     _setup_defaults(config, config_path, mainconfig_defaults)
@@ -139,7 +149,7 @@ def read_mediagoblin_config(config_path, config_spec_path=CONFIG_SPEC_PATH):
     return config, validation_result
 
 
-REPORT_HEADER = u"""\
+REPORT_HEADER = """\
 There were validation problems loading this config file:
 --------------------------------------------------------
 """
@@ -163,17 +173,17 @@ def generate_validation_report(config, validation_result):
         if key is not None:
             section_list.append(key)
         else:
-            section_list.append(u'[missing section]')
+            section_list.append('[missing section]')
 
-        section_string = u':'.join(section_list)
+        section_string = ':'.join(section_list)
 
         if error == False:
             # We don't care about missing values for now.
             continue
 
-        report.append(u"%s = %s" % (section_string, error))
+        report.append("{} = {}".format(section_string, error))
 
     if report:
-        return REPORT_HEADER + u"\n".join(report)
+        return REPORT_HEADER + "\n".join(report)
     else:
         return None

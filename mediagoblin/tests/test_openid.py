@@ -16,10 +16,9 @@
 
 import pkg_resources
 import pytest
-import six
-import six.moves.urllib.parse as urlparse
+import urllib.parse as urlparse
 try:
-    import mock
+    from unittest import mock
 except ImportError:
     import unittest.mock as mock
 
@@ -44,14 +43,14 @@ def openid_plugin_app(request):
             'openid_appconfig.ini'))
 
 
-class TestOpenIDPlugin(object):
+class TestOpenIDPlugin:
     def _setup(self, openid_plugin_app, value=True, edit=False, delete=False):
         if value:
             response = openid_consumer.SuccessResponse(mock.Mock(), mock.Mock())
             if edit or delete:
-                response.identity_url = u'http://add.myopenid.com'
+                response.identity_url = 'http://add.myopenid.com'
             else:
-                response.identity_url = u'http://real.myopenid.com'
+                response.identity_url = 'http://real.myopenid.com'
             self._finish_verification = mock.Mock(return_value=response)
         else:
             self._finish_verification = mock.Mock(return_value=False)
@@ -113,7 +112,7 @@ class TestOpenIDPlugin(object):
             '/auth/openid/login/', {})
         context = template.TEMPLATE_TEST_CONTEXT['mediagoblin/plugins/openid/login.html']
         form = context['login_form']
-        assert form.openid.errors == [u'This field is required.']
+        assert form.openid.errors == ['This field is required.']
 
         # Try to login with wrong form values
         template.clear_test_template_context()
@@ -122,7 +121,7 @@ class TestOpenIDPlugin(object):
                 'openid': 'not_a_url.com'})
         context = template.TEMPLATE_TEST_CONTEXT['mediagoblin/plugins/openid/login.html']
         form = context['login_form']
-        assert form.openid.errors == [u'Please enter a valid url.']
+        assert form.openid.errors == ['Please enter a valid url.']
 
         # Should be no users in the db
         assert User.query.count() == 0
@@ -134,7 +133,7 @@ class TestOpenIDPlugin(object):
                 'openid': 'http://phoney.myopenid.com/'})
         context = template.TEMPLATE_TEST_CONTEXT['mediagoblin/plugins/openid/login.html']
         form = context['login_form']
-        assert form.openid.errors == [u'Sorry, the OpenID server could not be found']
+        assert form.openid.errors == ['Sorry, the OpenID server could not be found']
 
     def test_login(self, openid_plugin_app):
         """Tests that test login and registion with openid"""
@@ -165,7 +164,7 @@ class TestOpenIDPlugin(object):
         def _test_new_user():
             openid_plugin_app.post(
                 '/auth/openid/login/', {
-                    'openid': u'http://real.myopenid.com'})
+                    'openid': 'http://real.myopenid.com'})
 
             # Right place?
             assert 'mediagoblin/auth/register.html' in template.TEMPLATE_TEST_CONTEXT
@@ -176,8 +175,8 @@ class TestOpenIDPlugin(object):
             res = openid_plugin_app.post(
                 '/auth/openid/register/', {
                     'openid': register_form.openid.data,
-                    'username': u'chris',
-                    'email': u'chris@example.com'})
+                    'username': 'chris',
+                    'email': 'chris@example.com'})
             res.follow()
 
             # Correct place?
@@ -193,7 +192,7 @@ class TestOpenIDPlugin(object):
 
             # Get user and detach from session
             test_user = mg_globals.database.LocalUser.query.filter(
-                LocalUser.username==u'chris'
+                LocalUser.username=='chris'
             ).first()
             Session.expunge(test_user)
 
@@ -202,7 +201,7 @@ class TestOpenIDPlugin(object):
             template.clear_test_template_context()
             res = openid_plugin_app.post(
                 '/auth/openid/login/finish/', {
-                    'openid': u'http://real.myopenid.com'})
+                    'openid': 'http://real.myopenid.com'})
             res.follow()
 
             assert urlparse.urlsplit(res.location)[2] == '/'
@@ -211,7 +210,7 @@ class TestOpenIDPlugin(object):
             # Make sure user is in the session
             context = template.TEMPLATE_TEST_CONTEXT['mediagoblin/root.html']
             session = context['request'].session
-            assert session['user_id'] == six.text_type(test_user.id)
+            assert session['user_id'] == str(test_user.id)
 
         _test_new_user()
 
@@ -222,9 +221,9 @@ class TestOpenIDPlugin(object):
         context = template.TEMPLATE_TEST_CONTEXT['mediagoblin/auth/register.html']
         register_form = context['register_form']
 
-        assert register_form.openid.errors == [u'This field is required.']
-        assert register_form.email.errors == [u'This field is required.']
-        assert register_form.username.errors == [u'This field is required.']
+        assert register_form.openid.errors == ['This field is required.']
+        assert register_form.email.errors == ['This field is required.']
+        assert register_form.username.errors == ['This field is required.']
 
         # Try to register with existing username and email
         template.clear_test_template_context()
@@ -236,14 +235,14 @@ class TestOpenIDPlugin(object):
         context = template.TEMPLATE_TEST_CONTEXT['mediagoblin/auth/register.html']
         register_form = context['register_form']
 
-        assert register_form.username.errors == [u'Sorry, a user with that name already exists.']
-        assert register_form.email.errors == [u'Sorry, a user with that email address already exists.']
-        assert register_form.openid.errors == [u'Sorry, an account is already registered to that OpenID.']
+        assert register_form.username.errors == ['Sorry, a user with that name already exists.']
+        assert register_form.email.errors == ['Sorry, a user with that email address already exists.']
+        assert register_form.openid.errors == ['Sorry, an account is already registered to that OpenID.']
 
     def test_add_delete(self, openid_plugin_app):
         """Test adding and deleting openids"""
         # Add user
-        test_user = fixture_add_user(password='', privileges=[u'active'])
+        test_user = fixture_add_user(password='', privileges=['active'])
         openid = OpenIDUserURL()
         openid.openid_url = 'http://real.myopenid.com'
         openid.user_id = test_user.id
@@ -258,7 +257,7 @@ class TestOpenIDPlugin(object):
         def _login_user():
             openid_plugin_app.post(
                 '/auth/openid/login/finish/', {
-                    'openid': u'http://real.myopenid.com'})
+                    'openid': 'http://real.myopenid.com'})
 
         _login_user()
 
@@ -276,16 +275,16 @@ class TestOpenIDPlugin(object):
             '/edit/openid/', {})
         context = template.TEMPLATE_TEST_CONTEXT['mediagoblin/plugins/openid/add.html']
         form = context['form']
-        assert form.openid.errors == [u'This field is required.']
+        assert form.openid.errors == ['This field is required.']
 
         # Try with a bad url
         template.clear_test_template_context()
         openid_plugin_app.post(
             '/edit/openid/', {
-                'openid': u'not_a_url.com'})
+                'openid': 'not_a_url.com'})
         context = template.TEMPLATE_TEST_CONTEXT['mediagoblin/plugins/openid/add.html']
         form = context['form']
-        assert form.openid.errors == [u'Please enter a valid url.']
+        assert form.openid.errors == ['Please enter a valid url.']
 
         # Try with a url that's already registered
         template.clear_test_template_context()
@@ -294,7 +293,7 @@ class TestOpenIDPlugin(object):
                 'openid': 'http://real.myopenid.com'})
         context = template.TEMPLATE_TEST_CONTEXT['mediagoblin/plugins/openid/add.html']
         form = context['form']
-        assert form.openid.errors == [u'Sorry, an account is already registered to that OpenID.']
+        assert form.openid.errors == ['Sorry, an account is already registered to that OpenID.']
 
         # Test adding openid to account
         # Need to clear_test_template_context before calling _setup
@@ -303,7 +302,7 @@ class TestOpenIDPlugin(object):
 
         # Need to remove openid_url from db because it was added at setup
         openid = OpenIDUserURL.query.filter_by(
-            openid_url=u'http://add.myopenid.com')
+            openid_url='http://add.myopenid.com')
         openid.delete()
 
         @mock.patch('mediagoblin.plugins.openid.views._finish_verification', self._finish_verification)
@@ -313,7 +312,7 @@ class TestOpenIDPlugin(object):
             template.clear_test_template_context()
             res = openid_plugin_app.post(
                 '/edit/openid/', {
-                    'openid': u'http://add.myopenid.com'})
+                    'openid': 'http://add.myopenid.com'})
             res.follow()
 
             # Correct place?
@@ -322,7 +321,7 @@ class TestOpenIDPlugin(object):
 
             # OpenID Added?
             new_openid = mg_globals.database.OpenIDUserURL.query.filter_by(
-                openid_url=u'http://add.myopenid.com').first()
+                openid_url='http://add.myopenid.com').first()
             assert new_openid
 
         _test_add()
@@ -357,14 +356,14 @@ class TestOpenIDPlugin(object):
                     'openid': 'http://realfake.myopenid.com/'})
             context = template.TEMPLATE_TEST_CONTEXT['mediagoblin/plugins/openid/delete.html']
             form = context['form']
-            assert form.openid.errors == [u'That OpenID is not registered to this account.']
+            assert form.openid.errors == ['That OpenID is not registered to this account.']
 
             # Delete OpenID
             # Kind of weird to POST to delete/finish
             template.clear_test_template_context()
             res = openid_plugin_app.post(
                 '/edit/openid/delete/finish/', {
-                    'openid': u'http://add.myopenid.com'})
+                    'openid': 'http://add.myopenid.com'})
             res.follow()
 
             # Correct place?
@@ -373,7 +372,7 @@ class TestOpenIDPlugin(object):
 
             # OpenID deleted?
             new_openid = mg_globals.database.OpenIDUserURL.query.filter_by(
-                openid_url=u'http://add.myopenid.com').first()
+                openid_url='http://add.myopenid.com').first()
             assert not new_openid
 
         _test_delete(self, test_user)

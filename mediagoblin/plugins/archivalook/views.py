@@ -40,15 +40,15 @@ def root_view(request):
     displaying featured media.
     """
     featured_media = {
-        u'primary':FeaturedMedia.query.order_by(
+        'primary':FeaturedMedia.query.order_by(
             FeaturedMedia.order.asc()).filter(
-            FeaturedMedia.display_type==u'primary').all(),
-        u'secondary':FeaturedMedia.query.order_by(
+            FeaturedMedia.display_type=='primary').all(),
+        'secondary':FeaturedMedia.query.order_by(
             FeaturedMedia.order.asc()).filter(
-            FeaturedMedia.display_type==u'secondary').all(),
-        u'tertiary':FeaturedMedia.query.order_by(
+            FeaturedMedia.display_type=='secondary').all(),
+        'tertiary':FeaturedMedia.query.order_by(
             FeaturedMedia.order.asc()).filter(
-            FeaturedMedia.display_type==u'tertiary').all()}
+            FeaturedMedia.display_type=='tertiary').all()}
 
     return render_to_response(
         request, 'archivalook/root.html',
@@ -56,7 +56,7 @@ def root_view(request):
         'allow_registration': mg_globals.app_config["allow_registration"],
         'feature_template': feature_template})
 
-@user_has_privilege(u'featurer')
+@user_has_privilege('featurer')
 def featured_media_panel(request):
     """
     This is a new administrator panel to manage featured media. This is an
@@ -99,7 +99,7 @@ def recent_media_gallery_view(request, page):
     """
     The replaced homepage is available through this view.
     """
-    cursor = MediaEntry.query.filter_by(state=u'processed').\
+    cursor = MediaEntry.query.filter_by(state='processed').\
         order_by(MediaEntry.created.desc())
 
     pagination = Pagination(page, cursor)
@@ -117,7 +117,7 @@ def add_featured_media_to_media_home(context):
     context['featured_media'] = FeaturedMedia.query
     return context
 
-@user_has_privilege(u'featurer')
+@user_has_privilege('featurer')
 @get_user_media_entry
 def feature_media(request, media, **kwargs):
     """
@@ -130,7 +130,7 @@ def feature_media(request, media, **kwargs):
     return redirect(
         request, 'index')
 
-@user_has_privilege(u'featurer')
+@user_has_privilege('featurer')
 @get_user_media_entry
 def unfeature_media(request, media, **kwargs):
     """
@@ -143,7 +143,7 @@ def unfeature_media(request, media, **kwargs):
     return redirect(
         request, 'index')
 
-@user_has_privilege(u'featurer')
+@user_has_privilege('featurer')
 @get_user_media_entry
 def promote_featured_media(request, media, **kwargs):
     """
@@ -156,7 +156,7 @@ def promote_featured_media(request, media, **kwargs):
     return redirect(
         request, 'index')
 
-@user_has_privilege(u'featurer')
+@user_has_privilege('featurer')
 @get_user_media_entry
 def demote_featured_media(request, media, **kwargs):
     """

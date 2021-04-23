@@ -14,8 +14,6 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import six
-
 from mediagoblin import messages
 import mediagoblin.mg_globals as mg_globals
 
@@ -29,7 +27,6 @@ from mediagoblin.tools.translate import pass_to_ugettext as _
 from mediagoblin.tools.response import render_to_response, redirect
 from mediagoblin.decorators import require_active_login, user_has_privilege
 from mediagoblin.submit import forms as submit_forms
-from mediagoblin.messages import add_message, SUCCESS
 from mediagoblin.media_types import FileTypeNotSupported
 from mediagoblin.submit.lib import \
     check_file_field, submit_media, get_upload_file_limits, \
@@ -38,7 +35,7 @@ from mediagoblin.user_pages.lib import add_media_to_collection
 
 
 @require_active_login
-@user_has_privilege(u'uploader')
+@user_has_privilege('uploader')
 def submit_start(request):
     """
     First view for submitting a file.
@@ -66,20 +63,19 @@ def submit_start(request):
     if request.method == 'POST' and submit_form.validate():
         if not check_file_field(request, 'file'):
             submit_form.file.errors.append(
-                _(u'You must provide a file.'))
+                _('You must provide a file.'))
         else:
             try:
                 media = submit_media(
                     request=request, user=request.user,
                     submitted_file=request.files['file'],
                     filename=request.files['file'].filename,
-                    title=six.text_type(submit_form.title.data),
-                    description=six.text_type(submit_form.description.data),
-                    license=six.text_type(submit_form.license.data) or None,
+                    title=str(submit_form.title.data),
+                    description=str(submit_form.description.data),
+                    license=str(submit_form.license.data) or None,
                     to=submit_form.to.data,
                     cc=submit_form.cc.data,
                     tags_string=submit_form.tags.data,
-                    upload_limit=upload_limit, max_file_size=max_file_size,
                     urlgen=request.urlgen)
 
                 if submit_form.collection and submit_form.collection.data:
@@ -89,7 +85,10 @@ def submit_start(request):
                         "add", media, request.user,
                         target=submit_form.collection.data)
 
-                add_message(request, SUCCESS, _('Woohoo! Submitted!'))
+                messages.add_message(
+                    request,
+                    messages.SUCCESS,
+                    _('Woohoo! Submitted!'))
 
                 return redirect(request, "mediagoblin.user_pages.user_home",
                             user=request.user.username)
@@ -98,7 +97,7 @@ def submit_start(request):
             # Handle upload limit issues
             except FileUploadLimit:
                 submit_form.file.errors.append(
-                    _(u'Sorry, the file size is too big.'))
+                    _('Sorry, the file size is too big.'))
             except UserUploadLimit:
                 submit_form.file.errors.append(
                     _('Sorry, uploading this file will put you over your'
@@ -132,8 +131,8 @@ def add_collection(request, media=None):
     if request.method == 'POST' and submit_form.validate():
         collection = request.db.Collection()
 
-        collection.title = six.text_type(submit_form.title.data)
-        collection.description = six.text_type(submit_form.description.data)
+        collection.title = str(submit_form.title.data)
+        collection.description = str(submit_form.description.data)
         collection.actor = request.user.id
         collection.type = request.db.Collection.USER_DEFINED_TYPE
         collection.generate_slug()
@@ -145,13 +144,17 @@ def add_collection(request, media=None):
                 title=collection.title).first()
 
         if existing_collection:
-            add_message(request, messages.ERROR,
-                _('You already have a collection called "%s"!') \
-                    % collection.title)
+            messages.add_message(
+                request,
+                messages.ERROR,
+                _('You already have a collection called "%s"!') %
+                    collection.title)
         else:
             collection.save()
 
-            add_message(request, SUCCESS,
+            messages.add_message(
+                request,
+                messages.SUCCESS,
                 _('Collection "%s" added!') % collection.title)
 
         return redirect(request, "mediagoblin.user_pages.user_home",

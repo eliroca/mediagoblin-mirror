@@ -43,13 +43,13 @@ HTML_CLEANER = Cleaner(
     safe_attrs_only=True,
     add_nofollow=True,  # for now
     host_whitelist=(),
-    whitelist_tags=set([]))
+    whitelist_tags=set())
 
 
 def clean_html(html):
     # clean_html barfs on an empty string
     if not html:
-        return u''
+        return ''
 
     return HTML_CLEANER.clean_html(html)
 
@@ -65,7 +65,7 @@ def convert_to_tag_list_of_dicts(tag_string):
     if tag_string:
 
         # Strip out internal, trailing, and leading whitespace
-        stripped_tag_string = u' '.join(tag_string.strip().split())
+        stripped_tag_string = ' '.join(tag_string.strip().split())
 
         # Split the tag string into a list of tags
         for tag in stripped_tag_string.split(','):
@@ -84,12 +84,12 @@ def media_tags_as_string(media_entry_tags):
     """
     tags_string = ''
     if media_entry_tags:
-        tags_string = u', '.join([tag['name'] for tag in media_entry_tags])
+        tags_string = ', '.join([tag['name'] for tag in media_entry_tags])
     return tags_string
 
 
 TOO_LONG_TAG_WARNING = \
-    u'Tags must be shorter than %s characters.  Tags that are too long: %s'
+    'Tags must be shorter than %s characters.  Tags that are too long: %s'
 
 
 def tag_length_validator(form, field):
@@ -119,6 +119,6 @@ def cleaned_markdown_conversion(text):
     # Markdown will do nothing with and clean_html can do nothing with
     # an empty string :)
     if not text:
-        return u''
+        return ''
 
     return clean_html(UNSAFE_MARKDOWN_INSTANCE.convert(text))

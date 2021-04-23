@@ -14,7 +14,6 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import six
 import pytest
 from datetime import date, timedelta
 from webtest import AppError
@@ -32,12 +31,12 @@ class TestPrivilegeFunctionality:
     def _setup(self, test_app):
         self.test_app = test_app
 
-        fixture_add_user(u'alex',
-            privileges=[u'admin',u'active'])
-        fixture_add_user(u'meow',
-            privileges=[u'moderator',u'active',u'reporter'])
-        fixture_add_user(u'natalie',
-            privileges=[u'active'])
+        fixture_add_user('alex',
+            privileges=['admin','active'])
+        fixture_add_user('meow',
+            privileges=['moderator','active','reporter'])
+        fixture_add_user('natalie',
+            privileges=['active'])
         self.query_for_users()
 
     def login(self, username):
@@ -64,17 +63,17 @@ class TestPrivilegeFunctionality:
         return response, context_data
 
     def query_for_users(self):
-        self.admin_user = LocalUser.query.filter(LocalUser.username==u'alex').first()
-        self.mod_user = LocalUser.query.filter(LocalUser.username==u'meow').first()
-        self.user = LocalUser.query.filter(LocalUser.username==u'natalie').first()
+        self.admin_user = LocalUser.query.filter(LocalUser.username=='alex').first()
+        self.mod_user = LocalUser.query.filter(LocalUser.username=='meow').first()
+        self.user = LocalUser.query.filter(LocalUser.username=='natalie').first()
 
     def testUserBanned(self):
-        self.login(u'natalie')
+        self.login('natalie')
         uid = self.user.id
         # First, test what happens when a user is banned indefinitely
         #----------------------------------------------------------------------
         user_ban = UserBan(user_id=uid,
-            reason=u'Testing whether user is banned',
+            reason='Testing whether user is banned',
             expiration_date=None)
         user_ban.save()
 
@@ -87,7 +86,7 @@ class TestPrivilegeFunctionality:
         user_ban = UserBan.query.get(uid)
         user_ban.delete()
         user_ban = UserBan(user_id=uid,
-            reason=u'Testing whether user is banned',
+            reason='Testing whether user is banned',
             expiration_date= date.today() + timedelta(days=20))
         user_ban.save()
 
@@ -102,7 +101,7 @@ class TestPrivilegeFunctionality:
         user_ban.delete()
         exp_date = date.today() - timedelta(days=20)
         user_ban = UserBan(user_id=uid,
-            reason=u'Testing whether user is banned',
+            reason='Testing whether user is banned',
             expiration_date= exp_date)
         user_ban.save()
 
@@ -122,21 +121,21 @@ class TestPrivilegeFunctionality:
         #       tests/test_reporting.py                 reporter
         #       tests/test_submission.py                uploader
         #----------------------------------------------------------------------
-        self.login(u'natalie')
+        self.login('natalie')
 
         # First test the get and post requests of submission/uploading
         #----------------------------------------------------------------------
         with pytest.raises(AppError) as excinfo:
             response = self.test_app.get('/submit/')
-        excinfo = str(excinfo) if six.PY2 else str(excinfo).encode('ascii')
+        excinfo = str(excinfo).encode('ascii')
         assert b'Bad response: 403 FORBIDDEN' in excinfo
 
 
         with pytest.raises(AppError) as excinfo:
             response = self.do_post({'upload_files':[('file',GOOD_JPG)],
-                'title':u'Normal Upload 1'},
+                'title':'Normal Upload 1'},
                 url='/submit/')
-        excinfo = str(excinfo) if six.PY2 else str(excinfo).encode('ascii')
+        excinfo = str(excinfo).encode('ascii')
         assert b'Bad response: 403 FORBIDDEN' in excinfo
 
         # Test that a user cannot comment without the commenter privilege
@@ -144,12 +143,12 @@ class TestPrivilegeFunctionality:
         self.query_for_users()
 
         media_entry = fixture_media_entry(uploader=self.admin_user.id,
-            state=u'processed')
+            state='processed')
 
         media_entry_id = media_entry.id
-        media_uri_id = '/u/{0}/m/{1}/'.format(self.admin_user.username,
+        media_uri_id = '/u/{}/m/{}/'.format(self.admin_user.username,
                                               media_entry.id)
-        media_uri_slug = '/u/{0}/m/{1}/'.format(self.admin_user.username,
+        media_uri_slug = '/u/{}/m/{}/'.format(self.admin_user.username,
                                                 media_entry.slug)
         response = self.test_app.get(media_uri_slug)
         assert not b"Add a comment" in response.body
@@ -158,23 +157,23 @@ class TestPrivilegeFunctionality:
         with pytest.raises(AppError) as excinfo:
             response = self.test_app.post(
                 media_uri_id + 'comment/add/',
-                {'comment_content': u'Test comment #42'})
-        excinfo = str(excinfo) if six.PY2 else str(excinfo).encode('ascii')
+                {'comment_content': 'Test comment #42'})
+        excinfo = str(excinfo).encode('ascii')
         assert b'Bad response: 403 FORBIDDEN' in excinfo
 
         # Test that a user cannot report without the reporter privilege
         #----------------------------------------------------------------------
         with pytest.raises(AppError) as excinfo:
             response = self.test_app.get(media_uri_slug+"report/")
-        excinfo = str(excinfo) if six.PY2 else str(excinfo).encode('ascii')
+        excinfo = str(excinfo).encode('ascii')
         assert b'Bad response: 403 FORBIDDEN' in excinfo
 
         with pytest.raises(AppError) as excinfo:
             response = self.do_post(
-                {'report_reason':u'Testing Reports #1',
-                'reporter_id':u'3'},
+                {'report_reason':'Testing Reports #1',
+                'reporter_id':'3'},
                 url=(media_uri_slug+"report/"))
-        excinfo = str(excinfo) if six.PY2 else str(excinfo).encode('ascii')
+        excinfo = str(excinfo).encode('ascii')
         assert b'Bad response: 403 FORBIDDEN' in excinfo
 
         # Test that a user cannot access the moderation pages w/o moderator
@@ -182,36 +181,36 @@ class TestPrivilegeFunctionality:
         #----------------------------------------------------------------------
         with pytest.raises(AppError) as excinfo:
             response = self.test_app.get("/mod/users/")
-        excinfo = str(excinfo) if six.PY2 else str(excinfo).encode('ascii')
+        excinfo = str(excinfo).encode('ascii')
         assert b'Bad response: 403 FORBIDDEN' in excinfo
 
         with pytest.raises(AppError) as excinfo:
             response = self.test_app.get("/mod/reports/")
-        excinfo = str(excinfo) if six.PY2 else str(excinfo).encode('ascii')
+        excinfo = str(excinfo).encode('ascii')
         assert b'Bad response: 403 FORBIDDEN' in excinfo
 
         with pytest.raises(AppError) as excinfo:
             response = self.test_app.get("/mod/media/")
-        excinfo = str(excinfo) if six.PY2 else str(excinfo).encode('ascii')
+        excinfo = str(excinfo).encode('ascii')
         assert b'Bad response: 403 FORBIDDEN' in excinfo
 
         with pytest.raises(AppError) as excinfo:
             response = self.test_app.get("/mod/users/1/")
-        excinfo = str(excinfo) if six.PY2 else str(excinfo).encode('ascii')
+        excinfo = str(excinfo).encode('ascii')
         assert b'Bad response: 403 FORBIDDEN' in excinfo
 
         with pytest.raises(AppError) as excinfo:
             response = self.test_app.get("/mod/reports/1/")
-        excinfo = str(excinfo) if six.PY2 else str(excinfo).encode('ascii')
+        excinfo = str(excinfo).encode('ascii')
         assert b'Bad response: 403 FORBIDDEN' in excinfo
 
         self.query_for_users()
 
         with pytest.raises(AppError) as excinfo:
-            response, context = self.do_post({'action_to_resolve':[u'takeaway'],
-                'take_away_privileges':[u'active'],
+            response, context = self.do_post({'action_to_resolve':['takeaway'],
+                'take_away_privileges':['active'],
                 'targeted_user':self.admin_user.id},
                 url='/mod/reports/1/')
             self.query_for_users()
-        excinfo = str(excinfo) if six.PY2 else str(excinfo).encode('ascii')
+        excinfo = str(excinfo).encode('ascii')
         assert b'Bad response: 403 FORBIDDEN' in excinfo

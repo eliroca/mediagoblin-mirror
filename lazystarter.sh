@@ -25,7 +25,7 @@ case "$selfname" in
         ini_prefix=paste
         ;;
     lazycelery.sh)
-        starter_cmd=celeryd
+        starter_cmd=celery
         ini_prefix=mediagoblin
         ;;
     *)
@@ -38,8 +38,7 @@ if [ "$1" = "-h" ]; then
     echo "$0 [-h] [-c filename.ini] [ARGS_to_${starter_cmd} ...]"
     echo ""
     echo "   For example:"
-    echo "         $0 -c fcgi.ini port_number=23371"
-    echo "     or: $0 --server-name=fcgi --log-file=paste.log"
+    echo "         $0 --server-name=main --log-file=paste.log"
     echo ""
     echo "   The configfile defaults to ${ini_prefix}_local.ini,"
     echo "   if that is readable, otherwise ${ini_prefix}.ini."
@@ -87,7 +86,7 @@ case "$selfname" in
     lazycelery.sh)
         MEDIAGOBLIN_CONFIG="${ini_file}" \
             CELERY_CONFIG_MODULE=mediagoblin.init.celery.from_celery \
-            $starter -B "$@"
+            $starter worker -B "$@"
         ;;
     *) exit 1 ;;
 esac

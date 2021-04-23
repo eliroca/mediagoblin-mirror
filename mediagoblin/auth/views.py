@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import six
+import logging
 
 from itsdangerous import BadSignature
 
@@ -29,6 +29,8 @@ from mediagoblin.tools.pluginapi import hook_handle
 from mediagoblin.auth.tools import (send_verification_email, register_user,
                                     check_login_simple)
 
+_log = logging.getLogger(__name__)
+
 
 @allow_registration
 @auth_enabled
@@ -41,7 +43,7 @@ def register(request):
     if 'pass_auth' not in request.template_env.globals:
         redirect_name = hook_handle('auth_no_pass_redirect')
         if redirect_name:
-            return redirect(request, 'mediagoblin.plugins.{0}.register'.format(
+            return redirect(request, 'mediagoblin.plugins.{}.register'.format(
                 redirect_name))
         else:
             return redirect(request, 'index')
@@ -76,7 +78,7 @@ def login(request):
     if 'pass_auth' not in request.template_env.globals:
         redirect_name = hook_handle('auth_no_pass_redirect')
         if redirect_name:
-            return redirect(request, 'mediagoblin.plugins.{0}.login'.format(
+            return redirect(request, 'mediagoblin.plugins.{}.login'.format(
                 redirect_name))
         else:
             return redirect(request, 'index')
@@ -96,7 +98,7 @@ def login(request):
                 # set up login in session
                 if login_form.stay_logged_in.data:
                     request.session['stay_logged_in'] = True
-                request.session['user_id'] = six.text_type(user.id)
+                request.session['user_id'] = str(user.id)
                 request.session.save()
 
                 if request.form.get('next'):
@@ -105,6 +107,9 @@ def login(request):
                     return redirect(request, "index")
 
             login_failed = True
+            remote_addr = (request.access_route and request.access_route[-1]
+                           or request.remote_addr)
+            _log.warn("Failed login attempt from %r", remote_addr)
 
     return render_to_response(
         request,
@@ -150,11 +155,11 @@ def verify_email(request):
 
     user = User.query.filter_by(id=int(token)).first()
 
-    if user and user.has_privilege(u'active') is False:
+    if user and user.has_privilege('active') is False:
         user.verification_key = None
         user.all_privileges.append(
             Privilege.query.filter(
-            Privilege.privilege_name==u'active').first())
+            Privilege.privilege_name=='active').first())
 
         user.save()
 
@@ -189,7 +194,7 @@ def resend_activation(request):
 
         return redirect(request, 'mediagoblin.auth.login')
 
-    if request.user.has_privilege(u'active'):
+    if request.user.has_privilege('active'):
         messages.add_message(
             request,
             messages.ERROR,

@@ -14,8 +14,6 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import six
-
 from mediagoblin import mg_globals
 
 
@@ -27,7 +25,7 @@ def delete_media_files(media):
      - media: A MediaEntry document
     """
     no_such_files = []
-    for listpath in six.itervalues(media.media_files):
+    for listpath in media.media_files.values():
         try:
             mg_globals.public_store.delete_file(
                 listpath)
@@ -40,6 +38,13 @@ def delete_media_files(media):
                 attachment['filepath'])
         except OSError:
             no_such_files.append("/".join(attachment['filepath']))
+
+    for subtitle in media.subtitle_files:
+        try:
+            mg_globals.public_store.delete_file(
+                subtitle['filepath'])
+        except OSError:
+            no_such_files.append("/".join(subtitle['filepath']))
 
     if no_such_files:
         raise OSError(", ".join(no_such_files))

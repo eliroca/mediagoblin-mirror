@@ -25,19 +25,19 @@ def test_list_of_dicts_conversion(test_app):
     """
     # Leading, trailing, and internal whitespace should be removed and slugified
     assert text.convert_to_tag_list_of_dicts('sleep , 6    AM, chainsaw! ') == [
-                              {'name': u'sleep', 'slug': u'sleep'},
-                              {'name': u'6 AM', 'slug': u'6-am'},
-                              {'name': u'chainsaw!', 'slug': u'chainsaw'}]
+                              {'name': 'sleep', 'slug': 'sleep'},
+                              {'name': '6 AM', 'slug': '6-am'},
+                              {'name': 'chainsaw!', 'slug': 'chainsaw'}]
 
     # If the user enters two identical tags, record only one of them
-    assert text.convert_to_tag_list_of_dicts('echo,echo') == [{'name': u'echo',
-                                                               'slug': u'echo'}]
+    assert text.convert_to_tag_list_of_dicts('echo,echo') == [{'name': 'echo',
+                                                               'slug': 'echo'}]
 
     # When checking for duplicates, use the slug, not the tag
-    assert text.convert_to_tag_list_of_dicts('echo,#echo') == [{'name': u'#echo',
-                                                                'slug': u'echo'}]
+    assert text.convert_to_tag_list_of_dicts('echo,#echo') == [{'name': '#echo',
+                                                                'slug': 'echo'}]
 
     # Make sure converting the list of dicts to a string works
-    assert text.media_tags_as_string([{'name': u'yin', 'slug': u'yin'},
-                                      {'name': u'yang', 'slug': u'yang'}]) == \
-                                      u'yin, yang'
+    assert text.media_tags_as_string([{'name': 'yin', 'slug': 'yin'},
+                                      {'name': 'yang', 'slug': 'yang'}]) == \
+                                      'yin, yang'

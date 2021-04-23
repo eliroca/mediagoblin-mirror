@@ -19,7 +19,7 @@ from functools import wraps
 from werkzeug.exceptions import Forbidden, NotFound
 from oauthlib.oauth1 import ResourceEndpoint, SignatureOnlyEndpoint
 
-from six.moves.urllib.parse import urljoin
+from urllib.parse import urljoin
 
 from mediagoblin import mg_globals as mgg
 from mediagoblin import messages
@@ -58,11 +58,11 @@ def require_active_login(controller):
     @user_not_banned
     def new_controller_func(request, *args, **kwargs):
         if request.user and \
-                not request.user.has_privilege(u'active'):
+                not request.user.has_privilege('active'):
             return redirect(
                 request, 'mediagoblin.user_pages.user_home',
                 user=request.user.username)
-        elif not request.user or not request.user.has_privilege(u'active'):
+        elif not request.user or not request.user.has_privilege('active'):
             next_url = urljoin(
                     request.urlgen('mediagoblin.auth.login',
                         qualified=True),
@@ -128,7 +128,7 @@ def user_may_delete_media(controller):
     @wraps(controller)
     def wrapper(request, *args, **kwargs):
         uploader_id = kwargs['media'].actor
-        if not (request.user.has_privilege(u'admin') or
+        if not (request.user.has_privilege('admin') or
                 request.user.id == uploader_id):
             raise Forbidden()
 
@@ -145,7 +145,7 @@ def user_may_alter_collection(controller):
     def wrapper(request, *args, **kwargs):
         creator_id = request.db.LocalUser.query.filter_by(
             username=request.matchdict['user']).first().id
-        if not (request.user.has_privilege(u'admin') or
+        if not (request.user.has_privilege('admin') or
                 request.user.id == creator_id):
             raise Forbidden()
 
@@ -188,11 +188,11 @@ def get_user_media_entry(controller):
         media_slug = request.matchdict['media']
 
         # if it starts with id: it actually isn't a slug, it's an id.
-        if media_slug.startswith(u'id:'):
+        if media_slug.startswith('id:'):
             try:
                 media = MediaEntry.query.filter_by(
                     id=int(media_slug[3:]),
-                    state=u'processed',
+                    state='processed',
                     actor=user.id).first()
             except ValueError:
                 raise NotFound()
@@ -200,7 +200,7 @@ def get_user_media_entry(controller):
             # no magical id: stuff?  It's a slug!
             media = MediaEntry.query.filter_by(
                 slug=media_slug,
-                state=u'processed',
+                state='processed',
                 actor=user.id).first()
 
         if not media:
@@ -268,8 +268,7 @@ def get_media_entry_by_id(controller):
     @wraps(controller)
     def wrapper(request, *args, **kwargs):
         media = MediaEntry.query.filter_by(
-                id=request.matchdict['media_id'],
-                state=u'processed').first()
+                id=request.matchdict['media_id']).first()
         # Still no media?  Okay, 404.
         if not media:
             return render_404(request)
@@ -375,8 +374,8 @@ def require_admin_or_moderator_login(controller):
     @wraps(controller)
     def new_controller_func(request, *args, **kwargs):
         if request.user and \
-            not (request.user.has_privilege(u'admin')
-                or request.user.has_privilege(u'moderator')):
+            not (request.user.has_privilege('admin')
+                or request.user.has_privilege('moderator')):
 
             raise Forbidden()
         elif not request.user:
@@ -420,7 +419,7 @@ def oauth_required(controller):
             return json_response({"error": error}, status=400)
 
         # Fill user if not already
-        token = authorization[u"oauth_token"]
+        token = authorization["oauth_token"]
         request.access_token = AccessToken.query.filter_by(token=token).first()
         if request.access_token is not None and request.user is None:
             user_id = request.access_token.actor

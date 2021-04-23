@@ -14,7 +14,6 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import print_function
 
 try:
     from PIL import Image
@@ -23,8 +22,6 @@ except ImportError:
 import os
 import logging
 import argparse
-
-import six
 
 from mediagoblin import mg_globals as mgg
 from mediagoblin.db.models import Location
@@ -69,9 +66,9 @@ def resize_image(entry, resized, keyname, target_name, new_size,
     try:
         resize_filter = PIL_FILTERS[filter.upper()]
     except KeyError:
-        raise Exception('Filter "{0}" not found, choose one of {1}'.format(
-            six.text_type(filter),
-            u', '.join(PIL_FILTERS.keys())))
+        raise Exception('Filter "{}" not found, choose one of {}'.format(
+            str(filter),
+            ', '.join(PIL_FILTERS.keys())))
 
     resized.thumbnail(new_size, resize_filter)
 
@@ -101,8 +98,8 @@ def resize_tool(entry,
     # If thumb or medium is already the same quality and size, then don't
     # reprocess
     if _skip_resizing(entry, keyname, new_size, quality, filter):
-        _log.info('{0} of same size and quality already in use, skipping '
-                  'resizing of media {1}.'.format(keyname, entry.id))
+        _log.info('{} of same size and quality already in use, skipping '
+                  'resizing of media {}.'.format(keyname, entry.id))
         return
 
     # If the size of the original file exceeds the specified size for the desized
@@ -111,14 +108,14 @@ def resize_tool(entry,
     # Also created if the file needs rotation, or if forced.
     try:
         im = Image.open(orig_file)
-    except IOError:
+    except OSError:
         raise BadMediaFail()
     if force \
         or im.size[0] > new_size[0]\
         or im.size[1] > new_size[1]\
         or exif_image_needs_rotation(exif_tags):
         resize_image(
-            entry, im, six.text_type(keyname), target_name,
+            entry, im, str(keyname), target_name,
             tuple(new_size),
             exif_tags, conversions_subdir,
             quality, filter)
@@ -154,7 +151,7 @@ SUPPORTED_FILETYPES = ['png', 'gif', 'jpg', 'jpeg', 'tiff']
 
 
 def sniff_handler(media_file, filename):
-    _log.info('Sniffing {0}'.format(MEDIA_TYPE))
+    _log.info('Sniffing {}'.format(MEDIA_TYPE))
     name, ext = os.path.splitext(filename)
     clean_ext = ext[1:].lower()  # Strip the . from ext and make lowercase
 
@@ -162,7 +159,7 @@ def sniff_handler(media_file, filename):
         _log.info('Found file extension in supported filetypes')
         return MEDIA_TYPE
     else:
-        _log.debug('Media present, extension not found in {0}'.format(
+        _log.debug('Media present, extension not found in {}'.format(
                 SUPPORTED_FILETYPES))
 
     return None
@@ -241,7 +238,7 @@ class CommonImageProcessor(MediaProcessor):
         # Extract file metadata
         try:
             im = Image.open(self.process_filename)
-        except IOError:
+        except OSError:
             raise BadMediaFail()
 
         metadata = {
@@ -426,10 +423,11 @@ class MetadataProcessing(CommonImageProcessor):
 
 class ImageProcessingManager(ProcessingManager):
     def __init__(self):
-        super(ImageProcessingManager, self).__init__()
+        super().__init__()
         self.add_processor(InitialProcessor)
         self.add_processor(Resizer)
         self.add_processor(MetadataProcessing)
+
 
 if __name__ == '__main__':
     import sys

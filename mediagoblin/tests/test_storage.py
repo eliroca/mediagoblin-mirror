@@ -19,8 +19,6 @@ import os
 import tempfile
 
 import pytest
-import six
-
 from werkzeug.utils import secure_filename
 
 from mediagoblin import storage
@@ -31,15 +29,15 @@ from mediagoblin import storage
 ################
 
 def test_clean_listy_filepath():
-    expected = [u'dir1', u'dir2', u'linooks.jpg']
+    expected = ['dir1', 'dir2', 'linooks.jpg']
     assert storage.clean_listy_filepath(
         ['dir1', 'dir2', 'linooks.jpg']) == expected
 
-    expected = [u'dir1', u'foo_.._nasty', u'linooks.jpg']
+    expected = ['dir1', 'foo_.._nasty', 'linooks.jpg']
     assert storage.clean_listy_filepath(
         ['/dir1/', 'foo/../nasty', 'linooks.jpg']) == expected
 
-    expected = [u'etc', u'passwd']
+    expected = ['etc', 'passwd']
     assert storage.clean_listy_filepath(
         ['../../../etc/', 'passwd']) == expected
 
@@ -47,7 +45,7 @@ def test_clean_listy_filepath():
         storage.clean_listy_filepath(['../../', 'linooks.jpg'])
 
 
-class FakeStorageSystem(object):
+class FakeStorageSystem:
     def __init__(self, foobie, blech, **kwargs):
         self.foobie = foobie
         self.blech = blech
@@ -80,8 +78,8 @@ def test_storage_system_from_config():
              'mediagoblin.tests.test_storage:FakeStorageSystem'})
     assert this_storage.foobie == 'eiboof'
     assert this_storage.blech == 'hcelb'
-    assert six.text_type(this_storage.__class__) == \
-        u"<class 'mediagoblin.tests.test_storage.FakeStorageSystem'>"
+    assert str(this_storage.__class__) == \
+        "<class 'mediagoblin.tests.test_storage.FakeStorageSystem'>"
 
 
 ##########################
@@ -152,7 +150,7 @@ def test_basic_storage_get_unique_filepath():
     # now we want something new, with the same name!
     new_filepath = this_storage.get_unique_filepath(
         ['dir1', 'dir2', 'filename.txt'])
-    assert new_filepath[:-1] == [u'dir1', u'dir2']
+    assert new_filepath[:-1] == ['dir1', 'dir2']
 
     new_filename = new_filepath[-1]
     assert new_filename.endswith('filename.txt')
@@ -174,7 +172,7 @@ def test_basic_storage_get_file():
     with this_storage.get_file(filepath, 'r') as our_file:
         assert our_file.read() == b'First file'
     assert os.path.exists(os.path.join(tmpdir, 'dir1/dir2/ourfile.txt'))
-    with open(os.path.join(tmpdir, 'dir1/dir2/ourfile.txt'), 'r') as our_file:
+    with open(os.path.join(tmpdir, 'dir1/dir2/ourfile.txt')) as our_file:
         assert our_file.read() == 'First file'
 
     # Write to the same path but try to get a unique file.
@@ -186,7 +184,7 @@ def test_basic_storage_get_file():
     with this_storage.get_file(new_filepath, 'r') as our_file:
         assert our_file.read() == b'Second file'
     assert os.path.exists(os.path.join(tmpdir, *new_filepath))
-    with open(os.path.join(tmpdir, *new_filepath), 'r') as our_file:
+    with open(os.path.join(tmpdir, *new_filepath)) as our_file:
         assert our_file.read() == 'Second file'
 
     # Read from an existing file
@@ -306,8 +304,7 @@ def _test_copy_local_to_storage_works(tmpdir, this_storage):
     os.remove(local_filename)
 
     assert open(
-        os.path.join(tmpdir, 'dir1/dir2/copiedto.txt'),
-        'r').read() == 'haha'
+        os.path.join(tmpdir, 'dir1/dir2/copiedto.txt')).read() == 'haha'
 
     this_storage.delete_file(['dir1', 'dir2', 'copiedto.txt'])
     cleanup_storage(this_storage, tmpdir, ['dir1', 'dir2'])

@@ -18,7 +18,7 @@ import logging
 import uuid
 from os.path import splitext
 
-import six
+from celery import chord
 
 from werkzeug.utils import secure_filename
 from werkzeug.datastructures import FileStorage
@@ -28,11 +28,12 @@ from mediagoblin.tools.response import json_response
 from mediagoblin.tools.text import convert_to_tag_list_of_dicts
 from mediagoblin.federation.task import federate_activity
 from mediagoblin.tools.federation import create_activity, create_generator
-from mediagoblin.db.models import MediaEntry, ProcessingMetaData
-from mediagoblin.processing import mark_entry_failed
+from mediagoblin.db.models import Collection, MediaEntry, ProcessingMetaData
+from mediagoblin.processing import mark_entry_failed, get_entry_and_processing_manager
 from mediagoblin.processing.task import ProcessMedia
 from mediagoblin.notifications import add_comment_subscription
 from mediagoblin.media_types import sniff_media
+from mediagoblin.user_pages.lib import add_media_to_collection
 
 
 _log = logging.getLogger(__name__)
@@ -101,10 +102,10 @@ class UserPastUploadLimit(UploadLimitError):
 
 
 
-def submit_media(request, user, submitted_file, filename,
-                 title=None, description=None,
-                 license=None, metadata=None, tags_string=u"",
-                 to=u"", cc=u"", upload_limit=None, max_file_size=None,
+def submit_media(mg_app, user, submitted_file, filename,
+                 title=None, description=None, collection_slug=None,
+                 license=None, metadata=None, tags_string="",
+                 to="", cc="", upload_limit=None, max_file_size=None,
                  callback_url=None, urlgen=None,):
     """
     Args:
@@ -117,6 +118,7 @@ def submit_media(request, user, submitted_file, filename,
        one on disk being referenced by submitted_file.
      - title: title for this media entry
      - description: description for this media entry
+     - collection_slug: collection for this media entry
      - license: license for this media entry
      - tags_string: comma separated string of tags to be associated
        with this entry
@@ -128,12 +130,13 @@ def submit_media(request, user, submitted_file, filename,
      - urlgen: if provided, used to do the feed_url update and assign a public
                ID used in the API (very important).
     """
+    upload_limit, max_file_size = get_upload_file_limits(user)
     if upload_limit and user.uploaded >= upload_limit:
         raise UserPastUploadLimit()
 
     # If the filename contains non ascii generate a unique name
     if not all(ord(c) < 128 for c in filename):
-        filename = six.text_type(uuid.uuid4()) + splitext(filename)[-1]
+        filename = str(uuid.uuid4()) + splitext(filename)[-1]
 
     # Sniff the submitted media to determine which
     # media plugin should handle processing
@@ -142,9 +145,9 @@ def submit_media(request, user, submitted_file, filename,
     # create entry and save in database
     entry = new_upload_entry(user)
     entry.media_type = media_type
-    entry.title = (title or six.text_type(splitext(filename)[0]))
+    entry.title = (title or str(splitext(filename)[0]))
 
-    entry.description = description or u""
+    entry.description = description or ""
 
     entry.license = license or None
 
@@ -164,7 +167,7 @@ def submit_media(request, user, submitted_file, filename,
     # Get file size and round to 2 decimal places
     file_size = request.app.queue_store.get_file_size(
         entry.queued_media_file) / (1024.0 * 1024)
-    file_size = float('{0:.2f}'.format(file_size))
+    file_size = float('{:.2f}'.format(file_size))
 
     # Check if file size is over the limit
     if max_file_size and file_size >= max_file_size:
@@ -208,6 +211,13 @@ def submit_media(request, user, submitted_file, filename,
     activity = create_activity("post", entry, entry.actor, to=to, cc=cc)
     entry.save()
 
+    # add to collection
+    if collection_slug:
+        collection = Collection.query.filter_by(slug=collection_slug,
+                                                actor=user.id).first()
+        if collection:
+            add_media_to_collection(collection, entry)
+
     # Pass off to processing
     #
     # (... don't change entry after this point to avoid race
@@ -231,7 +241,7 @@ def prepare_queue_task(app, entry, filename):
     # (If we got it off the task's auto-generation, there'd be
     # a risk of a race condition when we'd save after sending
     # off the task)
-    task_id = six.text_type(uuid.uuid4())
+    task_id = str(uuid.uuid4())
     entry.queued_task_id = task_id
 
     # Now store generate the queueing related filename
@@ -262,10 +272,17 @@ def run_process_media(entry, feed_url=None,
     :param reprocess_action: What particular action should be run.
     :param reprocess_info: A dict containing all of the necessary reprocessing
         info for the given media_type"""
+
+    entry, manager = get_entry_and_processing_manager(entry.id)
+
     try:
-        ProcessMedia().apply_async(
-            [entry.id, feed_url, reprocess_action, reprocess_info], {},
-            task_id=entry.queued_task_id)
+        wf = manager.workflow(entry, feed_url, reprocess_action, reprocess_info)
+        if wf is None:
+            ProcessMedia().apply_async(
+                [entry.id, feed_url, reprocess_action, reprocess_info], {},
+                task_id=entry.queued_task_id)
+        else:
+            chord(wf[0])(wf[1])
     except BaseException as exc:
         # The purpose of this section is because when running in "lazy"
         # or always-eager-with-exceptions-propagated celery mode that

@@ -14,7 +14,6 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import print_function
 
 import argparse
 import os
@@ -146,7 +145,7 @@ def available(args):
         manager = get_processing_manager_for_type(media_type)
     except ProcessingManagerDoesNotExist:
         entry = MediaEntry.query.filter_by(id=args.id_or_type).first()
-        print('No such processing manager for {0}'.format(entry.media_type))
+        print('No such processing manager for {}'.format(entry.media_type))
 
     if args.state:
         processors = manager.list_all_processors_by_state(args.state)
@@ -171,7 +170,7 @@ def available(args):
     else:
         for processor in processors:
             if processor.description:
-                print(" - %s: %s" % (processor.name, processor.description))
+                print(" - {}: {}".format(processor.name, processor.description))
             else:
                 print(" - %s" % processor.name)
 
@@ -188,11 +187,11 @@ def run(args, media_id=None):
             processor_class = manager.get_processor(
                 args.reprocess_command, media_entry)
         except ProcessorDoesNotExist:
-            print('No such processor "%s" for media with id "%s"' % (
+            print('No such processor "{}" for media with id "{}"'.format(
                 args.reprocess_command, media_entry.id))
             return
         except ProcessorNotEligible:
-            print('Processor "%s" exists but media "%s" is not eligible' % (
+            print('Processor "{}" exists but media "{}" is not eligible'.format(
                 args.reprocess_command, media_entry.id))
             return
 
@@ -206,7 +205,7 @@ def run(args, media_id=None):
 
     except ProcessingManagerDoesNotExist:
         entry = MediaEntry.query.filter_by(id=media_id).first()
-        print('No such processing manager for {0}'.format(entry.media_type))
+        print('No such processing manager for {}'.format(entry.media_type))
 
 
 def bulk_run(args):
@@ -236,11 +235,11 @@ def thumbs(args):
                 processor_class = manager.get_processor(
                     'resize', media_entry)
             except ProcessorDoesNotExist:
-                print('No such processor "%s" for media with id "%s"' % (
+                print('No such processor "{}" for media with id "{}"'.format(
                     'resize', media_entry.id))
                 return
             except ProcessorNotEligible:
-                print('Processor "%s" exists but media "%s" is not eligible' % (
+                print('Processor "{}" exists but media "{}" is not eligible'.format(
                     'resize', media_entry.id))
                 return
 
@@ -248,7 +247,7 @@ def thumbs(args):
 
             # prepare filetype and size to be passed into reprocess_parser
             if args.size:
-                extra_args = 'thumb --{0} {1} {2}'.format(
+                extra_args = 'thumb --{} {} {}'.format(
                     processor_class.thumb_size,
                     args.size[0],
                     args.size[1])
@@ -263,7 +262,7 @@ def thumbs(args):
                 reprocess_info=reprocess_request)
 
         except ProcessingManagerDoesNotExist:
-            print('No such processing manager for {0}'.format(entry.media_type))
+            print('No such processing manager for {}'.format(entry.media_type))
 
 
 def initial(args):
@@ -279,7 +278,7 @@ def initial(args):
                 media_entry,
                 reprocess_action='initial')
         except ProcessingManagerDoesNotExist:
-            print('No such processing manager for {0}'.format(entry.media_type))
+            print('No such processing manager for {}'.format(entry.media_type))
 
 
 def reprocess(args):

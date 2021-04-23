@@ -18,8 +18,6 @@ import argparse
 import os
 import shutil
 
-import six
-
 from mediagoblin.tools.common import import_component
 
 import logging
@@ -76,6 +74,12 @@ SUBCOMMAND_MAP = {
         'setup': 'mediagoblin.gmg_commands.batchaddmedia:parser_setup',
         'func': 'mediagoblin.gmg_commands.batchaddmedia:batchaddmedia',
         'help': 'Add many media entries at once'},
+    'alembic': {
+        'setup': 'mediagoblin.gmg_commands.alembic_commands:parser_setup',
+        'func': 'mediagoblin.gmg_commands.alembic_commands:raw_alembic_cli',
+        'help': (
+            'Run raw alembic commands with our local database.  '
+            '(Unless you know what you\'re doing, use dbupdate instead!)')},
     # 'theme': {
     #     'setup': 'mediagoblin.gmg_commands.theme:theme_parser_setup',
     #     'func': 'mediagoblin.gmg_commands.theme:theme',
@@ -95,7 +99,7 @@ def main_cli():
             "otherwise mediagoblin.ini"))
 
     subparsers = parser.add_subparsers(help='sub-command help')
-    for command_name, command_struct in six.iteritems(SUBCOMMAND_MAP):
+    for command_name, command_struct in SUBCOMMAND_MAP.items():
         if 'help' in command_struct:
             subparser = subparsers.add_parser(
                 command_name, help=command_struct['help'])
@@ -139,7 +143,10 @@ def main_cli():
             os.path.join(parent_directory, "mediagoblin.example.ini"),
             os.path.join(parent_directory, "mediagoblin.ini"))
 
-    args.func(args)
+    try:
+        args.func(args)
+    except AttributeError:  # no subcommand or no func of subcommand
+        parser.print_help()
 
 
 if __name__ == '__main__':

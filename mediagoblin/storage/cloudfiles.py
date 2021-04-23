@@ -20,7 +20,6 @@ python-cloudfiles one.
 
 http://docs.python.org/whatsnew/2.5.html#pep-328-absolute-and-relative-imports
 '''
-from __future__ import absolute_import
 
 from mediagoblin.storage import StorageInterface, clean_listy_filepath
 
@@ -58,7 +57,7 @@ class CloudFilesStorage(StorageInterface):
             servicenet=True if self.param_use_servicenet == 'true' or \
                 self.param_use_servicenet == True else False)
 
-        _log.debug('Connected to {0} (auth: {1})'.format(
+        _log.debug('Connected to {} (auth: {})'.format(
             self.connection.connection.host,
             self.connection.auth.host))
 
@@ -72,7 +71,7 @@ class CloudFilesStorage(StorageInterface):
             self.container = self.connection.get_container(
                 self.param_container)
 
-        _log.debug('Container: {0}'.format(
+        _log.debug('Container: {}'.format(
             self.container.name))
 
         self.container_uri = self.container.public_ssl_uri()
@@ -162,7 +161,7 @@ class CloudFilesStorage(StorageInterface):
         # and bandwidth usage. So, override this method and use the
         # Cloudfile's "send" interface instead.
         # TODO: Fixing write() still seems worthwhile though.
-        _log.debug('Sending {0} to cloudfiles...'.format(filepath))
+        _log.debug('Sending {} to cloudfiles...'.format(filepath))
         with self.get_file(filepath, 'wb') as dest_file:
             with open(filename, 'rb') as source_file:
                 # Copy to storage system in 4096 byte chunks
@@ -188,7 +187,7 @@ class CloudFilesStorageObjectWrapper():
         self.storage_object = storage_object
 
     def read(self, *args, **kwargs):
-        _log.debug('Reading {0}'.format(
+        _log.debug('Reading {}'.format(
             self.storage_object.name))
         return self.storage_object.read(*args, **kwargs)
 

@@ -31,13 +31,13 @@ from .resources import GOOD_JPG, GOOD_PNG, EVIL_FILE, EVIL_JPG, EVIL_PNG, \
 _log = logging.getLogger(__name__)
 
 
-class TestAPI(object):
+class TestAPI:
     def setup(self):
         self.db = mg_globals.database
 
-        self.user_password = u'4cc355_70k3N'
-        self.user = fixture_add_user(u'joapi', self.user_password,
-            privileges=[u'active',u'uploader'])
+        self.user_password = '4cc355_70k3N'
+        self.user = fixture_add_user('joapi', self.user_password,
+            privileges=['active','uploader'])
 
     def login(self, test_app):
         test_app.post(
@@ -49,7 +49,7 @@ class TestAPI(object):
         return template.TEMPLATE_TEST_CONTEXT[template_name]
 
     def http_auth_headers(self):
-        return {'Authorization': ('Basic {0}'.format(
+        return {'Authorization': ('Basic {}'.format(
                 base64.b64encode((':'.join([
                     self.user.username,
                     self.user_password])).encode('ascii')).decode()))}
@@ -91,4 +91,4 @@ class TestAPI(object):
 
         assert response.status_int == 200
 
-        assert self.db.MediaEntry.query.filter_by(title=u'Great JPG!').first()
+        assert self.db.MediaEntry.query.filter_by(title='Great JPG!').first()

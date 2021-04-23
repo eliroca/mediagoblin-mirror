@@ -22,9 +22,9 @@ class MediaCommentForm(wtforms.Form):
     comment_content = wtforms.TextAreaField(
         _('Comment'),
         [wtforms.validators.InputRequired()],
-        description=_(u'You can use '
-                      u'<a href="http://daringfireball.net/projects/markdown/basics" target="_blank">'
-                      u'Markdown</a> for formatting.'))
+        description=_('You can use '
+                      '<a href="http://daringfireball.net/projects/markdown/basics" target="_blank">'
+                      'Markdown</a> for formatting.'))
 
 class ConfirmDeleteForm(wtforms.Form):
     confirm = wtforms.BooleanField(

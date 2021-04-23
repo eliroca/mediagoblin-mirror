@@ -15,7 +15,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from io import open
 import os
 import copy
 import json
@@ -65,8 +64,8 @@ class DefaultChecker(FormatChecker):
     checkers = copy.deepcopy(draft4_format_checker.checkers)
 
 
-DefaultChecker.checkers[u"uri"] = (is_uri, ())
-DefaultChecker.checkers[u"date-time"] = (is_datetime, (ValueError, TypeError))
+DefaultChecker.checkers["uri"] = (is_uri, ())
+DefaultChecker.checkers["date-time"] = (is_datetime, (ValueError, TypeError))
 DEFAULT_CHECKER = DefaultChecker()
 
 # Crappy default schema, checks for things we deem important
@@ -219,5 +218,5 @@ def expand_json(metadata, context=DEFAULT_CONTEXT):
 
 
 def rdfa_to_readable(rdfa_predicate):
-    readable = rdfa_predicate.split(u":")[1].capitalize()
+    readable = rdfa_predicate.split(":")[1].capitalize()
     return readable

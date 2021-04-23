@@ -14,13 +14,12 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import absolute_import, unicode_literals
 
 from werkzeug.wrappers import Request
 
 from ..tools.response import redirect, redirect_obj
 
-class TestRedirect(object):
+class TestRedirect:
     def test_redirect_respects_location(self):
         """Test that redirect returns a 302 to location specified."""
         request = Request({})
@@ -54,7 +53,7 @@ class TestRedirect(object):
 
         # Using a mock obj here so that we're only testing redirect_obj itself,
         # rather than also testing the url_for_self implementation.
-        class Foo(object):
+        class Foo:
             def url_for_self(*args, **kwargs):
                 return '/foo'
 

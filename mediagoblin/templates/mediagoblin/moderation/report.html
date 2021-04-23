@@ -54,7 +54,7 @@
                         user=target.get_actor.username,
                         media=target.slug_or_id) }}#comment"
            class="comment_whenlink">
-          <span title='{{- comment.created.strftime("%I:%M%p %Y-%m-%d") -}}'>
+          <span title='{{- comment.created.strftime(app_config['datetime_format']) -}}'>
             {%- trans formatted_time=timesince(comment.created) -%}
               {{ formatted_time }} ago
             {%- endtrans -%}
@@ -117,7 +117,7 @@
         <a href="{{ request.urlgen('mediagoblin.moderation.reports_detail',
                         report_id=report.id) }}"
            class="report_whenlink">
-          <span title='{{- report.created.strftime("%I:%M%p %Y-%m-%d") -}}'>
+          <span title='{{- report.created.strftime(app_config['datetime_format']) -}}'>
             {%- trans formatted_time=timesince(report.created) -%}
               {{ formatted_time }} ago
             {%- endtrans -%}
@@ -128,10 +128,27 @@
       {{ report.report_content }}
     </div>
   </div>
-  {% if not report.is_archived_report() and
-        not (report.reported_user.has_privilege('admin') and
-        not request.user.has_privilege('admin')) %}
-    <input type=button class="button_action" value="{% trans %}Resolve{% endtrans %}" id=open_resolution_form />
+  {% if report.is_archived_report() %}
+    <h2><img src="{{ request.staticdirect('/images/icon_clipboard.png') }}"
+             alt=""
+             title="Under a GNU LGPL v.3 or Creative Commons BY-SA 3.0 license.
+                  Distributed by the GNOME project http://www.gnome.org" />
+          {% trans %}Status{% endtrans %}:
+    </h2>
+    <b>{% trans %}RESOLVED{% endtrans %}</b>
+    {{ report.resolved.strftime(app_config['datetime_format']) }}
+    <pre>
+      <p>{{ report.result }}</p>
+    </pre>
+  {% elif report.reported_user.has_privilege('admin')
+        and not request.user.has_privilege('admin') %}
+    <input type=button disabled=disabled value="{% trans %}Resolve This Report{% endtrans %}"/>
+    <p>
+      {% trans -%}
+        You cannot take action against an administrator
+      {%- endtrans %}
+    </p>
+  {% else %}
     <form action="" method="POST" id=resolution_form>
       {{ wtforms_util.render_divs(form) }}
       {{ csrf_token }}
@@ -142,25 +159,6 @@
     init_report_resolution_form();
   });
   </script>
-  {% elif report.is_archived_report() %}
-    <h2><img src="{{ request.staticdirect('/images/icon_clipboard.png') }}"
-             alt=""
-             title="Under a GNU LGPL v.3 or Creative Commons BY-SA 3.0 license.
-                  Distributed by the GNOME project http://www.gnome.org" />
-          {% trans %}Status{% endtrans %}:
-    </h2>
-    <b>{% trans %}RESOLVED{% endtrans %}</b>
-    {{ report.resolved.strftime("%I:%M%p %Y-%m-%d") }}
-    <pre>
-      <p>{{ report.result }}</p>
-    </pre>
-  {% else %}
-    <input type=button disabled=disabled value="{% trans %}Resolve This Report{% endtrans %}"/>
-    <p>
-      {% trans -%}
-        You cannot take action against an administrator
-      {%- endtrans %}
-    </p>
   {% endif %}
 {% endif %}
 {% endblock %}

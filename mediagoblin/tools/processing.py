@@ -18,7 +18,7 @@ import logging
 import json
 import traceback
 
-from six.moves.urllib import request, parse
+from urllib import request, parse
 
 _log = logging.getLogger(__name__)
 
@@ -47,12 +47,12 @@ def json_processing_callback(entry):
     Send an HTTP post to the registered callback url, if any.
     '''
     if not entry.processing_metadata:
-        _log.debug('No processing callback URL for {0}'.format(entry))
+        _log.debug('No processing callback URL for {}'.format(entry))
         return
 
     url = entry.processing_metadata[0].callback_url
 
-    _log.debug('Sending processing callback for {0} to {1}'.format(
+    _log.debug('Sending processing callback for {} to {}'.format(
         entry,
         url))
 
@@ -76,11 +76,11 @@ def json_processing_callback(entry):
 
     try:
         request.urlopen(request)
-        _log.debug('Processing callback for {0} sent'.format(entry))
+        _log.debug('Processing callback for {} sent'.format(entry))
 
         return True
     except request.HTTPError:
-        _log.error('Failed to send callback: {0}'.format(
+        _log.error('Failed to send callback: {}'.format(
             traceback.format_exc()))
 
         return False

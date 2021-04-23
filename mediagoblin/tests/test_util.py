@@ -15,17 +15,17 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 try:
-    import mock
+    from unittest import mock
 except ImportError:
     import unittest.mock as mock
 import email
+import socket
 import pytest
 import smtplib
 import pkg_resources
 
-import six
-
 from mediagoblin.tests.tools import get_app
+from mediagoblin import mg_globals
 from mediagoblin.tools import common, url, translate, mail, text, testing
 
 testing._activate_testing()
@@ -33,14 +33,14 @@ testing._activate_testing()
 
 def _import_component_testing_method(silly_string):
     # Just for the sake of testing that our component importer works.
-    return u"'%s' is the silliest string I've ever seen" % silly_string
+    return "'%s' is the silliest string I've ever seen" % silly_string
 
 
 def test_import_component():
     imported_func = common.import_component(
         'mediagoblin.tests.test_util:_import_component_testing_method')
     result = imported_func('hooobaladoobala')
-    expected = u"'hooobaladoobala' is the silliest string I've ever seen"
+    expected = "'hooobaladoobala' is the silliest string I've ever seen"
     assert result == expected
 
 
@@ -102,19 +102,19 @@ def test_email_force_starttls(starttls_enabled_app):
             )
 
 def test_slugify():
-    assert url.slugify(u'a walk in the park') == u'a-walk-in-the-park'
-    assert url.slugify(u'A Walk in the Park') == u'a-walk-in-the-park'
-    assert url.slugify(u'a  walk in the park') == u'a-walk-in-the-park'
-    assert url.slugify(u'a walk in-the-park') == u'a-walk-in-the-park'
-    assert url.slugify(u'a w@lk in the park?') == u'a-w-lk-in-the-park'
-    assert url.slugify(u'a walk in the par\u0107') == u'a-walk-in-the-parc'
-    assert url.slugify(u'\u00E0\u0042\u00E7\u010F\u00EB\u0066') == u'abcdef'
+    assert url.slugify('a walk in the park') == 'a-walk-in-the-park'
+    assert url.slugify('A Walk in the Park') == 'a-walk-in-the-park'
+    assert url.slugify('a  walk in the park') == 'a-walk-in-the-park'
+    assert url.slugify('a walk in-the-park') == 'a-walk-in-the-park'
+    assert url.slugify('a w@lk in the park?') == 'a-w-lk-in-the-park'
+    assert url.slugify('a walk in the par\u0107') == 'a-walk-in-the-parc'
+    assert url.slugify('\u00E0\u0042\u00E7\u010F\u00EB\u0066') == 'abcdef'
     # Russian
-    assert url.slugify(u'\u043f\u0440\u043e\u0433\u0443\u043b\u043a\u0430 '
-            u'\u0432 \u043f\u0430\u0440\u043a\u0435') == u'progulka-v-parke'
+    assert url.slugify('\u043f\u0440\u043e\u0433\u0443\u043b\u043a\u0430 '
+            '\u0432 \u043f\u0430\u0440\u043a\u0435') == 'progulka-v-parke'
     # Korean
-    assert (url.slugify(u'\uacf5\uc6d0\uc5d0\uc11c \uc0b0\ucc45') ==
-            u'gongweoneseo-sancaeg')
+    assert (url.slugify('\uacf5\uc6d0\uc5d0\uc11c \uc0b0\ucc45') ==
+            'gongweoneseo-sancaeg')
 
 def test_locale_to_lower_upper():
     """
@@ -145,17 +145,17 @@ def test_locale_to_lower_lower():
 def test_gettext_lazy_proxy():
     from mediagoblin.tools.translate import lazy_pass_to_ugettext as _
     from mediagoblin.tools.translate import pass_to_ugettext, set_thread_locale
-    proxy = _(u"Password")
-    orig = u"Password"
+    proxy = _("Password")
+    orig = "Password"
 
     set_thread_locale("es")
-    p1 = six.text_type(proxy)
+    p1 = str(proxy)
     p1_should = pass_to_ugettext(orig)
     assert p1_should != orig, "Test useless, string not translated"
     assert p1 == p1_should
 
     set_thread_locale("sv")
-    p2 = six.text_type(proxy)
+    p2 = str(proxy)
     p2_should = pass_to_ugettext(orig)
     assert p2_should != orig, "Test broken, string not translated"
     assert p2 == p2_should
@@ -181,3 +181,30 @@ def test_html_cleaner():
         '<p><a href="javascript:nasty_surprise">innocent link!</a></p>')
     assert result == (
         '<p><a href="">innocent link!</a></p>')
+
+
+class TestMail:
+    """ Test mediagoblin's mail tool """
+    def test_no_mail_server(self):
+        """ Tests that no smtp server is available """
+        with pytest.raises(mail.NoSMTPServerError), mock.patch("smtplib.SMTP") as smtp_mock:
+            smtp_mock.side_effect = socket.error
+            mg_globals.app_config = {
+                "email_debug_mode": False,
+                "email_smtp_use_ssl": False,
+                "email_smtp_host": "127.0.0.1",
+                "email_smtp_port": 0}
+            common.TESTS_ENABLED = False
+            mail.send_email("", "", "", "")
+
+    def test_no_smtp_host(self):
+        """ Empty email_smtp_host """
+        with pytest.raises(mail.NoSMTPServerError), mock.patch("smtplib.SMTP") as smtp_mock:
+            smtp_mock.return_value.connect.side_effect = socket.error
+            mg_globals.app_config = {
+                "email_debug_mode": False,
+                "email_smtp_use_ssl": False,
+                "email_smtp_host": "",
+                "email_smtp_port": 0}
+            common.TESTS_ENABLED = False
+            mail.send_email("", "", "", "")

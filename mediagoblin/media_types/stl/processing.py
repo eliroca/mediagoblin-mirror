@@ -48,7 +48,7 @@ BLEND_SCRIPT = pkg_resources.resource_filename(
 
 
 def sniff_handler(media_file, filename):
-    _log.info('Sniffing {0}'.format(MEDIA_TYPE))
+    _log.info('Sniffing {}'.format(MEDIA_TYPE))
 
     name, ext = os.path.splitext(filename)
     clean_ext = ext[1:].lower()
@@ -57,7 +57,7 @@ def sniff_handler(media_file, filename):
         _log.info('Found file extension in supported filetypes')
         return MEDIA_TYPE
     else:
-        _log.debug('Media present, extension not found in {0}'.format(
+        _log.debug('Media present, extension not found in {}'.format(
                 SUPPORTED_FILETYPES))
 
     return None
@@ -365,6 +365,6 @@ class Resizer(CommonStlProcessor):
 
 class StlProcessingManager(ProcessingManager):
     def __init__(self):
-        super(StlProcessingManager, self).__init__()
+        super().__init__()
         self.add_processor(InitialProcessor)
         self.add_processor(Resizer)

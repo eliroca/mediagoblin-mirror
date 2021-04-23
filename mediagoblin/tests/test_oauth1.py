@@ -16,7 +16,7 @@
 
 import pytest
 
-from six.moves.urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, urlparse
 
 from oauthlib.oauth1 import Client
 
@@ -25,7 +25,7 @@ from mediagoblin.tools import template, pluginapi
 from mediagoblin.tests.tools import fixture_add_user
 
 
-class TestOAuth(object):
+class TestOAuth:
 
     MIME_FORM = "application/x-www-form-urlencoded"
     MIME_JSON = "application/json"
@@ -123,7 +123,7 @@ class TestOAuth(object):
     def to_authorize_headers(self, data):
         headers = ""
         for key, value in data.items():
-            headers += '{0}="{1}",'.format(key, value)
+            headers += '{}="{}",'.format(key, value)
         return {"Authorization": "OAuth " + headers[:-1]}
 
     def test_request_token(self):

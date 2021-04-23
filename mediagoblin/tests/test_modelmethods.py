@@ -17,7 +17,6 @@
 # Maybe not every model needs a test, but some models have special
 # methods, and so it makes sense to test them here.
 
-from __future__ import print_function
 
 from mediagoblin.db.base import Session
 from mediagoblin.db.models import MediaEntry, User, LocalUser, Privilege, \
@@ -28,13 +27,13 @@ from mediagoblin.tests.tools import fixture_add_user, fixture_media_entry, \
                                     fixture_add_activity
 
 try:
-    import mock
+    from unittest import mock
 except ImportError:
     import unittest.mock as mock
 import pytest
 
 
-class FakeUUID(object):
+class FakeUUID:
     hex = 'testtest-test-test-test-testtesttest'
 
 UUID_MOCK = mock.Mock(return_value=FakeUUID())
@@ -42,22 +41,22 @@ UUID_MOCK = mock.Mock(return_value=FakeUUID())
 REQUEST_CONTEXT = ['mediagoblin/root.html', 'request']
 
 
-class TestMediaEntrySlugs(object):
+class TestMediaEntrySlugs:
     def _setup(self):
-        self.chris_user = fixture_add_user(u'chris')
-        self.emily_user = fixture_add_user(u'emily')
+        self.chris_user = fixture_add_user('chris')
+        self.emily_user = fixture_add_user('emily')
         self.existing_entry = self._insert_media_entry_fixture(
-            title=u"Beware, I exist!",
-            slug=u"beware-i-exist")
+            title="Beware, I exist!",
+            slug="beware-i-exist")
 
     def _insert_media_entry_fixture(self, title=None, slug=None, this_id=None,
                                     uploader=None, save=True):
         entry = MediaEntry()
-        entry.title = title or u"Some title"
+        entry.title = title or "Some title"
         entry.slug = slug
         entry.id = this_id
         entry.actor = uploader or self.chris_user.id
-        entry.media_type = u'image'
+        entry.media_type = 'image'
 
         if save:
             entry.save()
@@ -67,33 +66,33 @@ class TestMediaEntrySlugs(object):
     def test_unique_slug_from_title(self, test_app):
         self._setup()
 
-        entry = self._insert_media_entry_fixture(u"Totally unique slug!", save=False)
+        entry = self._insert_media_entry_fixture("Totally unique slug!", save=False)
         entry.generate_slug()
-        assert entry.slug == u'totally-unique-slug'
+        assert entry.slug == 'totally-unique-slug'
 
     def test_old_good_unique_slug(self, test_app):
         self._setup()
 
         entry = self._insert_media_entry_fixture(
-            u"A title here", u"a-different-slug-there", save=False)
+            "A title here", "a-different-slug-there", save=False)
         entry.generate_slug()
-        assert entry.slug == u"a-different-slug-there"
+        assert entry.slug == "a-different-slug-there"
 
     def test_old_weird_slug(self, test_app):
         self._setup()
 
         entry = self._insert_media_entry_fixture(
-            slug=u"wowee!!!!!", save=False)
+            slug="wowee!!!!!", save=False)
         entry.generate_slug()
-        assert entry.slug == u"wowee"
+        assert entry.slug == "wowee"
 
     def test_existing_slug_use_id(self, test_app):
         self._setup()
 
         entry = self._insert_media_entry_fixture(
-            u"Beware, I exist!!", this_id=9000, save=False)
+            "Beware, I exist!!", this_id=9000, save=False)
         entry.generate_slug()
-        assert entry.slug == u"beware-i-exist-9000"
+        assert entry.slug == "beware-i-exist-9000"
 
     def test_existing_slug_cant_use_id(self, test_app):
         self._setup()
@@ -104,12 +103,12 @@ class TestMediaEntrySlugs(object):
         def _real_test():
             # This one grabs the nine thousand slug
             self._insert_media_entry_fixture(
-                slug=u"beware-i-exist-9000")
+                slug="beware-i-exist-9000")
 
             entry = self._insert_media_entry_fixture(
-                u"Beware, I exist!!", this_id=9000, save=False)
+                "Beware, I exist!!", this_id=9000, save=False)
             entry.generate_slug()
-            assert entry.slug == u"beware-i-exist-test"
+            assert entry.slug == "beware-i-exist-test"
 
         _real_test()
 
@@ -122,16 +121,16 @@ class TestMediaEntrySlugs(object):
         def _real_test():
             # This one grabs the nine thousand slug
             self._insert_media_entry_fixture(
-                slug=u"beware-i-exist-9000")
+                slug="beware-i-exist-9000")
 
             # This one grabs makes sure the annoyance doesn't stop
             self._insert_media_entry_fixture(
-                slug=u"beware-i-exist-test")
+                slug="beware-i-exist-test")
 
             entry = self._insert_media_entry_fixture(
-                 u"Beware, I exist!!", this_id=9000, save=False)
+                 "Beware, I exist!!", this_id=9000, save=False)
             entry.generate_slug()
-            assert entry.slug == u"beware-i-exist-testtest"
+            assert entry.slug == "beware-i-exist-testtest"
 
         _real_test()
 
@@ -141,42 +140,42 @@ class TestMediaEntrySlugs(object):
         all.  We'll just reference them by id.
 
                   ,
-                 / \      (@!#?@!)
-                |\,/|   ,-,  /
+                 / \\      (@!#?@!)
+                |\\,/|   ,-,  /
                 | |#|  ( ")~
-               / \|/ \  L L
-              |\,/|\,/|
+               / \\|/ \\  L L
+              |\\,/|\\,/|
               | |#, |#|
-             / \|/ \|/ \
-            |\,/|\,/|\,/|
+             / \\|/ \\|/ \
+            |\\,/|\\,/|\\,/|
             | |#| |#| |#|
-           / \|/ \|/ \|/ \
-          |\,/|\,/|\,/|\,/|
+           / \\|/ \\|/ \\|/ \
+          |\\,/|\\,/|\\,/|\\,/|
           | |#| |#| |#| |#|
-           \|/ \|/ \|/ \|/
+           \\|/ \\|/ \\|/ \\|/
         """
         self._setup()
 
         qbert_entry = self._insert_media_entry_fixture(
-            u"@!#?@!", save=False)
+            "@!#?@!", save=False)
         qbert_entry.generate_slug()
         assert qbert_entry.slug is None
 
 class TestUserHasPrivilege:
     def _setup(self):
-        fixture_add_user(u'natalie',
-            privileges=[u'admin',u'moderator',u'active'])
-        fixture_add_user(u'aeva',
-            privileges=[u'moderator',u'active'])
+        fixture_add_user('natalie',
+            privileges=['admin','moderator','active'])
+        fixture_add_user('aeva',
+            privileges=['moderator','active'])
         self.natalie_user = LocalUser.query.filter(
-            LocalUser.username==u'natalie').first()
+            LocalUser.username=='natalie').first()
         self.aeva_user = LocalUser.query.filter(
-            LocalUser.username==u'aeva').first()
+            LocalUser.username=='aeva').first()
 
     def test_privilege_added_correctly(self, test_app):
         self._setup()
         admin = Privilege.query.filter(
-            Privilege.privilege_name == u'admin').one()
+            Privilege.privilege_name == 'admin').one()
         # first make sure the privileges were added successfully
 
         assert admin in self.natalie_user.all_privileges
@@ -186,23 +185,23 @@ class TestUserHasPrivilege:
         self._setup()
 
         # then test out the user.has_privilege method for one privilege
-        assert not self.aeva_user.has_privilege(u'admin')
-        assert self.natalie_user.has_privilege(u'active')
+        assert not self.aeva_user.has_privilege('admin')
+        assert self.natalie_user.has_privilege('active')
 
     def test_allow_admin(self, test_app):
         self._setup()
 
         # This should work because she is an admin.
-        assert self.natalie_user.has_privilege(u'commenter')
+        assert self.natalie_user.has_privilege('commenter')
 
         # Test that we can look this out ignoring that she's an admin
-        assert not self.natalie_user.has_privilege(u'commenter', allow_admin=False)
+        assert not self.natalie_user.has_privilege('commenter', allow_admin=False)
 
 def test_media_data_init(test_app):
     Session.rollback()
     Session.remove()
     media = MediaEntry()
-    media.media_type = u"mediagoblin.media_types.image"
+    media.media_type = "mediagoblin.media_types.image"
     assert media.media_data is None
     media.media_data_init()
     assert media.media_data is not None
@@ -215,12 +214,12 @@ def test_media_data_init(test_app):
 
 class TestUserUrlForSelf(MGClientTestCase):
 
-    usernames = [(u'lindsay', dict(privileges=[u'active']))]
+    usernames = [('lindsay', dict(privileges=['active']))]
 
     def test_url_for_self(self):
         _, request = self.do_get('/', *REQUEST_CONTEXT)
 
-        assert self.user(u'lindsay').url_for_self(request.urlgen) == '/u/lindsay/'
+        assert self.user('lindsay').url_for_self(request.urlgen) == '/u/lindsay/'
 
     def test_url_for_self_not_callable(self):
         _, request = self.do_get('/', *REQUEST_CONTEXT)
@@ -229,6 +228,6 @@ class TestUserUrlForSelf(MGClientTestCase):
             pass
 
         with pytest.raises(TypeError) as excinfo:
-            self.user(u'lindsay').url_for_self(fake_urlgen())
+            self.user('lindsay').url_for_self(fake_urlgen())
         assert excinfo.errisinstance(TypeError)
         assert 'object is not callable' in str(excinfo)

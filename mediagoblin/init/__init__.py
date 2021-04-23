@@ -70,10 +70,16 @@ def setup_database(app):
     # Set up the database
     db = setup_connection_and_db_from_config(
         app_config, run_migrations, app=app)
+    # run_migrations is used for tests
     if run_migrations:
-        #Run the migrations to initialize/update the database.
-        from mediagoblin.gmg_commands.dbupdate import run_all_migrations
-        run_all_migrations(db, app_config, global_config)
+        # Run the migrations to initialize/update the database.
+        # We only run the alembic migrations in the case of unit
+        # tests, in which case we don't need to run the legacy
+        # migrations.
+        from mediagoblin.gmg_commands.dbupdate import (
+            run_alembic_migrations, run_foundations)
+        run_alembic_migrations(db, app_config, global_config)
+        run_foundations(db, global_config)
     else:
         check_db_migrations_current(db)
 
@@ -106,8 +112,8 @@ def get_jinja_loader(user_template_path=None, current_theme=None,
     # Add plugin template paths next--takes precedence over
     # core templates.
     if plugin_template_paths is not None:
-        path_list.extend((jinja2.FileSystemLoader(path)
-                          for path in plugin_template_paths))
+        path_list.extend(jinja2.FileSystemLoader(path)
+                          for path in plugin_template_paths)
 
     # Add core templates last.
     path_list.append(jinja2.PackageLoader('mediagoblin', 'templates'))
@@ -127,7 +133,7 @@ def get_staticdirector(app_config):
 
     # Let plugins load additional paths
     for plugin_static in hook_runall("static_setup"):
-        direct_domains[plugin_static.name] = "%s/%s" % (
+        direct_domains[plugin_static.name] = "{}/{}".format(
             app_config['plugin_web_path'].rstrip('/'),
             plugin_static.name)
 

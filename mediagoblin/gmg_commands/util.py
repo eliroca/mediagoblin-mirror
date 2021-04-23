@@ -33,8 +33,8 @@ def prompt_if_not_set(variable, text, password=False):
     """
     if variable is None:
         if not password:
-            variable=raw_input(text + u' ')
+            variable = input(text + ' ')
         else:
-            variable=getpass.getpass(text + u' ')
+            variable=getpass.getpass(text + ' ')
 
     return variable

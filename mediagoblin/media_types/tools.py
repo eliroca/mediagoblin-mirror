@@ -40,7 +40,7 @@ def discover(src):
     # init before import to work around https://bugzilla.gnome.org/show_bug.cgi?id=736260
     from gi.repository import GstPbutils
 
-    _log.info('Discovering {0}...'.format(src))
-    uri = 'file://{0}'.format(src)
+    _log.info('Discovering {}...'.format(src))
+    uri = 'file://{}'.format(src)
     discoverer = GstPbutils.Discoverer.new(60 * Gst.SECOND)
     return discoverer.discover_uri(uri)

@@ -14,12 +14,9 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import absolute_import
 
 import shutil
 import uuid
-
-import six
 
 from werkzeug.utils import secure_filename
 
@@ -50,7 +47,7 @@ class NotImplementedError(Error):
 # Storage interface & basic file implementation
 ###############################################
 
-class StorageInterface(object):
+class StorageInterface:
     """
     Interface for the storage API.
 
@@ -148,7 +145,7 @@ class StorageInterface(object):
         filepath = clean_listy_filepath(filepath)
 
         if self.file_exists(filepath):
-            return filepath[:-1] + ["%s-%s" % (uuid.uuid4(), filepath[-1])]
+            return filepath[:-1] + ["{}-{}".format(uuid.uuid4(), filepath[-1])]
         else:
             return filepath
 
@@ -224,10 +221,10 @@ def clean_listy_filepath(listy_filepath):
       A cleaned list of unicode objects.
     """
     cleaned_filepath = [
-        six.text_type(secure_filename(filepath))
+        str(secure_filename(filepath))
         for filepath in listy_filepath]
 
-    if u'' in cleaned_filepath:
+    if '' in cleaned_filepath:
         raise InvalidFilepath(
             "A filename component could not be resolved into a usable name.")
 
@@ -261,7 +258,7 @@ def storage_system_from_config(config_section):
     """
     # This construct is needed, because dict(config) does
     # not replace the variables in the config items.
-    config_params = dict(six.iteritems(config_section))
+    config_params = dict(config_section.items())
 
     if 'storage_class' in config_params:
         storage_class = config_params['storage_class']

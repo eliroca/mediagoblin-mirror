@@ -17,16 +17,14 @@
 import re
 from unidecode import unidecode
 
-import six
-
 _punct_re = re.compile(r'[\t !"#:$%&\'()*\-/<=>?@\[\\\]^_`{|},.]+')
 
 
-def slugify(text, delim=u'-'):
+def slugify(text, delim='-'):
     """
     Generates an ASCII-only slug. Taken from http://flask.pocoo.org/snippets/5/
     """
     result = []
     for word in _punct_re.split(text.lower()):
         result.extend(unidecode(word).split())
-    return six.text_type(delim.join(result))
+    return str(delim.join(result))

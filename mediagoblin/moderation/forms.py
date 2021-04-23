@@ -18,10 +18,10 @@ import wtforms
 from mediagoblin.tools.translate import lazy_pass_to_ugettext as _
 
 ACTION_CHOICES = [
-    (u'takeaway', _(u'Take away privilege')),
-    (u'userban', _(u'Ban the user')),
-    (u'sendmessage', _(u'Send the user a message')),
-    (u'delete', _(u'Delete the content'))]
+    ('takeaway', _('Take away privilege')),
+    ('userban', _('Ban the user')),
+    ('sendmessage', _('Send the user a message')),
+    ('delete', _('Delete the content'))]
 
 class MultiCheckboxField(wtforms.SelectMultipleField):
     """
@@ -50,11 +50,11 @@ class BanForm(wtforms.Form):
     This form is used by an admin to ban a user directly from their user page.
     """
     user_banned_until = wtforms.DateField(
-        _(u'User will be banned until:'),
+        _('User will be banned until:'),
         format='%Y-%m-%d',
         validators=[wtforms.validators.optional()])
     why_user_was_banned = wtforms.TextAreaField(
-        _(u'Why are you banning this User?'),
+        _('Why are you banning this User?'),
         validators=[wtforms.validators.optional()])
 
 # =========== Forms for mediagoblin.moderation.report page =================  #
@@ -106,26 +106,26 @@ class ReportResolutionForm(wtforms.Form):
                                         -ved the report in such a way.
     """
     action_to_resolve = MultiCheckboxField(
-        _(u'What action will you take to resolve the report?'),
+        _('What action will you take to resolve the report?'),
         validators=[wtforms.validators.optional()],
         choices=ACTION_CHOICES)
     targeted_user   = wtforms.HiddenField('',
         validators=[wtforms.validators.required()])
     take_away_privileges = wtforms.SelectMultipleField(
-        _(u'What privileges will you take away?'),
+        _('What privileges will you take away?'),
         validators=[wtforms.validators.optional()])
     user_banned_until = wtforms.DateField(
-        _(u'User will be banned until:'),
+        _('User will be banned until:'),
         format='%Y-%m-%d',
         validators=[wtforms.validators.optional()])
     why_user_was_banned = wtforms.TextAreaField(
-        _(u'Why user was banned:'),
+        _('Why user was banned:'),
         validators=[wtforms.validators.optional()])
     message_to_user = wtforms.TextAreaField(
-        _(u'Message to user:'),
+        _('Message to user:'),
         validators=[wtforms.validators.optional()])
     resolution_content = wtforms.TextAreaField(
-        _(u'Resolution content:'))
+        _('Resolution content:'))
 
 # ======== Forms for mediagoblin.moderation.report_panel page ==============  #
 

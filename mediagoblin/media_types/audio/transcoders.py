@@ -20,8 +20,6 @@ try:
 except ImportError:
     import Image
 
-from mediagoblin.media_types.audio import audioprocessing
-
 _log = logging.getLogger(__name__)
 
 CPU_COUNT = 2  # Just assuming for now
@@ -45,42 +43,15 @@ gi.require_version('Gst', '1.0')
 from gi.repository import GObject, Gst
 Gst.init(None)
 
-import numpy
-
-
-class AudioThumbnailer(object):
+class Python3AudioThumbnailer:
     def __init__(self):
-        _log.info('Initializing {0}'.format(self.__class__.__name__))
+        _log.info('Initializing {}'.format(self.__class__.__name__))
 
     def spectrogram(self, src, dst, **kw):
-        width = kw['width']
-        height = int(kw.get('height', float(width) * 0.3))
-        fft_size = kw.get('fft_size', 2048)
+        from mediagoblin.media_types.audio import audiotospectrogram
+        fft_size = kw.get('fft_size', 1024)
         callback = kw.get('progress_callback')
-        processor = audioprocessing.AudioProcessor(
-            src,
-            fft_size,
-            numpy.hanning)
-
-        samples_per_pixel = processor.audio_file.nframes / float(width)
-
-        spectrogram = audioprocessing.SpectrogramImage(width, height, fft_size)
-
-        for x in range(width):
-            if callback and x % (width / 10) == 0:
-                callback((x * 100) / width)
-
-            seek_point = int(x * samples_per_pixel)
-
-            (spectral_centroid, db_spectrum) = processor.spectral_centroid(
-                seek_point)
-
-            spectrogram.draw_spectrum(x, db_spectrum)
-
-        if callback:
-            callback(100)
-
-        spectrogram.save(dst)
+        audiotospectrogram.drawSpectrogram(src, dst, fftSize = fft_size, progressCallback = callback)
 
     def thumbnail_spectrogram(self, src, dst, thumb_size):
         '''
@@ -110,10 +81,11 @@ class AudioThumbnailer(object):
 
         th.save(dst)
 
+AudioThumbnailer = Python3AudioThumbnailer
 
-class AudioTranscoder(object):
+class AudioTranscoder:
     def __init__(self):
-        _log.info('Initializing {0}'.format(self.__class__.__name__))
+        _log.info('Initializing {}'.format(self.__class__.__name__))
 
         # Instantiate MainLoop
         self._loop = GObject.MainLoop()
@@ -124,10 +96,10 @@ class AudioTranscoder(object):
         def _on_pad_added(element, pad, connect_to):
             caps = pad.query_caps(None)
             name = caps.to_string()
-            _log.debug('on_pad_added: {0}'.format(name))
+            _log.debug('on_pad_added: {}'.format(name))
             if name.startswith('audio') and not connect_to.is_linked():
                 pad.link(connect_to)
-        _log.info('Transcoding {0} into {1}'.format(src, dst))
+        _log.info('Transcoding {} into {}'.format(src, dst))
         self.__on_progress = progress_callback
         # Set up pipeline
         tolerance = 80000000
@@ -183,7 +155,7 @@ class AudioTranscoder(object):
             (success, percent) = structure.get_int('percent')
             if self.__on_progress and success:
                 self.__on_progress(percent)
-            _log.info('{0}% done...'.format(percent))
+            _log.info('{}% done...'.format(percent))
         elif message.type == Gst.MessageType.EOS:
             _log.info('Done')
             self.halt()

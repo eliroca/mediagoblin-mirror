@@ -17,7 +17,6 @@
 
 import logging
 
-import six
 import wtforms
 from sqlalchemy import or_
 
@@ -34,20 +33,25 @@ from mediagoblin import auth
 _log = logging.getLogger(__name__)
 
 
-def normalize_user_or_email_field(allow_email=True, allow_user=True):
-    """
-    Check if we were passed a field that matches a username and/or email
+def normalize_user_or_email_field(allow_email=True, allow_user=True,
+                                  is_login=False):
+    """Check if we were passed a field that matches a username and/or email
     pattern.
 
     This is useful for fields that can take either a username or email
-    address. Use the parameters if you want to only allow a username for
-    instance"""
-    message = _(u'Invalid User name or email address.')
-    nomail_msg = _(u"This field does not take email addresses.")
-    nouser_msg = _(u"This field requires an email address.")
+    address. Use the parameters if you want to only allow a username
+    for instance
+
+    is_login : bool
+        If is_login is True, does not check the length of username.
+
+    """
+    message = _('Invalid User name or email address.')
+    nomail_msg = _("This field does not take email addresses.")
+    nouser_msg = _("This field requires an email address.")
 
     def _normalize_field(form, field):
-        email = u'@' in field.data
+        email = '@' in field.data
         if email:  # normalize email address casing
             if not allow_email:
                 raise wtforms.ValidationError(nomail_msg)
@@ -56,7 +60,8 @@ def normalize_user_or_email_field(allow_email=True, allow_user=True):
         else:  # lower case user names
             if not allow_user:
                 raise wtforms.ValidationError(nouser_msg)
-            wtforms.validators.Length(min=3, max=30)(form, field)
+            if not is_login:
+                wtforms.validators.Length(min=3, max=30)(form, field)
             wtforms.validators.Regexp(r'^[-_\w]+$')(form, field)
             field.data = field.data.lower()
         if field.data is None:  # should not happen, but be cautious anyway
@@ -65,8 +70,8 @@ def normalize_user_or_email_field(allow_email=True, allow_user=True):
 
 
 EMAIL_VERIFICATION_TEMPLATE = (
-    u"{uri}?"
-    u"token={verification_key}")
+    "{uri}?"
+    "token={verification_key}")
 
 
 def send_verification_email(user, request, email=None,
@@ -115,11 +120,11 @@ def basic_extra_validation(register_form, *args):
 
     if users_with_username:
         register_form.username.errors.append(
-            _(u'Sorry, a user with that name already exists.'))
+            _('Sorry, a user with that name already exists.'))
         extra_validation_passes = False
     if users_with_email:
         register_form.email.errors.append(
-            _(u'Sorry, a user with that email address already exists.'))
+            _('Sorry, a user with that email address already exists.'))
         extra_validation_passes = False
 
     return extra_validation_passes
@@ -139,7 +144,7 @@ def register_user(request, register_form):
         user.save()
 
         # log the user in
-        request.session['user_id'] = six.text_type(user.id)
+        request.session['user_id'] = str(user.id)
         request.session.save()
 
         # send verification email

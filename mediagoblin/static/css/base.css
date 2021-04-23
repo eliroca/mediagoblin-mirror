@@ -74,6 +74,10 @@ a {
   color: #86D4B1;
 }
 
+a:hover {
+    text-decoration: underline
+}
+
 a.highlight {
   color: #fff;
 }
@@ -142,7 +146,7 @@ header {
 
 .header_right {
   width: 47%;
-  margin: 8px 8px 4px 0;
+  margin: 8px 8px 8px 0;
   display: inline-block;
   float: right;
   text-align: right;
@@ -195,7 +199,7 @@ a.logo {
 
 .logo img {
   vertical-align: middle;
-  margin: 6px 8px 6px 0;
+  margin: 8px 8px 6px 0;
 }
 
 .welcomeimage {
@@ -278,10 +282,20 @@ footer {
   cursor: pointer;
 }
 
+.button_action:hover, .button_form:hover {
+    text-decoration: none;
+    border-color: #252525 #2B2B2B #464646;
+}
+
 .button_action_highlight, .button_form {
   background-color: #86D4B1;
   border-color: #A2DEC3 #6CAA8E #5C9179;
   color: #283F35;
+}
+
+.button_action_highlight:hover {
+    text-decoration: none;
+    border-color: #5C9179 #6CAA8E #A2DEC3;
 }
 
 .button_info {
@@ -394,6 +408,12 @@ text-align: center;
   margin-right: auto;
 }
 
+.form_box > h1, .form_box_xl > h1 {
+  /* Fix header overflowing issue. */
+  overflow: hidden;
+  text-overflow: ellipsis
+}
+
 .form_box_xl {
   max-width: 460px;
 }
@@ -457,11 +477,9 @@ text-align: center;
 }
 
 .form_field_label {
-  margin-bottom: 4px;
-}
-
-.form_field_label {
   font-size:1.125em;
+  margin-bottom: 0;
+  padding: 10px 0;
 }
 
 .form_field_description {
@@ -585,12 +603,14 @@ ul#action_to_resolve {list-style:none; margin-left:10px;}
   border-radius: 0 0 5px 5px;
   padding: 0 0 6px;
   text-overflow: ellipsis;
-  white-space: nowrap;
   overflow: hidden;
   border-color: #0D0D0D;
   border-style: solid;
   border-width: 1px 1px 2px;
   position: relative;
+}
+.media_thumbnail:hover {
+    border-color: #0D0D0D #0D0D0D #378566 #0D0D0D;
 }
 
 .media_thumbnail a {

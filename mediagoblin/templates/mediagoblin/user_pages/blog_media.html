@@ -77,7 +77,7 @@
       {% set delete_url = request.urlgen('mediagoblin.user_pages.media_confirm_delete',
                                  user= media.get_actor.username,
                                  media_id=media.id) %}
-      <a class="button_action" href="{{ delete_url }}">{% trans %}Delete{% endtrans %}</a>
+      <a class="button_action button_warning" href="{{ delete_url }}">{% trans %}Delete{% endtrans %}</a>
 
     {% endif %}
     </br>
@@ -107,7 +107,8 @@
       {% endif %}
       <ul style="list-style:none">
       {% for comment in comments %}
-        {% set comment_author = comment.get_actor %}
+        {% set comment_object = comment.comment() %}
+        {% set comment_author = comment_object.get_actor %}
         <li id="comment-{{ comment.id }}"
           {%- if pagination.active_id == comment.id %}
             class="comment_wrapper comment_active">
@@ -127,15 +128,15 @@
                             user=media.get_actor.username,
                             media=media.slug_or_id) }}#comment"
                class="comment_whenlink">
-              <span title='{{- comment.created.strftime("%I:%M%p %Y-%m-%d") -}}'>
-                {%- trans formatted_time=timesince(comment.created) -%}
+              <span title='{{- comment_object.created.strftime(app_config['datetime_format']) -}}'>
+                {%- trans formatted_time=timesince(comment_object.created) -%}
                   {{ formatted_time }} ago
                 {%- endtrans -%}
               </span></a>:
           </div>
           <div class="comment_content">
             {% autoescape False -%}
-              {{ comment.content_html }}
+              {{ comment_object.content_html }}
             {%- endautoescape %}
           </div>
         </li>
@@ -147,7 +148,7 @@
   </div>
   <div class="media_sidebar">
     <h3>{% trans %}Added{% endtrans %}</h3>
-    <p><span title="{{ media.created.strftime("%I:%M%p %Y-%m-%d") }}">
+    <p><span title="{{ media.created.strftime(app_config['datetime_format']) }}">
         {%- trans formatted_time=timesince(media.created) -%}
           {{ formatted_time }} ago
         {%- endtrans -%}
@@ -163,8 +164,6 @@
     {% include "mediagoblin/utils/collections.html" %}
 
     {% include "mediagoblin/utils/license.html" %}
-
-    {% include "mediagoblin/utils/exif.html" %}
 
     {% template_hook("media_sideinfo") %}
 

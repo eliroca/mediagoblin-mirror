@@ -22,8 +22,6 @@ except ImportError:
     import Image
 import logging
 
-import six
-
 from mediagoblin import mg_globals as mgg
 from mediagoblin.processing import (
     create_pub_filepath, FilenameBuilder,
@@ -39,7 +37,7 @@ MEDIA_TYPE = 'mediagoblin.media_types.ascii'
 
 
 def sniff_handler(media_file, filename):
-    _log.info('Sniffing {0}'.format(MEDIA_TYPE))
+    _log.info('Sniffing {}'.format(MEDIA_TYPE))
 
     name, ext = os.path.splitext(filename)
     clean_ext = ext[1:].lower()
@@ -87,7 +85,7 @@ class CommonAsciiProcessor(MediaProcessor):
         else:
             self.charset = d_charset['encoding']
 
-        _log.info('Charset detected: {0}\nWill interpret as: {1}'.format(
+        _log.info('Charset detected: {}\nWill interpret as: {}'.format(
                   d_charset,
                   self.charset))
 
@@ -106,7 +104,7 @@ class CommonAsciiProcessor(MediaProcessor):
                 # Encode the unicode instance to ASCII and replace any
                 # non-ASCII with an HTML entity (&#
                 unicode_file.write(
-                    six.text_type(orig_file.read().decode(
+                    str(orig_file.read().decode(
                             self.charset)).encode(
                                 'ascii',
                                 'xmlcharrefreplace'))
@@ -270,6 +268,6 @@ class Resizer(CommonAsciiProcessor):
 
 class AsciiProcessingManager(ProcessingManager):
     def __init__(self):
-        super(AsciiProcessingManager, self).__init__()
+        super().__init__()
         self.add_processor(InitialProcessor)
         self.add_processor(Resizer)

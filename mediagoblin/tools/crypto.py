@@ -79,7 +79,7 @@ def setup_crypto(app_config):
     key_filepath = os.path.join(key_dir, 'itsdangeroussecret.bin')
     try:
         load_key(key_filepath)
-    except IOError as error:
+    except OSError as error:
         if error.errno != errno.ENOENT:
             raise
         create_key(key_dir, key_filepath)

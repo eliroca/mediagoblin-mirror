@@ -19,7 +19,7 @@ ENABLED_MEDDLEWARE = [
     ]
 
 
-class BaseMeddleware(object):
+class BaseMeddleware:
 
     def __init__(self, mg_app):
         self.app = mg_app

@@ -29,6 +29,8 @@
           src="{{ request.staticdirect('/js/comment_show.js') }}"></script>
   <script type="text/javascript"
           src="{{ request.staticdirect('/js/keyboard_navigation.js') }}"></script>
+  <script type="text/javascript"
+          src="{{ request.staticdirect('/js/post_comment.js') }}"></script>
 
   {% template_hook("location_head") %}
   {% template_hook("media_head") %}
@@ -75,6 +77,7 @@
     <h2 class="media_title">
       {{ media.title }}
     </h2>
+    {% template_hook("media_titleinfo") %}
     {% if request.user and
           (media.actor == request.user.id or
            request.user.has_privilege('admin')) %}
@@ -116,6 +119,7 @@
             <input type="submit" value="{% trans %}Add this comment{% endtrans %}" class="button_action" />
               {{ csrf_token }}
           </div>
+          <input type="hidden" value="{{ request.urlgen('mediagoblin.user_pages.media_post_comment', user= media.get_actor.username, media_id=media.id) }}" id="postCommentURL" />
           <input type="hidden" value="{{ request.urlgen('mediagoblin.user_pages.media_preview_comment') }}" id="previewURL" />
           <input type="hidden" value="{% trans %}Comment Preview{% endtrans %}" id="previewText"/>
         </form>
@@ -144,7 +148,7 @@
                             user=media.get_actor.username,
                             media=media.slug_or_id) }}#comment"
                class="comment_whenlink">
-              <span title='{{- comment_object.created.strftime("%I:%M%p %Y-%m-%d") -}}'>
+              <span title='{{- comment_object.created.strftime(app_config['datetime_format']) -}}'>
                 {%- trans formatted_time=timesince(comment_object.created) -%}
                   {{ formatted_time }} ago
                 {%- endtrans -%}
@@ -160,7 +164,7 @@
                 <a href="{{ request.urlgen('mediagoblin.user_pages.media_home.report_comment',
                             user=media.get_actor.username,
                              media=media.slug_or_id,
-                             comment=comment_object.id) }}">
+                             comment=comment.id) }}">
                     {% trans %}Report{% endtrans %}</a>
             {% endif %}
           </div>
@@ -179,7 +183,7 @@
 
   <div class="five columns media_sidebar">
     <h3>{% trans %}Added{% endtrans %}</h3>
-    <p><span title="{{ media.created.strftime("%I:%M%p %Y-%m-%d") }}">
+    <p><span title="{{ media.created.strftime(app_config['datetime_format']) }}">
         {%- trans formatted_time=timesince(media.created) -%}
           {{ formatted_time }} ago
         {%- endtrans -%}
@@ -229,6 +233,7 @@
         </a>
       </p>
     {%- endif %}
+    {% template_hook("subtitle_sidebar") %}
 
     {% block mediagoblin_sidebar %}
     {% endblock %}

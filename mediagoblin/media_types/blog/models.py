@@ -34,6 +34,7 @@ class BlogMixin(GenerateSlugMixin):
     def check_slug_used(self, slug):
         return check_blog_slug_used(self.author, slug, self.id)
 
+BLOG_BACKREF_NAME = "mediatype__blogs"
 
 class Blog(Base, BlogMixin):
     __tablename__ = "mediatype__blogs"
@@ -43,10 +44,11 @@ class Blog(Base, BlogMixin):
     author = Column(Integer, ForeignKey(User.id), nullable=False, index=True) #similar to uploader
     created = Column(DateTime, nullable=False, default=datetime.datetime.now, index=True)
     slug = Column(Unicode)
+    get_author = relationship("User", backref=backref(BLOG_BACKREF_NAME, cascade="all, delete-orphan"))
 
     @property
     def slug_or_id(self):
-        return (self.slug or u'blog_{0}'.format(self.id))
+        return (self.slug or 'blog_{}'.format(self.id))
  
     def get_all_blog_posts(self, state=None):
         blog_posts = Session.query(MediaEntry).join(BlogPostData)\
@@ -61,12 +63,12 @@ class Blog(Base, BlogMixin):
             post.delete(del_orphan_tags=False, commit=False)
         from mediagoblin.db.util import clean_orphan_tags
         clean_orphan_tags(commit=False)
-        super(Blog, self).delete(**kwargs)
+        super().delete(**kwargs)
         
         
     
     
-BACKREF_NAME = "blogpost__media_data"
+BLOG_POST_BACKREF_NAME = "blogpost__media_data"
 
 class BlogPostData(Base):
     __tablename__ = "blogpost__mediadata"
@@ -75,7 +77,7 @@ class BlogPostData(Base):
     media_entry = Column(Integer, ForeignKey('core__media_entries.id'), primary_key=True)
     blog = Column(Integer, ForeignKey('mediatype__blogs.id'), nullable=False)
     get_media_entry = relationship("MediaEntry",
-        backref=backref(BACKREF_NAME, uselist=False,
+        backref=backref(BLOG_POST_BACKREF_NAME, uselist=False,
                         cascade="all, delete-orphan"))
 
 

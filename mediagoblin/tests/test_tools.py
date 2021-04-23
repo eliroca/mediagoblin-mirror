@@ -14,14 +14,19 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import absolute_import, unicode_literals
+
+try:
+    from unittest import mock
+except ImportError:
+    import unittest.mock as mock
 
 from werkzeug.wrappers import Request
 from werkzeug.test import EnvironBuilder
 
 from mediagoblin.tools.request import decode_request
+from mediagoblin.tools.pagination import Pagination
 
-class TestDecodeRequest(object):
+class TestDecodeRequest:
     """Test the decode_request function."""
 
     def test_form_type(self):
@@ -59,3 +64,54 @@ class TestDecodeRequest(object):
         request.form = {'foo': 'bar'}
         data = decode_request(request)
         assert data['foo'] == 'bar'
+
+
+class TestPagination:
+    def _create_paginator(self, num_items, page, per_page):
+        """Create a Paginator with a mock database cursor."""
+        mock_cursor = mock.MagicMock()
+        mock_cursor.count.return_value = num_items
+        return Pagination(page, mock_cursor, per_page)
+
+    def test_creates_valid_page_url_from_explicit_base_url(self):
+        """Check that test_page_url_explicit runs.
+
+        This is a regression test for a Python 2/3 compatibility fix.
+
+        """
+        paginator = self._create_paginator(num_items=1, page=1, per_page=30)
+        url = paginator.get_page_url_explicit('http://example.com', [], 1)
+        assert url == 'http://example.com?page=1'
+
+    def test_iter_pages_handles_single_page(self):
+        """Check that iter_pages produces the expected result for single page.
+
+        This is a regression test for a Python 2/3 compatibility fix.
+
+        """
+        paginator = self._create_paginator(num_items=1, page=1, per_page=30)
+        assert list(paginator.iter_pages()) == [1]
+
+    def test_zero_items(self):
+        """Check that no items produces no pages."""
+        paginator = self._create_paginator(num_items=0, page=1, per_page=30)
+        assert paginator.total_count == 0
+        assert paginator.pages == 0
+
+    def test_single_item(self):
+        """Check that one item produces one page."""
+        paginator = self._create_paginator(num_items=1, page=1, per_page=30)
+        assert paginator.total_count == 1
+        assert paginator.pages == 1
+
+    def test_full_page(self):
+        """Check that a full page of items produces one page."""
+        paginator = self._create_paginator(num_items=30, page=1, per_page=30)
+        assert paginator.total_count == 30
+        assert paginator.pages == 1
+
+    def test_multiple_pages(self):
+        """Check that more than a full page produces two pages."""
+        paginator = self._create_paginator(num_items=31, page=1, per_page=30)
+        assert paginator.total_count == 31
+        assert paginator.pages == 2

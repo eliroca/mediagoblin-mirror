@@ -27,7 +27,7 @@ class GMGRequestValidator(RequestValidator):
 
     def __init__(self, data=None, *args, **kwargs):
         self.POST = data
-        super(GMGRequestValidator, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def check_nonce(self, nonce):
         """
@@ -43,15 +43,15 @@ class GMGRequestValidator(RequestValidator):
 
     def save_request_token(self, token, request):
         """ Saves request token in db """
-        client_id = self.POST[u"oauth_consumer_key"]
+        client_id = self.POST["oauth_consumer_key"]
 
         request_token = RequestToken(
             token=token["oauth_token"],
             secret=token["oauth_token_secret"],
         )
         request_token.client = client_id
-        if u"oauth_callback" in self.POST:
-            request_token.callback = self.POST[u"oauth_callback"]
+        if "oauth_callback" in self.POST:
+            request_token.callback = self.POST["oauth_callback"]
         request_token.save()
 
     def save_verifier(self, token, verifier, request):
@@ -188,4 +188,4 @@ class GMGRequest(Request):
         kwargs["body"] = kwargs.get("body", request.data)
         kwargs["headers"] = kwargs.get("headers", dict(request.headers))
 
-        super(GMGRequest, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)

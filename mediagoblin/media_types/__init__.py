@@ -39,7 +39,7 @@ class MissingComponents(FileTypeNotSupported):
     pass
 
 
-class MediaManagerBase(object):
+class MediaManagerBase:
     "Base class for all media managers"
 
     # Please override in actual media managers
@@ -68,13 +68,13 @@ def sniff_media_contents(media_file, filename):
     '''
     media_type = hook_handle('sniff_handler', media_file, filename)
     if media_type:
-        _log.info('{0} accepts the file'.format(media_type))
+        _log.info('{} accepts the file'.format(media_type))
         return media_type, hook_handle(('media_manager', media_type))
     else:
-        _log.debug('{0} did not accept the file'.format(media_type))
+        _log.debug('{} did not accept the file'.format(media_type))
         raise FileTypeNotSupported(
             # TODO: Provide information on which file types are supported
-            _(u'Sorry, I don\'t support that file type :('))
+            _('Sorry, I don\'t support that file type :('))
 
 def get_media_type_and_manager(filename):
     '''
@@ -93,11 +93,11 @@ def get_media_type_and_manager(filename):
         if hook_handle('get_media_type_and_manager', ext[1:]):
             return hook_handle('get_media_type_and_manager', ext[1:])
     else:
-        _log.info('File {0} has no file extension, let\'s hope the sniffers get it.'.format(
+        _log.info('File {} has no file extension, let\'s hope the sniffers get it.'.format(
             filename))
 
     raise TypeNotFound(
-        _(u'Sorry, I don\'t support that file type :('))
+        _('Sorry, I don\'t support that file type :('))
 
 def type_match_handler(media_file, filename):
     '''Check media file by name and then by content
@@ -129,11 +129,11 @@ def type_match_handler(media_file, filename):
                 _log.debug(e)
                 raise
         else:
-            _log.info('No plugins handled extension {0}'.format(ext))
+            _log.info('No plugins handled extension {}'.format(ext))
     else:
-        _log.info('File {0} has no known file extension, let\'s hope '
+        _log.info('File {} has no known file extension, let\'s hope '
                 'the sniffers get it.'.format(filename))
-    raise TypeNotFound(_(u'Sorry, I don\'t support that file type :('))
+    raise TypeNotFound(_('Sorry, I don\'t support that file type :('))
 
 
 def sniff_media(media_file, filename):

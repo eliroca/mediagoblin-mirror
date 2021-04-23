@@ -14,8 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import six
-import six.moves.urllib.parse as urlparse
+import urllib.parse as urlparse
 import pytest
 
 from mediagoblin import mg_globals
@@ -25,12 +24,12 @@ from mediagoblin import auth
 from mediagoblin.tools import template, mail
 
 
-class TestUserEdit(object):
+class TestUserEdit:
     def setup(self):
         # set up new user
-        self.user_password = u'toast'
+        self.user_password = 'toast'
         self.user = fixture_add_user(password = self.user_password,
-                               privileges=[u'active'])
+                               privileges=['active'])
 
     def login(self, test_app):
         test_app.post(
@@ -44,19 +43,19 @@ class TestUserEdit(object):
         self.login(test_app)
 
         # Make sure user exists
-        assert LocalUser.query.filter(LocalUser.username==u'chris').first()
+        assert LocalUser.query.filter(LocalUser.username=='chris').first()
 
         res = test_app.post('/edit/account/delete/', {'confirmed': 'y'})
 
         # Make sure user has been deleted
-        assert LocalUser.query.filter(LocalUser.username==u'chris').first() == None
+        assert LocalUser.query.filter(LocalUser.username=='chris').first() == None
 
         #TODO: make sure all corresponding items comments etc have been
         # deleted too. Perhaps in submission test?
 
         #Restore user at end of test
         self.user = fixture_add_user(password = self.user_password,
-                               privileges=[u'active'])
+                               privileges=['active'])
         self.login(test_app)
 
 
@@ -67,8 +66,8 @@ class TestUserEdit(object):
         # Test if legacy profile editing URL redirects correctly
         res = test_app.post(
             '/edit/profile/', {
-                'bio': u'I love toast!',
-                'url': u'http://dustycloud.org/'}, expect_errors=True)
+                'bio': 'I love toast!',
+                'url': 'http://dustycloud.org/'}, expect_errors=True)
 
         # Should redirect to /u/chris/edit/
         assert res.status_int == 302
@@ -76,20 +75,20 @@ class TestUserEdit(object):
 
         res = test_app.post(
             '/u/chris/edit/', {
-                'bio': u'I love toast!',
-                'url': u'http://dustycloud.org/'})
+                'bio': 'I love toast!',
+                'url': 'http://dustycloud.org/'})
 
-        test_user = LocalUser.query.filter(LocalUser.username==u'chris').first()
-        assert test_user.bio == u'I love toast!'
-        assert test_user.url == u'http://dustycloud.org/'
+        test_user = LocalUser.query.filter(LocalUser.username=='chris').first()
+        assert test_user.bio == 'I love toast!'
+        assert test_user.url == 'http://dustycloud.org/'
 
         # change a different user than the logged in (should fail with 403)
-        fixture_add_user(username=u"foo",
-                         privileges=[u'active'])
+        fixture_add_user(username="foo",
+                         privileges=['active'])
         res = test_app.post(
             '/u/foo/edit/', {
-                'bio': u'I love toast!',
-                'url': u'http://dustycloud.org/'}, expect_errors=True)
+                'bio': 'I love toast!',
+                'url': 'http://dustycloud.org/'}, expect_errors=True)
         assert res.status_int == 403
 
         # test changing the bio and the URL inproperly
@@ -107,9 +106,9 @@ class TestUserEdit(object):
         form = context['form']
 
         assert form.bio.errors == [
-            u'Field must be between 0 and 500 characters long.']
+            'Field must be between 0 and 500 characters long.']
         assert form.url.errors == [
-            u'This address contains errors']
+            'This address contains errors']
 
     def test_email_change(self, test_app):
         self.login(test_app)
@@ -125,7 +124,7 @@ class TestUserEdit(object):
         context = template.TEMPLATE_TEST_CONTEXT[
             'mediagoblin/edit/change_email.html']
         assert context['form'].new_email.errors == [
-            u'Sorry, a user with that email address already exists.']
+            'Sorry, a user with that email address already exists.']
 
         # Test successful email change
         template.clear_test_template_context()
@@ -147,7 +146,7 @@ class TestUserEdit(object):
         assert email_context['verification_url'].encode('ascii') in message.get_payload(decode=True)
 
         path = urlparse.urlsplit(email_context['verification_url'])[2]
-        assert path == u'/edit/verify_email/'
+        assert path == '/edit/verify_email/'
 
         ## Try verifying with bs verification key, shouldn't work
         template.clear_test_template_context()
@@ -169,7 +168,7 @@ class TestUserEdit(object):
         # Verify email activation works
         template.clear_test_template_context()
         get_params = urlparse.urlsplit(email_context['verification_url'])[3]
-        res = test_app.get('%s?%s' % (path, get_params))
+        res = test_app.get('{}?{}'.format(path, get_params))
         res.follow()
 
         # New email saved?
@@ -181,10 +180,10 @@ class TestMetaDataEdit:
     @pytest.fixture(autouse=True)
     def setup(self, test_app):
         # set up new user
-        self.user_password = u'toast'
+        self.user_password = 'toast'
         self.user = fixture_add_user(
             password = self.user_password,
-            privileges=[u'active',u'admin']
+            privileges=['active','admin']
         )
         self.test_app = test_app
 
@@ -208,7 +207,7 @@ class TestMetaDataEdit:
 
     def test_edit_metadata(self, test_app):
         media_entry = fixture_media_entry(uploader=self.user.id,
-            state=u'processed')
+            state='processed')
         media_slug = "/u/{username}/m/{media_id}/metadata/".format(
                 username = str(self.user.username),
                 media_id = str(media_entry.id))
@@ -256,9 +255,5 @@ class TestMetaDataEdit:
         assert new_metadata == old_metadata
         context = template.TEMPLATE_TEST_CONTEXT[
             'mediagoblin/edit/metadata.html']
-        if six.PY2:
-            expected = "u'On the worst day' is not a 'date-time'"
-        else:
-            expected = "'On the worst day' is not a 'date-time'"
-        assert context['form'].errors[
-            'media_metadata'][0]['identifier'][0] == expected
+        expected_error = {'identifier': ["'On the worst day' is not a 'date-time'"]}
+        assert expected_error in context['form'].errors['media_metadata']
