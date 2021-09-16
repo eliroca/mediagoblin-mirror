@@ -123,7 +123,7 @@
 (use-modules (ice-9 match)
              (srfi srfi-1)
              (guix packages)
-             (guix licenses)
+             ((guix licenses) #:prefix license:)
              (guix download)
              (guix git-download)
              (guix build-system gnu)
@@ -240,6 +240,6 @@
      "MediaGoblin is a free software media publishing platform that anyone can
 run. You can think of it as a decentralized alternative to Flickr, YouTube,
 SoundCloud, etc.")
-    (license agpl3+)))
+    (license (list license:agpl3+ license:cc0))))
 
 mediagoblin
