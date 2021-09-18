@@ -25,32 +25,34 @@ Although not strictly necessary, we recommend you shut down your current
 MediaGoblin/Celery processes before upgrading.
 
 
-Upgrade (already on Python 3)
------------------------------
+Upgrade
+-------
 
 1. Update to the latest release.  In your ``mediagoblin`` directory, run::
 
-     git fetch && git checkout -q v0.11.0 && git submodule update
+     git fetch && git checkout -q v0.12.0 && git submodule update
 
-2. Remove your existing installation::
+2. Note down any plugins you have installed by reviewing your
+   ``mediagoblin.ini`` configuration. These will be removed by the following
+   steps and must be re-installed.
+
+3. Remove your existing installation::
 
      make distclean
 
-3. Install MediaGoblin (changed for 0.11.0, see notes section above)::
+4. Recreate the virtual environment and install MediaGoblin::
 
-     ./bootstrap.sh && VIRTUALENV_FLAGS='--system-site-packages' ./configure && make
+     ./bootstrap.sh && ./configure &&
+     make
 
-   (As of 0.11.0, the upgrade instructions have been updated to use
-   ``--system-site-package`` option for consistency with the deployment
-   instructions. If this approach causes any problems with for you, re-run
-   ``make distclean`` and then ``./bootstrap.sh && ./configure && make`` without
-   ``--system-site-packages``.)
+5. Re-install any ":doc:`plugins`" you had previously installed. Skipping these
+   may result in errors updating the database.
 
-4. Update the database::
+6. Update the database::
 
      ./bin/gmg dbupdate
 
-5. Restart the Paster and Celery processes. If you followed ":doc:`deploying`",
+7. Restart the Paster and Celery processes. If you followed ":doc:`deploying`",
    this may be something like::
 
      sudo systemctl restart mediagoblin-paster.service
@@ -61,22 +63,14 @@ Upgrade (already on Python 3)
      sudo journalctl -u mediagoblin-paster.service -f
      sudo journalctl -u mediagoblin-celeryd.service -f
 
-6. View your site and hover your cursor over "MediaGoblin" to confirm the
-   version number you're running.
-
-
-Upgrading to Python 3
----------------------
-
-Refer to the "Dependences" and "Configure PostgreSQL" sections of
-":doc:`deploying`" to install the necessary Python 3 dependencies. Then follow
-the instructions for "Upgrade (already on Python 3)" above.
+8. View your site and hover your cursor over the "MediaGoblin" link in the
+   footer to confirm the version number you're running.
 
 
 Updating your system Python
 ---------------------------
 
-Upgrading your operating system or installing a new version of Python may break
-MediaGoblin. This typically occurs because Python virtual environment is
+Upgrading your operating system or installing a new major version of Python may
+break MediaGoblin. This typically occurs because Python virtual environment is
 referring to a copy of Python that no longer exists. In this situation use the
-same process for "Upgrade (already on Python 3)" above.
+same process for "Upgrade" above.

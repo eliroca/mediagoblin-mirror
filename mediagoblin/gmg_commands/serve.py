@@ -14,33 +14,14 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import sys
 
-from paste.deploy import loadapp, loadserver
-
-
-class ServeCommand:
-
-    def loadserver(self, server_spec, name, relative_to, **kwargs):
-        return loadserver(server_spec, name=name, relative_to=relative_to,
-                          **kwargs)
-
-    def loadapp(self, app_spec, name, relative_to, **kwargs):
-        return loadapp(app_spec, name=name, relative_to=relative_to, **kwargs)
-
-    def daemonize(self):
-        pass
-
-    def restart_with_reloader(self):
-        pass
-
-    def restart_with_monitor(self, reloader=False):
-        pass
-
-    def run(self):
-        print('Running...')
+from paste.script.command import get_commands, invoke
 
 
 def parser_setup(subparser):
+    # Duplicating these arguments so that `gmg serve` will accept them and
+    # provide command-line help. We don't actually used the parsed arguments.
     subparser.add_argument('config', metavar='CONFIG_FILE')
     subparser.add_argument('command',
                            choices=['start', 'stop', 'restart', 'status'],
@@ -60,5 +41,24 @@ def parser_setup(subparser):
 
 
 def serve(args):
-    serve_cmd = ServeCommand()  # TODO: pass args to it
-    serve_cmd.run()
+    # Option 1: Run Paste Script's ServeCommand from Python.
+    #
+    # Taking the lead from paste.script.command.run and re-using their "serve"
+    # command. We don't have an easy way to feed the already parsed arguments
+    # through though, so we're pulling these directly from argv.
+    args = sys.argv
+    args_after_subcommand = args[args.index('serve') + 1:]
+    command = get_commands()['serve'].load()
+    invoke(command, 'serve', {}, args_after_subcommand)
+
+    # Option 2: Serve with Waitress.
+    #
+    # Works but has no reloading capabilities but unlike Paste Script doesn't know where to
+    # find the static files.
+    #
+    # Hupper has an example of waitress + reloading:
+    # https://docs.pylonsproject.org/projects/hupper/en/master/#api-usage
+    # from mediagoblin.app import MediaGoblinApp
+    # from waitress import serve
+    # app = MediaGoblinApp('mediagoblin.ini')
+    # serve(app, listen='*:6543')

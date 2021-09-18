@@ -112,7 +112,7 @@ On production deployments, you will need to increase Nginx's
 
 Production deployments will also need a separate process to transcode media in
 the background. See ":ref:`systemd-service-files`" and
-":ref:`separate-celery`" sections of this manual.
+":ref:`background-media-processing`" sections of this manual.
 
 
 Video
@@ -126,18 +126,13 @@ good/bad/ugly):
 
     # Debian
     sudo apt install python3-gi gstreamer1.0-tools gir1.2-gstreamer-1.0 \
-    gir1.2-gst-plugins-base-1.0 gstreamer1.0-plugins-{good,bad,ugly} \
+    gir1.2-gst-plugins-base-1.0 gstreamer1.0-plugins-{base,bad,good,ugly} \
     gstreamer1.0-libav python3-gst-1.0
 
     # Fedora
     sudo dnf install gstreamer1-plugins-{base,bad-free,good,ugly-free,openh264} \
     python3-gobject python3-gstreamer1
 
-.. note::
-
-   We unfortunately do not have working installation instructions for Fedora and
-   co. Some incomplete information is available on the `Hacking Howto wiki page <http://wiki.mediagoblin.org/HackingHowto#Fedora_.2F_RedHat.28.3F.29_.2F_CentOS>`_
-    
 Add ``[[mediagoblin.media_types.video]]`` under the ``[plugins]`` section in
 your ``mediagoblin.ini`` and restart MediaGoblin.
 

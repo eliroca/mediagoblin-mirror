@@ -29,6 +29,7 @@ from mediagoblin.tools.text import cleaned_markdown_conversion
 from mediagoblin.tools.translate import pass_to_ugettext as _
 from mediagoblin.tools.pagination import Pagination
 from mediagoblin.tools.federation import create_activity
+from mediagoblin.tools.feeds import AtomFeedWithLinks
 from mediagoblin.user_pages import forms as user_forms
 from mediagoblin.user_pages.lib import (send_comment_email,
 	add_media_to_collection, build_report_object)
@@ -42,7 +43,6 @@ from mediagoblin.decorators import (uses_pagination, get_user_media_entry,
     get_user_collection, get_user_collection_item, active_user_from_url,
     get_optional_media_comment_by_id, allow_reporting)
 
-from werkzeug.contrib.atom import AtomFeed
 from werkzeug.exceptions import MethodNotAllowed
 from werkzeug.wrappers import Response
 
@@ -541,7 +541,7 @@ def atom_feed(request):
     generates the atom feed with the newest images
     """
     user = LocalUser.query.filter_by(
-        username = request.matchdict['user']).first()
+        username=request.matchdict['user']).first()
     if not user or not user.has_privilege('active'):
         return render_404(request)
     feed_title = "MediaGoblin Feed for user '%s'" % request.matchdict['user']
@@ -551,29 +551,27 @@ def atom_feed(request):
     cursor = cursor.order_by(MediaEntry.created.desc())
     cursor = cursor.limit(ATOM_DEFAULT_NR_OF_UPDATED_ITEMS)
 
-
     """
     ATOM feed id is a tag URI (see http://en.wikipedia.org/wiki/Tag_URI)
     """
-    atomlinks = [{
-        'href': link,
-        'rel': 'alternate',
-        'type': 'text/html'}]
-
+    atomlinks = []
     if mg_globals.app_config["push_urls"]:
         for push_url in mg_globals.app_config["push_urls"]:
             atomlinks.append({
                 'rel': 'hub',
                 'href': push_url})
 
-    feed = AtomFeed(
-        feed_title,
-        feed_url=request.url,
+    feed = AtomFeedWithLinks(
+        title=feed_title,
+        link=link,
+        description='',
         id='tag:{host},{year}:gallery.user-{user}'.format(
             host=request.host,
             year=datetime.datetime.today().strftime('%Y'),
             user=request.matchdict['user']),
-        links=atomlinks)
+        feed_url=request.url,
+        links=atomlinks,
+    )
 
     for entry in cursor:
         # Include a thumbnail image in content.
@@ -584,26 +582,26 @@ def atom_feed(request):
         else:
             content = entry.description_html
 
-        feed.add(
-            entry.get('title'),
-            content,
-            id=entry.url_for_self(request.urlgen, qualified=True),
-            content_type='html',
-            author={
-                'name': entry.get_actor.username,
-                'uri': request.urlgen(
-                    'mediagoblin.user_pages.user_home',
-                    qualified=True,
-                    user=entry.get_actor.username)},
-            updated=entry.get('created'),
-            links=[{
-                'href': entry.url_for_self(
+        feed.add_item(
+            title=entry.get('title'),
+            link=entry.url_for_self(
                     request.urlgen,
                     qualified=True),
-                'rel': 'alternate',
-                'type': 'text/html'}])
+            description=content,
+            unique_id=entry.url_for_self(request.urlgen, qualified=True),
+            author_name=entry.get_actor.username,
+            author_link=request.urlgen(
+                'mediagoblin.user_pages.user_home',
+                qualified=True,
+                user=entry.get_actor.username),
+            updateddate=entry.get('created'),
+        )
 
-    return feed.get_response()
+    response = Response(
+        feed.writeString(encoding='utf-8'),
+        mimetype='application/atom+xml'
+    )
+    return response
 
 
 def collection_atom_feed(request):

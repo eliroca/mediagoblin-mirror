@@ -7,8 +7,7 @@
 The OpenID plugin allows user to login to your GNU MediaGoblin instance using
 their OpenID URL.
 
-This plugin can be enabled alongside :ref:`basic_auth-chapter` and
-:ref:`persona-chapter`.
+This plugin can be enabled alongside :ref:`basic_auth-chapter`.
 
 .. note::
     When :ref:`basic_auth-chapter` is enabled alongside this OpenID plugin, and

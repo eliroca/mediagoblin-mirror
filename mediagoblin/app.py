@@ -362,6 +362,9 @@ def paste_app_factory(global_config, **app_config):
         raise OSError("Usable mediagoblin config not found.")
     del app_config['config']
 
+    # Set static path relative to code to simplify Guix packaging.
+    app_config['/mgoblin_static'] = os.path.join(os.path.dirname(__file__), 'static')
+
     mgoblin_app = MediaGoblinApp(mediagoblin_config)
     mgoblin_app.call_backend = SharedDataMiddleware(mgoblin_app.call_backend,
                                                     exports=app_config)

@@ -24,14 +24,12 @@ function init_report_resolution_form() {
 }
     init_user_banned_form();
     $('form#resolution_form').hide()
-    $('#open_resolution_form').click(function() {
-        $('form#resolution_form').toggle();
-        $.each(hidden_input_names, function(key, list){
-            $.each(list, function(index, name){
-                $('label[for='+name+']').hide();
-                $('#'+name).hide();
-            });
-        });
+    $('form#resolution_form').toggle();
+    $.each(hidden_input_names, function(key, list){
+	$.each(list, function(index, name){
+	    $('label[for='+name+']').hide();
+	    $('#'+name).hide();
+	});
     });
     $('#action_to_resolve').change(function() {
         $('ul#action_to_resolve li input:checked').each(function() {

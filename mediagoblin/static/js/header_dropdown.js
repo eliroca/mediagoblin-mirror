@@ -16,30 +16,73 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-$(document).ready(function(){
+'use strict';
+
+var panel = {};
+
+(function() {
   // The header drop-down header panel defaults to open until you explicitly
   // close it. After that, the panel open/closed setting will persist across
   // page loads.
+  var panel_elem = document.getElementById('header_dropdown');
+  var up_arrow_elem = document.querySelector('.header_dropdown_up');
+  var down_arrow_elem = document.querySelector('.header_dropdown_down');
 
-  // Initialise the panel status when page is loaded.
-  if (localStorage.getItem("panel_closed")) {
-    $("#header_dropdown").hide();
-    $(".header_dropdown_up").hide();
-  }
-  else {
-    $(".header_dropdown_down").hide();
+  function hide(elem) {
+    elem.style.display = 'none';
   }
 
-  // Toggle and persist the panel status.
-  $(".header_dropdown_down, .header_dropdown_up").click(function() {
-    if (localStorage.getItem("panel_closed")) {
-      localStorage.removeItem("panel_closed");
+  function show(elem) {
+    elem.style.display = '';
+  }
+
+  function isDisplayed(elem) {
+    return elem.style.display === '';
+  }
+
+  function toggle(elem) {
+    if (isDisplayed(elem)) {
+      hide(elem);
     }
     else {
-      localStorage.setItem("panel_closed", "true");
+      show(elem);
     }
-    $(".header_dropdown_down").toggle();
-    $(".header_dropdown_up").toggle();
-    $("#header_dropdown").slideToggle();
-  });
-});
+  }
+
+  function showPanel() {
+    localStorage.removeItem('panel_closed');
+    show(panel_elem);
+    show(up_arrow_elem);
+    hide(down_arrow_elem);
+  }
+
+  function hidePanel() {
+    localStorage.setItem('panel_closed', 'true');
+    hide(panel_elem);
+    hide(up_arrow_elem);
+    show(down_arrow_elem);
+  }
+
+  function togglePanel() {
+    // Toggle and persist the panel status.
+    if (isDisplayed(panel_elem)) {
+      hidePanel();
+    }
+    else {
+      showPanel()
+    }
+  }
+
+  // Initialise the panel status when page is loaded.
+  up_arrow_elem.addEventListener('click', togglePanel);
+  down_arrow_elem.addEventListener('click', togglePanel);
+  if (localStorage.getItem('panel_closed')) {
+    hidePanel();
+  }
+  else {
+    showPanel();
+  }
+
+  // Export some functionality for use in other modules.
+  panel.show = showPanel;
+})();

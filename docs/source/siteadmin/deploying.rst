@@ -27,7 +27,7 @@ virtualenv and Nginx on a .deb or .rpm-based GNU/Linux distribution.
 
 Experts may of course choose other deployment options, including
 Apache. See our `Deployment wiki page
-<http://wiki.mediagoblin.org/Deployment>`_ for for more details.
+<https://web.archive.org/web/20200817190402/https://wiki.mediagoblin.org/Deployment>`_ for for more details.
 Please note that we are not able to provide support for these
 alternative deployment options.
 
@@ -35,7 +35,7 @@ alternative deployment options.
 
    These tools are for site administrators wanting to deploy a fresh
    install.  If you want to join in as a contributor, see our
-   `Hacking HOWTO <http://wiki.mediagoblin.org/HackingHowto>`_ instead.
+   `Hacking HOWTO <https://web.archive.org/web/20200817190402/https://wiki.mediagoblin.org/HackingHowto>`_ instead.
 
 .. note::
 
@@ -64,9 +64,9 @@ MediaGoblin has the following core dependencies:
 - `virtualenv <http://www.virtualenv.org/>`_
 - `Node.js <https://nodejs.org>`_
 
-These instructions have been tested on Debian 10, CentOS 8 and
-Fedora 33. These instructions should approximately translate to recent
-Debian derivatives such as Ubuntu 18.04 and Trisquel 8, and to relatives of
+These instructions have been tested on Debian 11 and Fedora 33. These
+instructions should approximately translate to recent Debian
+derivatives such as Ubuntu 18.04 and Trisquel 8, and to relatives of
 Fedora such as CentOS 8.
 
 Issue the following commands:
@@ -256,7 +256,7 @@ Clone the MediaGoblin repository and set up the git submodules::
 Set up the environment::
 
     $ ./bootstrap.sh
-    $ VIRTUALENV_FLAGS='--system-site-packages' ./configure
+    $ ./configure
     $ make
 
 Create and set the proper permissions on the ``user_dev`` directory.
@@ -284,7 +284,6 @@ You'll find more details in ":doc:`configuration`".
    If you're changing the MediaGoblin directories or URL prefix, you
    may need to edit ``direct_remote_path``, ``base_dir``, and
    ``base_url``.
-
 
 
 Configure MediaGoblin to use the PostgreSQL database
@@ -340,11 +339,6 @@ type ``exit`` or ``Ctrl-d``.
 
 Deploy MediaGoblin
 ------------------
-
-The configuration described below is sufficient for development and
-smaller deployments. However, for larger production deployments with
-larger processing requirements, see the
-":doc:`production-deployments`" documentation.
 
 .. _webserver-config:
 
@@ -498,10 +492,10 @@ Type ``Ctrl-c`` to exit the above server test and ``exit`` or
 Run MediaGoblin as a system service
 -----------------------------------
 
-To ensure MediaGoblin is automatically started and restarted in case of
-problems, we need to run it as a system service. If your operating system uses
-Systemd, you can use Systemd ``service files`` to manage both the Celery and
-Paste processes.
+To ensure MediaGoblin is automatically started and restarted in case
+of problems, we need to run it as system services. If your operating
+system uses Systemd, you can use Systemd ``service files`` to manage
+both the Celery and Paste processes as described below.
 
 In the Systemd configuration below, MediaGoblin log files are kept in
 the ``/var/log/mediagoblin`` directory. Create the directory and give
@@ -512,32 +506,8 @@ it the proper permissions::
 
 Place the following service files in the ``/etc/systemd/system/``
 directory. The first file should be named
-``mediagoblin-celeryd.service``. Be sure to modify it to suit your
+``mediagoblin-paster.service``. Be sure to modify it to suit your
 environment's setup:
-
-.. code-block:: bash
-
-    # Set the WorkingDirectory and Environment values to match your environment.
-    [Unit]
-    Description=MediaGoblin Celeryd
-    After=rabbitmq-server.service
-
-    [Service]
-    User=mediagoblin
-    Group=mediagoblin
-    Type=simple
-    WorkingDirectory=/srv/mediagoblin.example.org/mediagoblin
-    Environment=MEDIAGOBLIN_CONFIG=/srv/mediagoblin.example.org/mediagoblin/mediagoblin.ini \
-                CELERY_CONFIG_MODULE=mediagoblin.init.celery.from_celery
-    ExecStart=/srv/mediagoblin.example.org/mediagoblin/bin/celery worker \
-                --logfile=/var/log/mediagoblin/celery.log \
-                --loglevel=INFO
-
-    [Install]
-    WantedBy=multi-user.target
-
-
-The second file should be named ``mediagoblin-paster.service``:
 
 .. code-block:: bash
 
@@ -559,17 +529,42 @@ The second file should be named ``mediagoblin-paster.service``:
     [Install]
     WantedBy=multi-user.target
 
+The second file should be named ``mediagoblin-celeryd.service``:
+
+.. code-block:: bash
+
+    # Set the WorkingDirectory and Environment values to match your environment.
+    [Unit]
+    Description=MediaGoblin Celery
+    After=rabbitmq-server.service
+
+    [Service]
+    User=mediagoblin
+    Group=mediagoblin
+    Type=simple
+    WorkingDirectory=/srv/mediagoblin.example.org/mediagoblin
+    Environment=MEDIAGOBLIN_CONFIG=/srv/mediagoblin.example.org/mediagoblin/mediagoblin.ini \
+                CELERY_CONFIG_MODULE=mediagoblin.init.celery.from_celery
+    ExecStart=/srv/mediagoblin.example.org/mediagoblin/bin/celery worker \
+                --logfile=/var/log/mediagoblin/celery.log \
+                --loglevel=INFO
+
+    [Install]
+    WantedBy=multi-user.target
+
+For details on this approach with a separate Celery process, see
+:ref:`background-media-processing`.
 
 Enable these processes to start at boot by entering::
 
-    sudo systemctl enable mediagoblin-celeryd.service && sudo systemctl enable mediagoblin-paster.service
+    sudo systemctl enable mediagoblin-paster.service
+    sudo systemctl enable mediagoblin-celeryd.service
 
 
 Start the processes for the current session with::
 
-    sudo systemctl start mediagoblin-celeryd.service
     sudo systemctl start mediagoblin-paster.service
-
+    sudo systemctl start mediagoblin-celeryd.service
 
 If either command above gives you an error, you can investigate the cause of
 the error by entering either of::
@@ -577,18 +572,42 @@ the error by entering either of::
     sudo systemctl status mediagoblin-celeryd.service
     sudo systemctl status mediagoblin-paster.service
 
+Or view the full logs with:
+
+    sudo journalctl -u mediagoblin-paster.service -f
+    sudo journalctl -u mediagoblin-celeryd.service -f
+
 The above ``systemctl status`` command is also useful if you ever want to
-confirm that a process is still running. If you make any changes to the service
-files, you can reload the service files by entering::
-
-    sudo systemctl daemon-reload
-
-After entering that command, you can attempt to start the Celery or Paste
-processes again using ``restart`` instead of ``start``.
+confirm that a process is still running.
 
 Assuming the above was successful, you should now have a MediaGoblin
 server that will continue to operate, even after being restarted.
 Great job!
+
+If you have a moment, please send us an `email
+<mailto:~mediagoblin/mediagoblin@todo.sr.ht?subject=MediaGoblin&20installation%20report>`_
+about your experience installing MediaGoblin. We'd love to know what
+worked well, what didn't work so well and anything that could be
+improved.
+
+
+.. _restarting mediagoblin:
+
+Restarting MediaGoblin
+----------------------
+
+To restart MediaGoblin after making configuration changes, run::
+
+    sudo systemctl restart mediagoblin-celeryd.service
+    sudo systemctl restart mediagoblin-paster.service
+
+If you make any changes to the ".service" files, you must first issue
+a `daemon-reload` command to refresh Systemd and then restart
+MediaGoblin with::
+
+    sudo systemctl daemon-reload
+    sudo systemctl restart mediagoblin-celeryd.service
+    sudo systemctl restart mediagoblin-paster.service
 
 
 What next?
@@ -596,7 +615,15 @@ What next?
 
 This configuration supports upload of images only, but MediaGoblin
 also supports other types of media, such as audio, video, PDFs and 3D
-models. For details, see the ":doc:`media-types`" documentation.
+models. For details, see ":doc:`media-types`".
+
+See ":doc:`production-deployments`" for more information and other
+issues you may want to consider.
+
+For other settings and configuration options, see
+":doc:`configuration`".
+
+To enable and configure plugins, see ":doc:`plugins`".
 
 ..
    Local variables:

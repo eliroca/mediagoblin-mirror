@@ -70,6 +70,10 @@ SUBCOMMAND_MAP = {
             'setup': 'mediagoblin.gmg_commands.serve:parser_setup',
             'func': 'mediagoblin.gmg_commands.serve:serve',
             'help': 'PasteScript replacement'},
+    'celery': {
+        'setup': 'mediagoblin.gmg_commands.celery:parser_setup',
+        'func': 'mediagoblin.gmg_commands.celery:celery',
+        'help': 'Run the celery media processing backend'},
     'batchaddmedia': {
         'setup': 'mediagoblin.gmg_commands.batchaddmedia:parser_setup',
         'func': 'mediagoblin.gmg_commands.batchaddmedia:batchaddmedia',

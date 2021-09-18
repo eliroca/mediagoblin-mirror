@@ -34,9 +34,9 @@ various recipes for getting things done.
    for where we hang out.
 
 For more information on how to get started hacking on GNU MediaGoblin,
-see `the wiki <http://wiki.mediagoblin.org/>`_, and specifically, go
+see `the wiki <https://web.archive.org/web/20200817190402/https://wiki.mediagoblin.org/>`_, and specifically, go
 through the
-`Hacking HOWTO <http://wiki.mediagoblin.org/HackingHowto>`_
+`Hacking HOWTO <https://web.archive.org/web/20200817190402/https://wiki.mediagoblin.org/HackingHowto>`_
 which explains generally how to get going with running an instance for
 development.
 

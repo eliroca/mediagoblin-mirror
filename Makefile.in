@@ -46,7 +46,7 @@ pkgdatadir = $(datadir)/@PACKAGE_NAME@
 pkgincludedir = $(includedir)/@PACKAGE_NAME@
 PYTHONPATH = $(pythondir)$(PATH_SEPARATOR)$(DESTDIR)$(pythondir)
 
-EXTLIB_INSTALLS = extlib/jquery extlib/video.js extlib/leaflet extlib/tinymce
+EXTLIB_INSTALLS = extlib/jquery extlib/video.js extlib/leaflet
 
 # pkgpythondir = @pkgpythondir@
 # pkgpyexecdir = @pkgpyexecdir@

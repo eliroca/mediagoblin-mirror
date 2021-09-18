@@ -11,9 +11,9 @@
    Dedication along with this software. If not, see
    <http://creativecommons.org/publicdomain/zero/1.0/>.
 
-======================
-Command-line uploading
-======================
+================================
+Command-line and batch uploading
+================================
 
 If you're a site administrator and have access to the server then you
 can use the 'addmedia' task. If you're just a user and want to upload
@@ -46,9 +46,8 @@ You can also pass in the `--celery` option if you would prefer that
 your media be passed over to celery to be processed rather than be
 processed immediately.
 
-============================
-Command-line batch uploading
-============================
+Batch uploading
+===============
 
 There's another way to submit media, and it can be much more powerful, although
 it is a bit more complex.

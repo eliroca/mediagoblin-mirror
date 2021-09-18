@@ -19,11 +19,12 @@ from mediagoblin.db.models import MediaEntry
 from mediagoblin.db.util import media_entries_for_tag_slug
 from mediagoblin.decorators import uses_pagination
 from mediagoblin.plugins.api.tools import get_media_file_paths
+from mediagoblin.tools.feeds import AtomFeedWithLinks
 from mediagoblin.tools.pagination import Pagination
 from mediagoblin.tools.response import render_to_response
 from mediagoblin.tools.translate import pass_to_ugettext as _
 
-from werkzeug.contrib.atom import AtomFeed
+from werkzeug.wrappers import Response
 
 
 def _get_tag_name_from_entries(media_entries, tag_slug):
@@ -76,35 +77,32 @@ def atom_feed(request):
     if tag_slug:
         feed_title += " for tag '%s'" % tag_slug
         link = request.urlgen('mediagoblin.listings.tags_listing',
-                              qualified=True, tag=tag_slug )
+                              qualified=True, tag=tag_slug)
         cursor = media_entries_for_tag_slug(request.db, tag_slug)
-    else: # all recent item feed
+    else:  # all recent item feed
         feed_title += " for all recent items"
         link = request.urlgen('index', qualified=True)
         cursor = MediaEntry.query.filter_by(state='processed')
     cursor = cursor.order_by(MediaEntry.created.desc())
     cursor = cursor.limit(ATOM_DEFAULT_NR_OF_UPDATED_ITEMS)
 
-
     """
     ATOM feed id is a tag URI (see http://en.wikipedia.org/wiki/Tag_URI)
     """
-    atomlinks = [{
-        'href': link,
-        'rel': 'alternate',
-        'type': 'text/html'}]
-
+    atomlinks = []
     if mg_globals.app_config["push_urls"]:
         for push_url in mg_globals.app_config["push_urls"]:
             atomlinks.append({
                 'rel': 'hub',
                 'href': push_url})
 
-    feed = AtomFeed(
-        feed_title,
+    feed = AtomFeedWithLinks(
+        title=feed_title,
+        link=link,
+        description='',
         feed_url=request.url,
-        id=link,
-        links=atomlinks)
+        links=atomlinks,
+    )
 
     for entry in cursor:
         # Include a thumbnail image in content.
@@ -115,25 +113,25 @@ def atom_feed(request):
         else:
             content = entry.description_html
 
-        feed.add(
+        feed.add_item(
             # AtomFeed requires a non-blank title. This situation can occur if
             # you edit a media item and blank out the existing title.
-            entry.get('title') or _('Untitled'),
-            content,
-            id=entry.url_for_self(request.urlgen, qualified=True),
-            content_type='html',
-            author={
-                'name': entry.get_actor.username,
-                'uri': request.urlgen(
+            title=entry.get('title') or _('Untitled'),
+            link=entry.url_for_self(
+                request.urlgen,
+                qualified=True),
+            description=content,
+            unique_id=entry.url_for_self(request.urlgen, qualified=True),
+            author_name=entry.get_actor.username,
+            author_link=request.urlgen(
                     'mediagoblin.user_pages.user_home',
                     qualified=True,
-                    user=entry.get_actor.username)},
-            updated=entry.get('created'),
-            links=[{
-                'href': entry.url_for_self(
-                    request.urlgen,
-                    qualified=True),
-                'rel': 'alternate',
-                'type': 'text/html'}])
+                    user=entry.get_actor.username),
+            updateddate=entry.get('created'),
+        )
 
-    return feed.get_response()
+    response = Response(
+        feed.writeString(encoding='utf-8'),
+        mimetype='application/atom+xml'
+    )
+    return response

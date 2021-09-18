@@ -1,7 +1,13 @@
 # This helps to reduce the size of the Docker build context and to avoid
 # including potentially sensitive files.
+#
+# .git is needed during bootstrap.sh
 bin
 lib
 lib64
 node_modules
 user_dev
+.tox
+dist
+docs/build
+.pytest_cache

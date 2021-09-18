@@ -24,18 +24,13 @@ some configuration parameters.  Well you've come to the right place!
 MediaGoblin's config files
 ==========================
 
-When configuring MediaGoblin, there are two files you might want to
-make local modified versions of, and one extra file that might be
-helpful to look at.  Let's examine these.
+There are two main files used to configure MediaGoblin:
 
 ``mediagoblin.ini``
   This is the main config file for MediaGoblin. If you want to tweak any
-  settings for MediaGoblin, you'll usually do that here.
-
-``mediagoblin.example.ini``
-  When you run MediaGoblin for the first time, this default config is copied to
-  your new ``mediagoblin.ini``. Keep this in mind if you need to refer back to
-  the original settings.
+  settings for MediaGoblin, you'll usually do that here. This file is copied
+  from ``mediagoblin.example.ini`` the first time MediaGoblin runs. Keep this in
+  mind if you ever need to refer back to the original settings.
 
 ``paste.ini``
   This is primarily a server configuration file, on the Python side
@@ -47,17 +42,15 @@ helpful to look at.  Let's examine these.
   Python server other than Waitress / plain HTTP, you might configure it
   here.  You probably won't need to change this file very much.
 
+Changes to these two files only take effect after restarting MediaGoblin. If you
+followed your deployment guide, see the section on :ref:`restarting MediaGoblin
+<restarting mediagoblin>`. If you're using ``lazyserver.sh`` or
+``lazycelery.sh``, first quit with ``Ctrl-c`` and then re-run the command.
 
-There's one more file that you certainly won't change unless you're
-making coding contributions to MediaGoblin, but which can be useful to
-read and reference:
+Enabling extra media types or plugins may require an update to the database, so
+after making changes, it is also a good idea to run::
 
-``mediagoblin/config_spec.ini``
-  This file is actually a specification for mediagoblin.ini itself, as
-  a config file!  It defines types and defaults.  Sometimes it's a
-  good place to look for documentation... or to find that hidden
-  option that we didn't tell you about. :)
-
+  $ ./bin/gmg dbupdate
 
 
 Common changes
@@ -92,6 +85,7 @@ they sound like.
 - ``email_smtp_use_ssl`` (default is ``False``)
 - ``email_smtp_force_starttls`` (default is ``False``)
 
+
 Changing the data directory
 ---------------------------
 
@@ -121,14 +115,24 @@ If you use Nginx you need to change the config::
 Once you have done this you will need to move any existing media you had in the
 old directory to the new directory so existing media still can be displayed.
 
+
+Displaying camera EXIF metadata
+-------------------------------
+
+To display available EXIF metadata, set ``exif_visible = true`` in the
+``[mediagoblin]`` section of your ``mediagoblin.ini`` file::
+
+    [mediagoblin]
+
+    exif_visible = true
+
+
 All other configuration changes
 -------------------------------
 
-To be perfectly honest, there are quite a few options and we haven't had
-time to document them all, including Celery configuration.
-
-So here's a cop-out section saying that if you get into trouble, hop
-onto IRC and we'll help you out.  Details for the IRC channel is on the
-`join page`_ of the website.
-
-.. _join page: http://mediagoblin.org/join/
+There are a number of other settings which aren't documented here. Currently,
+the best reference for these options is ``mediagoblin/config_spec.ini`` and the
+additional config specifications for each media type eg.
+``mediagoblin/media_types/video/config_spec.ini``. These files are the
+specification for ``mediagoblin.ini`` and define the types and default values
+for each configuration option.

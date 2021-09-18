@@ -5,6 +5,11 @@
 This documents the hooks that are currently available for authentication
 plugins. If you need new hooks for your plugin, go ahead a submit a patch.
 
+For an example of how to write an authentication plugin, see the ``persona``
+plugin in MediaGoblin up to v0.11.0. This plugin has since been removed as the
+Mozilla Persona was decommissioned.
+
+
 What hooks are available?
 =========================
 

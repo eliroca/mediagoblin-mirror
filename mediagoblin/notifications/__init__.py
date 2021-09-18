@@ -76,6 +76,7 @@ def mark_comment_notification_seen(comment_id, user):
     if comment == None:
         return
 
+    # TODO: This seems to always return no comments.
     comment_gmr = GenericModelReference.query.filter_by(
         obj_pk=comment.id,
         model_type=comment.__tablename__

@@ -24,7 +24,6 @@ from pkg_resources import resource_filename
 import dateutil.parser
 from pyld import jsonld
 from jsonschema import validate, FormatChecker, draft4_format_checker
-from jsonschema.compat import str_types
 
 from mediagoblin.tools.pluginapi import hook_handle
 
@@ -42,7 +41,7 @@ def is_uri(instance):
     """
     jsonschema uri validator
     """
-    if not isinstance(instance, str_types):
+    if not isinstance(instance, str):
         return True
 
     return URL_REGEX.match(instance)
@@ -51,7 +50,7 @@ def is_datetime(instance):
     """
     Is a date or datetime readable string.
     """
-    if not isinstance(instance, str_types):
+    if not isinstance(instance, str):
         return True
 
     return dateutil.parser.parse(instance)

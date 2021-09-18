@@ -11,13 +11,12 @@
    Dedication along with this software. If not, see
    <http://creativecommons.org/publicdomain/zero/1.0/>.
 
-=========================================
-Considerations for Production Deployments
-=========================================
+=================================================
+Further Considerations for Production Deployments
+=================================================
 
-This document contains a number of suggestions for deploying
-MediaGoblin in actual production environments. Consider
-":doc:`deploying`" for a basic overview of how to deploy MediaGoblin.
+This page extends upon our ":doc:`deploying`" guide to describe some common
+issues affecting production deployments.
 
 
 Should I Keep Open Registration Enabled?
@@ -43,122 +42,64 @@ We hope to have a better solution to this situation shortly.  We
 apologize for the inconvenience in the meanwhile.
 
 
-Security Considerations
------------------------
+Confidential Files
+------------------
 
 .. warning::
 
-   The directory ``user_dev/crypto/`` contains some very
-   sensitive files.
-   Especially the ``itsdangeroussecret.bin`` is very important
-   for session security. Make sure not to leak its contents anywhere.
-   If the contents gets leaked nevertheless, delete your file
-   and restart the server, so that it creates a new secret key.
-   All previous sessions will be invalidated.
+   The directory ``user_dev/crypto/`` contains confidential information. In
+   particular, the ``itsdangeroussecret.bin`` is important for the security of
+   login sessions. Make sure not to publish its contents anywhere. If the
+   contents gets leaked nevertheless, delete your file and restart the server,
+   so that it creates a new secret key. All previous login sessions will be
+   invalidated.
 
 
-.. _init-script:
+.. _background-media-processing:
 
-Alternative init scripts
-------------------------
+Background Media Processing
+---------------------------
 
-If your system does not use Systemd, you can use the following command as the
-basis for an init script:
-
-.. code-block:: bash
-
-    CELERY_ALWAYS_EAGER=true \
-     /srv/mediagoblin.example.org/mediagoblin/bin/paster serve \
-     /srv/mediagoblin.example.org/mediagoblin/paste.ini \
-     --pid-file=/var/run/mediagoblin.pid \
-     --server-name=main
-
-The above configuration places MediaGoblin in "always eager" mode
-with Celery, this means that submissions of content will be processed
-synchronously, and the user will advance to the next page only after
-processing is complete. If we take Celery out of "always eager mode,"
-the user will be able to immediately return to the MediaGoblin site
-while processing is ongoing. In these cases, use the following command
-as the basis for your script:
-
-.. code-block:: bash
-
-    CELERY_ALWAYS_EAGER=false \
-     /srv/mediagoblin.example.org/mediagoblin/bin/paster serve \
-     /srv/mediagoblin.example.org/mediagoblin/paste.ini \
-     --pid-file=/var/run/mediagoblin.pid \
-     --server-name=main
-
-
-Members of the MediaGoblin community have provided init scripts for the
-following GNU/Linux distributions:
-
-Arch Linux
-  * `MediaGoblin - ArchLinux rc.d scripts
-    <http://whird.jpope.org/2012/04/14/mediagoblin-archlinux-rcd-scripts>`_
-    by `Jeremy Pope <http://jpope.org/>`_
-  * `Mediagoblin init script on Archlinux
-    <http://chimo.chromic.org/2012/03/01/mediagoblin-init-script-on-archlinux/>`_
-    by `Chimo <http://chimo.chromic.org/>`_
-
-You can reference these scripts to create an init script for your own operating
-system. Similar scripts will be in your system's ``/etc/init.d/``
-or ``/etc/rc.d/`` directory, but the specifics of an init script will vary from
-one distribution to the next.
-
-.. _separate-celery:
-
-Separate celery
----------------
-
-":doc:`deploying`" describes a configuration with a separate Celery process, but
-the following section covers this in more detail.
+":doc:`deploying`" covers use of a separate Celery process, but this sections
+describes this in more detail.
 
 MediaGoblin uses `Celery`_ to handle heavy and long-running tasks. Celery can
 be launched in two ways:
 
-1.  Embedded in the MediaGoblin WSGI application [#f-mediagoblin-wsgi-app]_.
-    This is the way ``./lazyserver.sh`` does it for you. It's simple as you
-    only have to run one process. The only bad thing with this is that the
-    heavy and long-running tasks will run *in* the webserver, keeping the user
-    waiting each time some heavy lifting is needed as in for example processing
-    a video. This could lead to problems as an aborted connection will halt any
-    processing and since most front-end web servers *will* terminate your
-    connection if it doesn't get any response from the MediaGoblin WSGI
-    application in a while.
+1. **Embedded in the main MediaGoblin web application.** This is the way
+   ``./lazyserver.sh`` does it for you. It's simple as you only have to run one
+   process. The only bad thing with this is that the heavy and long-running
+   tasks will run *in* the webserver, keeping the user waiting each time some
+   heavy lifting is needed as in for example processing a video. This could lead
+   to problems as an aborted connection will halt any processing and since most
+   front-end web servers *will* terminate your connection if it doesn't get any
+   response from the MediaGoblin web application in a while. This approach is
+   suitable for development, small sites or when primarily using :doc:`command
+   line uploads <commandline-upload>`.
 
-2.  As a separate process communicating with the MediaGoblin WSGI application
-    via a `broker`_. This offloads the heavy lifting from the MediaGoblin WSGI
-    application and users will be able to continue to browse the site while the
-    media is being processed in the background.
+2. **As a separate web application and media processing application
+   (recommended).** In this approach, the MediaGoblin web application delegates
+   all media processing to a task queue via a `broker`_ (task queue). This is
+   the approach used in our :doc:`deployment guide <deploying>`, with RabbitMQ
+   as the broker. This offloads the heavy lifting from the MediaGoblin web
+   application and users will be able to continue to browse the site while the
+   media is being processed in the background. This approach provided the best
+   user experience and is recommended for production sites.
+
+The choice between these two behaviours is controlled by the
+``CELERY_ALWAYS_EAGER`` environment variable. Specifying ``true`` instructs
+MediaGoblin to processing media within the web application while you wait.
+Specifying ``false`` instructs MediaGoblin to use background processing.
 
 .. _`broker`: http://docs.celeryproject.org/en/latest/getting-started/brokers/
 .. _`celery`: http://www.celeryproject.org/
 
 
-.. [#f-mediagoblin-wsgi-app] The MediaGoblin WSGI application is the part that
-    of MediaGoblin that processes HTTP requests.
-
-To launch Celery separately from the MediaGoblin WSGI application:
-
-1.  Make sure that the ``CELERY_ALWAYS_EAGER`` environment variable is unset or
-    set to ``false`` when launching the MediaGoblin WSGI application.
-2.  Start the ``celeryd`` main process with
-
-    .. code-block:: bash
-
-        CELERY_CONFIG_MODULE=mediagoblin.init.celery.from_celery ./bin/celeryd
-
-If you use our example Systemd ``service files``, Celery will be set to the
-"CELERY_ALWAYS_EAGER=false" value by default. This will provide your users
-with the best user experience, as all media processing will be done in the
-background.
-
 .. _sentry:
 
 
-Set up sentry to monitor exceptions
------------------------------------
+Error Monitoring with Sentry
+----------------------------
 
 We have a plugin for `raven`_ integration, see the ":doc:`/plugindocs/raven`"
 documentation.
@@ -166,7 +107,24 @@ documentation.
 .. _`raven`: http://raven.readthedocs.org
 
 
-.. TODO insert init script here
-.. TODO are additional concerns ?
-   .. Other Concerns
-   .. --------------
+Running multiple MediaGoblin instances on the same server
+---------------------------------------------------------
+
+It is possible to run multiple separate MediaGoblin instances concurrently on
+the same server. We don't provide detailed instructions to do this, but broadly,
+each instance will need:
+
+1. A separate ``mediagoblin.ini`` and ``paste.ini``.
+2. A separate database that is configured in ``mediagoblin.ini``.
+3. A unique ``CELERY_DEFAULT_QUEUE`` configured in ``mediagoblin.ini``. Queues
+   are automatically created, but must be unique between MediaGoblin instances.
+4. A separate data directory created and configured in ``mediagoblin.ini`` and
+   ``paste.ini``.
+5. A unique server port configured in ``paste.ini`` under ``[server:broadcast]``.
+
+You would typically configure the web server to route requests to the
+appropriate MediaGoblin instance port based on the requested domain name or
+something similar.
+
+It is also possible to share the same MediaGoblin codebase and Python virtualenv
+between multiple instances, so long as they have a unique data directory.

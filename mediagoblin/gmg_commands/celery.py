@@ -1,4 +1,3 @@
-{#
 # GNU MediaGoblin -- federated, autonomous media hosting
 # Copyright (C) 2011, 2012 MediaGoblin contributors.  See AUTHORS.
 #
@@ -14,25 +13,24 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#}
-{% block persona %}
-  <form id="_persona_login"
-    action=
-    {%- if edit_persona is defined -%}
-      "{{ request.urlgen('mediagoblin.plugins.persona.add') }}"
-    {%- else -%}
-      "{{ request.urlgen('mediagoblin.plugins.persona.login') }}"
-    {%- endif %}
-    method="POST">
-    {{ csrf_token }}
-    <input type="hidden" name="assertion" type="text" id="_assertion"/>
-    <input type="hidden" name="_logout_url" type="text" id="_logout_url"
-      value="{{ request.urlgen('mediagoblin.auth.logout') }}"/>
-    <input type="hidden" type="text" id="_persona_user"
-      {% if request.session.get('persona_login_email', False) %}
-        value="{{ request.session['persona_login_email'] }}"/>
-      {% else %}
-        value=""/>
-      {% endif %}
-  </form>
-{% endblock %}
+
+import os
+from celery import current_app
+
+
+def parser_setup(subparser):
+    # No arguments as celery is configured through mediagoblin.ini and
+    # paste.ini.
+    pass
+
+
+def celery(args):
+    os.environ['CELERY_CONFIG_MODULE'] = 'mediagoblin.init.celery.from_celery'
+    from mediagoblin.init.celery.from_celery import setup_self
+
+    # We run setup_self() to initialise Celery with its queue config and set of
+    # tasks. That doesn't return anything, so we pick up the configured celery
+    # via current_app (kinda scary to manage state like this but oh well).
+    setup_self()
+    worker = current_app.Worker()
+    worker.start()

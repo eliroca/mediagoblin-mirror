@@ -6,7 +6,7 @@
 #
 # https://mediagoblin.readthedocs.io/en/master/siteadmin/deploying.html
 #
-# See Dockerfile-debian-python3-sqlite for details.
+# See Dockerfile-debian-10-sqlite for details.
 
 FROM fedora:33
 
@@ -22,26 +22,20 @@ virtualenv
 
 RUN dnf -y install \
 findutils \
-python3-alembic \
-python3-celery \
-python3-jsonschema \
-python3-kombu \
+# To build waitress on Fedora 33 (not required for 31)
+libffi-devel \
 python3-lxml \
-python3-migrate \
-# Fedora only
 python3-pillow \
-python3-py \
+which
+
+RUN dnf -y install \
 python3-pytest \
 python3-pytest-xdist \
 python3-snowballstemmer \
 python3-sphinx \
 # Not in Fedora
 # python3-sphinxcontrib.websupport \
-python3-webtest \
-# Fedora only
-which \
-# To build waitress on Fedora 33 (not required for 31)
-libffi-devel
+python3-webtest
 
 RUN dnf -y install \
 gstreamer1-plugins-base \
@@ -49,8 +43,6 @@ gstreamer1-plugins-bad-free \
 gstreamer1-plugins-good \
 gstreamer1-plugins-ugly-free \
 python3-numpy
-
-RUN dnf search gst
 
 RUN dnf -y install \
 python3-gobject \
@@ -86,13 +78,19 @@ RUN git clone --depth=1 git://git.savannah.gnu.org/mediagoblin.git --branch mast
 RUN git show --oneline --no-patch
 
 RUN ./bootstrap.sh
-RUN VIRTUALENV_FLAGS='--system-site-packages' ./configure
+RUN ./configure
 RUN make
+
+RUN ./bin/python -m pip freeze
 
 RUN ./bin/python -m pytest -rs ./mediagoblin/tests --boxed
 
+RUN cd docs && make html
+
 RUN echo '[[mediagoblin.media_types.audio]]' >> mediagoblin.ini
 RUN echo '[[mediagoblin.media_types.video]]' >> mediagoblin.ini
+# RUN echo '[[mediagoblin.media_types.raw_image]]' >> mediagoblin.ini
+# RUN echo '[[mediagoblin.media_types.pdf]]' >> mediagoblin.ini
 
 # Fedora only
 RUN ./bin/pip install certifi

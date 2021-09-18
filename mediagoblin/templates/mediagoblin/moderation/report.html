@@ -128,21 +128,7 @@
       {{ report.report_content }}
     </div>
   </div>
-  {% if not report.is_archived_report() and
-        not (report.reported_user.has_privilege('admin') and
-        not request.user.has_privilege('admin')) %}
-    <input type=button class="button_action" value="{% trans %}Resolve{% endtrans %}" id=open_resolution_form />
-    <form action="" method="POST" id=resolution_form>
-      {{ wtforms_util.render_divs(form) }}
-      {{ csrf_token }}
-      <input type=submit class="button_action_highlight" id="submit_this_report" value="{% trans %}Resolve This Report{% endtrans %}"/>
-    </form>
-  <script>
-  $(document).ready(function() {
-    init_report_resolution_form();
-  });
-  </script>
-  {% elif report.is_archived_report() %}
+  {% if report.is_archived_report() %}
     <h2><img src="{{ request.staticdirect('/images/icon_clipboard.png') }}"
              alt=""
              title="Under a GNU LGPL v.3 or Creative Commons BY-SA 3.0 license.
@@ -154,13 +140,25 @@
     <pre>
       <p>{{ report.result }}</p>
     </pre>
-  {% else %}
+  {% elif report.reported_user.has_privilege('admin')
+        and not request.user.has_privilege('admin') %}
     <input type=button disabled=disabled value="{% trans %}Resolve This Report{% endtrans %}"/>
     <p>
       {% trans -%}
         You cannot take action against an administrator
       {%- endtrans %}
     </p>
+  {% else %}
+    <form action="" method="POST" id=resolution_form>
+      {{ wtforms_util.render_divs(form) }}
+      {{ csrf_token }}
+      <input type=submit class="button_action_highlight" id="submit_this_report" value="{% trans %}Resolve This Report{% endtrans %}"/>
+    </form>
+  <script>
+  $(document).ready(function() {
+    init_report_resolution_form();
+  });
+  </script>
   {% endif %}
 {% endif %}
 {% endblock %}

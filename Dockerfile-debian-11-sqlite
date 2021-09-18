@@ -12,13 +12,13 @@
 #
 # To build this Docker image, run:
 #
-#   docker build -t mediagoblin-python3 - < Dockerfile-debian-python3-sqlite
+#   docker build -t mediagoblin-debian-11 - < Dockerfile-debian-11-sqlite
 #
 # The "- < Dockerfile" format advises Docker not to include the current
 # directory as build context. Alternatively the following provides build
 # context:
 #
-#   docker build -t mediagoblin-python3 -f Dockerfile-debian-python3-sqlite .
+#   docker build -t mediagoblin-debian-11 -f Dockerfile-debian-11-sqlite .
 #
 # Before running the image you first need to first assign the "mediagoblin" and
 # "user_dev" directories to an artificial group (1024) on the host that is
@@ -30,7 +30,7 @@
 #
 # Then you can run the image with the upstream MediaGoblin code:
 #
-#   docker run --interactive --tty --publish 6543:6543 mediagoblin-python3
+#   docker run --interactive --tty --publish 6543:6543 mediagoblin-debian-11
 #
 # Or you can run with your local "mediagoblin" and "user_dev" directories
 # bind-mounted into the container. This provides automatic code reloading and
@@ -50,8 +50,9 @@
 #
 # docker run --tty mediagoblin-python3 bash -c "bin/python -m pytest ./mediagoblin/tests --boxed"
 
+ARG DEBIAN_FRONTEND=noninteractive
 
-FROM debian:buster
+FROM debian:bullseye
 
 # Install bootstrap and configure dependencies. Currently requires virtualenv
 # rather than the more modern python3-venv (should be fixed).
@@ -65,19 +66,21 @@ virtualenv
 
 # Install make and runtime dependencies.
 #
-# Excluding python3-celery here due to conflict with dist-packges for a
-# compatible version of billiard.
+# We explicitly don't use use Debian packages for everything here, so as to
+# match closely with the deployment docs which install most depedencies
+# from PyPI.
 RUN apt-get install -y \
-python3-alembic \
-python3-jsonschema \
-python3-kombu \
 python3-lxml \
-python3-migrate \
-python3-py \
+python3-pil
+
+# Install test and docs dependencies.
+RUN apt-get install -y \
 python3-pytest \
 python3-pytest-xdist \
 python3-snowballstemmer \
 python3-sphinx \
+python3-sphinxcontrib.devhelp \
+python3-sphinxcontrib.qthelp \
 python3-sphinxcontrib.websupport \
 python3-webtest
 
@@ -166,20 +169,30 @@ RUN git clone --depth=1 git://git.savannah.gnu.org/mediagoblin.git --branch mast
 RUN git show --oneline --no-patch
 
 RUN ./bootstrap.sh
-RUN VIRTUALENV_FLAGS='--system-site-packages' ./configure
+RUN ./configure
 RUN make
+
+# Additional Sphinx dependencies not in Debian.
+RUN ./bin/pip install sphinxcontrib-applehelp sphinxcontrib-htmlhelp sphinxcontrib-jsmath
 
 # Install raw image library from PyPI.
 RUN ./bin/pip install py3exiv2
 
+# Confirm our packages version for later troubleshooting.
+RUN ./bin/python -m pip freeze
+
 # Run the tests.
 RUN ./bin/python -m pytest -rs ./mediagoblin/tests --boxed
+
+# Build the documentation.
+RUN cd docs && make html
 
 # Only safe if being run on a clean git checkout. Otherwise you may have already
 # customised mediagoblin.ini to already install these.
 RUN echo '[[mediagoblin.media_types.audio]]' >> mediagoblin.ini
 RUN echo '[[mediagoblin.media_types.video]]' >> mediagoblin.ini
 RUN echo '[[mediagoblin.media_types.raw_image]]' >> mediagoblin.ini
+RUN echo '[[mediagoblin.media_types.pdf]]' >> mediagoblin.ini
 
 # Prepare the SQLite database.
 #

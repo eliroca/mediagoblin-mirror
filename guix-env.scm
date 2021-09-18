@@ -1,7 +1,7 @@
 ;;; GNU MediaGoblin -- federated, autonomous media hosting
 ;;; Copyright © 2015, 2016 David Thompson <davet@gnu.org>
 ;;; Copyright © 2016 Christopher Allan Webber <cwebber@dustycloud.org>
-;;; Copyright © 2019 Ben Sturmfels <ben@sturm.com.au>
+;;; Copyright © 2019, 2020, 2021 Ben Sturmfels <ben@sturm.com.au>
 ;;;
 ;;; This program is free software: you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -15,40 +15,56 @@
 ;;;
 ;;; ========================================
 ;;;
-;;; ... This file is also part of GNU MediaGoblin, but we're leaving it
-;;; under GPLv3 for easy merge back and forth between Guix proper.  It
-;;; also borrows some code directly from Guix.
+;;; This file is also part of GNU MediaGoblin, but we're leaving it under GPLv3
+;;; for easy merge back and forth between Guix proper.
 ;;;
 ;;; ========================================
+;;;
+;;; This file is intended for people who want to set up MediaGoblin hacking
+;;; environment using Guix to install dependencies, but run MediaGoblin from a
+;;; git checkout. See https://git.sr.ht/~mediagoblin/mediagoblin-guix for
+;;; details on the Guix packaging effort.
+;;;
 ;;;
 ;;; With `guix environment' you can use guix as kind of a universal
 ;;; virtualenv, except a universal virtualenv with magical time traveling
 ;;; properties and also, not just for Python.
 ;;;
-;;; Ok, here's how to use this thing!  First, install Guix.
-;;; Then do:
-;;;   guix environment -l guix-env.scm --pure
+;;; Assuming you have Guix installed, you can get a MediaGoblin hacking environment with:
 ;;;
-;;; While using --pure is a robust way to ensure that other environment
-;;; variables don't cause unexpected behaviour, it may trip up aspects of your
-;;; development tools, such as removing reference to $EDITOR. Feel free to
-;;; remove the --pure.
+;;;   guix environment -l guix-env.scm --container --network --share=$HOME/.bash_history --ad-hoc which git automake autoconf python-psycopg2
+;;;
+;;; or, after applying the patch to upstream Guix:
+;;;
+;;;   ~/ws/guix/pre-inst-env guix environment --container --network --share=$HOME/.bash_history --ad-hoc which git automake autoconf python-psycopg2
 ;;;
 ;;; You'll need to run the above command every time you close your terminal or
 ;;; restart your system, so a handy way to save having to remember is to install
 ;;; "direnv" an then create a ".envrc" file in your current directory containing
 ;;; the following and then run "direnv allow" when prompted:
-;;;   use guix -l guix-env.scm
 ;;;
-;;; To set things up for the first time, you'll also need to run:
+;;;   use guix -l guix-env.scm --container --network --share=$HOME/.bash_history --ad-hoc which git automake autoconf python-psycopg2
+;;;
+;;; First time setup only, run:
+;;;
 ;;;   git submodule update --init
 ;;;   ./bootstrap.sh
 ;;;   ./configure --without-virtualenv
 ;;;   make
+;;;
+;;; The devtools/update_extlib.sh script won't run on Guix due to missing
+;;; "/usr/bin/env", so again for first time setup only, run:
+;;;
+;;;   node node_modules/.bin/bower install
+;;;   ./devtools/update_extlib.sh
+;;;
+;;; For first time setup only with a regular `guix environment` or an
+;;; `environment --pure`, but required EACH TIME you start an `environment
+;;; --container` (because the generated profile goes away, breaking the links in
+;;; the virtualenv):
+;;;
+;;;   rm -rf bin include lib lib64 pyvenv.cfg
 ;;;   python3 -m venv --system-site-packages . && bin/python setup.py develop --no-deps
-;;;   bin/python -m pip install --force-reinstall PasteScript # workaround
-;;;   bin/python -m pip install 'werkzeug<1.0.0' # workaround (also disabled below)
-;;;   bin/python -m pip install 'email-validator' # email-validator
 ;;;
 ;;; ... wait whaaat, what's that venv line?!  I thought you said this
 ;;; was a reasonable virtualenv replacement!  Well it is and it will
@@ -57,35 +73,52 @@
 ;;; for certain things to run, so we have a virtualenv with nothing
 ;;; in it but this project itself.
 ;;;
-;;; The devtools/update_extlib.sh script won't run on Guix due to missing
-;;; "/usr/bin/env", so then run:
-;;;   node node_modules/.bin/bower install
-;;;   ./devtools/update_extlib.sh
-;;;   bin/gmg dbupdate
-;;;   bin/gmg adduser --username admin --password a --email admin@example.com
-;;;   ./lazyserver.sh <-- won't work
-;;;   CELERY_ALWAYS_EAGER=true ./bin/paster serve paste.ini --reload
+;;; For first time setup only, migrate the database and add a user:
 ;;;
-;;; WORKAROUND: I have an incompatible newer Werkzeug installed in my profile,
-;;; so to run MediaGoblin I need to:
+;;;   bin/gmg --conf_file mediagoblin.ini dbupdate
+;;;   bin/gmg --conf_file mediagoblin.ini adduser --username admin --password a --email admin@example.com
 ;;;
-;;;   PYTHONPATH=lib/python3.8/site-packages:$PYTHONPATH CELERY_ALWAYS_EAGER=true ./bin/paster serve paste-vanilla.ini --reload
+;;; This can also work:
 ;;;
-;;; So anyway, now you can do:
-;;;  PYTHONPATH="${PYTHONPATH}:$(pwd)" ./runtests.sh
+;;;   alias gmg="PYTHONPATH=.:$PYTHONPATH python3 mediagoblin/gmg_commands/__init__.py"
+;;;   gmg --conf_file mediagoblin.ini dbupdate
+;;;   gmg --conf_file mediagoblin.ini adduser --username admin --password a --email admin@example.com
+;;;
+;;; Start the server. The ./lazyserver.sh script doesn't currently work. The
+;;; PYTHONPATH business is required to prefer the virtualenv packages over the
+;;; `guix environment` ones.:
+;;;
+;;;   CELERY_ALWAYS_EAGER=true paster serve paste.ini --reload
+;;;
+;;; To run with a separate Celery, ensure that you have Redis installed as a
+;;; system service (outside of your environment). Then in your mediagoblin.ini, set:
+;;;
+;;;   [celery]
+;;;   BROKER_URL = "redis://"
+;;;
+;;; Then start Celery:
+;;;
+;;;   MEDIAGOBLIN_CONFIG=mediagoblin.ini CELERY_CONFIG_MODULE=mediagoblin.init.celery.from_celery bin/python -m celery worker --loglevel=INFO
+;;;
+;;; Start a separate environment and run:
+;;;
+;;;   CELERY_ALWAYS_EAGER=false paster serve paste.ini --reload
+;;;
+;;;
+;;; Run the tests:
+;;;
+;;;   bin/python -m pytest -rs ./mediagoblin/tests/ --boxed
+;;;
 ;;; or:
-;;;  bin/python -m pytest ./mediagoblin/tests --boxed
+;;;
+;;;   PYTHONPATH="${PYTHONPATH}:$(pwd)" ./runtests.sh
+;;;
 ;;;
 ;;; Now notably this is goofier looking than running a virtualenv,
 ;;; but soon I'll do something truly evil (I hope) that will make
 ;;; the virtualenv and path-hacking stuff unnecessary.
 ;;;
 ;;; Have fun!
-;;;
-;;; Known issues:
-;;;  - currently fails to upload h264 source video: "GStreamer: missing H.264 decoder"
-;;
-;; TODO: Add PDF support.
 
 (use-modules (ice-9 match)
              (srfi srfi-1)
@@ -96,11 +129,14 @@
              (guix build-system gnu)
              (guix build-system python)
              (gnu packages)
+             (gnu packages audio)
              (gnu packages autotools)
              (gnu packages base)
              (gnu packages certs)
              (gnu packages check)
              (gnu packages databases)
+             (gnu packages openldap)
+             (gnu packages pdf)
              (gnu packages python)
              (gnu packages python-crypto)
              (gnu packages python-web)
@@ -108,136 +144,102 @@
              (gnu packages sphinx)
              (gnu packages gstreamer)
              (gnu packages glib)
+             (gnu packages pulseaudio)
              (gnu packages rsync)
              (gnu packages ssh)
              (gnu packages time)
              (gnu packages video)
              (gnu packages version-control)
-             (gnu packages xml)
-             ((guix licenses) #:select (expat zlib) #:prefix license:))
-
-;; =================================================================
-;; These packages are on their way into Guix proper but haven't made
-;; it in yet... or they're old versions of packages we're pinning
-;; ourselves to...
-;; =================================================================
-
-(define python-pytest-forked
-  (package
-   (name "python-pytest-forked")
-   (version "1.0.2")
-   (source
-    (origin
-     (method url-fetch)
-     (uri (pypi-uri "pytest-forked" version))
-     (sha256
-      (base32
-       "0f4y1jhcg70xhm220pdb8r24n01knhn749aqlr14vmgbsb7allnk"))))
-   (build-system python-build-system)
-   (propagated-inputs
-    `(("python-pytest" ,python-pytest)
-      ("python-setuptools-scm" ,python-setuptools-scm)))
-   (home-page
-    "https://github.com/pytest-dev/pytest-forked")
-   (synopsis
-    "run tests in isolated forked subprocesses")
-   (description
-    "run tests in isolated forked subprocesses")
-   (license license:expat)))
-
-;; =================================================================
+             (gnu packages xml))
 
 (define mediagoblin
   (package
     (name "mediagoblin")
-    (version "0.8.1")
+    (version "0.12.0.dev.1")
     (source
      (origin
-       (method url-fetch)
-       (uri (pypi-uri "mediagoblin" version))
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://git.savannah.gnu.org/git/mediagoblin.git")
+             (commit "f620b65e050e00ebdf7a6f9e07a835a3b285954c")))
+       (file-name (git-file-name name version))
        (sha256
-        (base32
-         "0p2gj4z351166d1zqmmd8wc9bzb69w0fjm8qq1fs8dw2yhcg2wwv"))))
+        (base32 "1gmmxa8yggb8pcsff66b8d45jsqkal01kkb9nqn5h036mx412g9k"))))
     (build-system python-build-system)
     (arguments
-     ;; Complains about missing gunicorn. Not sure where that comes from.
-     '(#:tests? #f))
+     `(#:phases
+       (modify-phases %standard-phases
+         (add-after 'build 'build-translations
+           (lambda _
+             (invoke "devtools/compile_translations.sh")))
+         (replace 'check
+           (lambda _
+             (setenv "PYTHONPATH"
+                     (string-append (getcwd) ":"
+                                    (getenv "PYTHONPATH")))
+             (invoke "pytest" "mediagoblin/tests" "-rs" "--boxed"
+                     ;; Skip the audio tests until updated libsndfile
+                     ;; has been merged from core-updates branch.
+                     "--deselect=test_audio.py::test_thumbnails"
+                     "--deselect=test_submission.py::TestSubmissionAudio"))))))
     (native-inputs
      `(("python-pytest" ,python-pytest)
-       ("nss-certs" ,nss-certs)))
-    (propagated-inputs
-     `(("python-alembic" ,python-alembic)
-       ("python-pytest-xdist" ,python-pytest-xdist)
        ("python-pytest-forked" ,python-pytest-forked)
-       ("python-celery" ,python-celery)
-       ("python-kombu" ,python-kombu)
-       ("python-webtest" ,python-webtest)
-       ("python-pastedeploy" ,python-pastedeploy)
-       ("python-paste" ,python-paste)
-       ("python-pastescript" ,python-pastescript)
-       ("python-translitcodec" ,python-translitcodec)
+       ("python-pytest-xdist" ,python-pytest-xdist)
+       ("python-sphinx" ,python-sphinx)
+       ("python-webtest" ,python-webtest)))
+    (inputs
+     `(("python-alembic" ,python-alembic)
        ("python-babel" ,python-babel)
+       ("python-celery" ,python-celery)
        ("python-configobj" ,python-configobj)
        ("python-dateutil" ,python-dateutil)
+       ("python-email-validator" ,python-email-validator)
+       ("python-exif-read" ,python-exif-read)
+       ("python-feedgenerator" ,python-feedgenerator)
        ("python-itsdangerous" ,python-itsdangerous)
        ("python-jinja2" ,python-jinja2)
        ("python-jsonschema" ,python-jsonschema)
+       ("python-ldap" ,python-ldap)  ; For LDAP plugin
        ("python-lxml" ,python-lxml)
        ("python-markdown" ,python-markdown)
        ("python-oauthlib" ,python-oauthlib)
+       ("python-openid" ,python-openid) ; For OpenID plugin
+       ("python-pastescript" ,python-pastescript)
        ("python-pillow" ,python-pillow)
        ("python-py-bcrypt" ,python-py-bcrypt)
        ("python-pyld" ,python-pyld)
        ("python-pytz" ,python-pytz)
-       ("python-requests" ,python-requests)
-       ("python-setuptools" ,python-setuptools)
-       ("python-sphinx" ,python-sphinx)
-       ("python-docutils" ,python-docutils)
+       ("python-requests" ,python-requests) ; For batchaddmedia
+       ("python-soundfile" ,python-soundfile)
        ("python-sqlalchemy" ,python-sqlalchemy)
        ("python-unidecode" ,python-unidecode)
-       ;; ("python-werkzeug" ,python-werkzeug)  ; Broken due to missing werkzeug.contrib.atom in 1.0.0.
-       ("python-exif-read" ,python-exif-read)
-       ("python-wtforms" ,python-wtforms)))
-    (home-page "http://mediagoblin.org/")
+       ("python-waitress" ,python-waitress)
+       ("python-werkzeug" ,python-werkzeug)
+       ("python-wtforms" ,python-wtforms)
+
+       ;; Audio/video media
+       ;; TODO: MP4 failing since moving from propagated-inputs to inputs.
+       ("gobject-introspection" ,gobject-introspection)
+       ("gst-libav" ,gst-libav)
+       ("gst-plugins-bad" ,gst-plugins-bad)
+       ("gst-plugins-base" ,gst-plugins-base)
+       ("gst-plugins-good" ,gst-plugins-good)
+       ("gst-plugins-ugly" ,gst-plugins-ugly)
+       ("gstreamer" ,gstreamer)
+       ("openh264" ,openh264)
+       ("python-gst" ,python-gst)  ; For tests to pass
+       ("python-numpy" ,python-numpy)  ; Audio spectrograms
+       ("python-pygobject" ,python-pygobject)
+
+       ;; PDF media.
+       ("poppler" ,poppler)))
+    (home-page "https://mediagoblin.org/")
     (synopsis "Web application for media publishing")
-    (description "MediaGoblin is a web application for publishing all kinds of
-media.")
+    (description
+     "MediaGoblin is a free software media publishing platform that anyone can
+run. You can think of it as a decentralized alternative to Flickr, YouTube,
+SoundCloud, etc.")
     (license agpl3+)))
 
-(package
-  (inherit mediagoblin)
-  (name "mediagoblin-hackenv")
-  (version "git")
-  (inputs
-   `(;;; audio/video stuff
-     ("openh264" ,openh264)
-     ("gstreamer" ,gstreamer)
-     ("gst-libav" ,gst-plugins-base)
-     ("gst-plugins-base" ,gst-plugins-base)
-     ("gst-plugins-good" ,gst-plugins-good)
-     ("gst-plugins-bad" ,gst-plugins-bad)
-     ("gst-plugins-ugly" ,gst-plugins-ugly)
-     ("gobject-introspection" ,gobject-introspection)
-     ;; useful to have!
-     ("coreutils" ,coreutils)
-     ;; used by runtests.sh!
-     ("which" ,which)
-     ("git" ,git)
-     ("automake" ,automake)
-     ("autoconf" ,autoconf)
-     ,@(package-inputs mediagoblin)))
-  (propagated-inputs
-   `(("python" ,python)
-     ("python-virtualenv" ,python-virtualenv)
-     ("python-pygobject" ,python-pygobject)
-     ("python-gst" ,python-gst)
-     ;; Needs python-gst in order for all tests to pass
-     ("python-numpy" ,python-numpy)  ; this pulls in texlive...
-                                     ; and texlive-texmf is very large...
-     ("python-chardet", python-chardet)
-     ("python-psycopg2" ,python-psycopg2)
-     ;; For developing
-     ("openssh" ,openssh)
-     ("git" ,git)
-     ("rsync" ,rsync)
-     ,@(package-propagated-inputs mediagoblin))))
+mediagoblin

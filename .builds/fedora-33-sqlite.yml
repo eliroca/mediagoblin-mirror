@@ -11,21 +11,17 @@ packages:
   
   # Install make and runtime dependencies.
   # - findutils
-  - python3-alembic
-  - python3-celery
-  - python3-jsonschema
-  - python3-kombu
   - python3-lxml
-  - python3-migrate
   - python3-pillow
-  - python3-py
+  - libffi-devel
+  # - which
+
+  # Install test and docs dependencies.
   - python3-pytest
   - python3-pytest-xdist
   - python3-snowballstemmer
   - python3-sphinx
   - python3-webtest
-  - libffi-devel
-  # - which
 
   # Install audio dependencies.
   - gstreamer1-plugins-base
@@ -63,5 +59,11 @@ tasks:
       # # Install raw image library from PyPI as not available in Debian 10.
       # ./bin/pip install py3exiv2
 
+      # Confirm our packages version for later troubleshooting.
+      ./bin/python -m pip freeze
+
       # Run the tests, explicitly listing out skipped tests.
       ./bin/python -m pytest -rs ./mediagoblin/tests --boxed
+
+      # Build the documentation.
+      cd docs && make html

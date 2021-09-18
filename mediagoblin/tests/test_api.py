@@ -131,8 +131,17 @@ class TestAPI:
         # Check that we got the response we're expecting
         response, data = self._post_image_to_feed(test_app, image)
         assert response.status_code == 200
-        assert data["object"]["fullImage"]["url"].endswith("unknown.jpe")
-        assert data["object"]["image"]["url"].endswith("unknown.thumbnail.jpe")
+        # mimetypes.guess_all_extensions gives a different result depending on Python version:
+        # .jpe on Debian 10
+        # .jfif on Debian 11
+        assert (
+            data["object"]["fullImage"]["url"].endswith("unknown.jpe")
+            or data["object"]["fullImage"]["url"].endswith("unknown.jfif")
+        )
+        assert (
+            data["object"]["image"]["url"].endswith("unknown.thumbnail.jpe")
+            or data["object"]["image"]["url"].endswith("unknown.thumbnail.jfif")
+        )
 
     def test_can_post_image_custom_filename(self, test_app):
         """ Tests an image can be posted to the API with custom filename """

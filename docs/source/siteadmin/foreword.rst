@@ -25,7 +25,7 @@ that someone running MediaGoblin would need to know.
 We have other documentation at:
 
 * http://mediagoblin.org/join/ for general "join us" information
-* http://wiki.mediagoblin.org/ for our contributor/developer-focused wiki
+* https://web.archive.org/web/20200817190402/https://wiki.mediagoblin.org/ for our contributor/developer-focused wiki
 
 
 Improving the Site Administrator's Guide

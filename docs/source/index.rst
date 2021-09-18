@@ -21,7 +21,7 @@ in an environment that respects our freedom and independence.
 
 This is a Free Software project. It is built by contributors for all
 to use and enjoy. If you're interested in contributing, see `the wiki
-<http://wiki.mediagoblin.org/>`_ which has pages that talk about the
+<https://web.archive.org/web/20200817190402/https://wiki.mediagoblin.org/>`_ which has pages that talk about the
 ways someone can contribute.
 
 
@@ -60,7 +60,6 @@ Part 2: Core plugin documentation
    plugindocs/flatpagesfile
    plugindocs/ldap
    plugindocs/openid
-   plugindocs/persona
    plugindocs/raven
    plugindocs/sampleplugin
    plugindocs/subtitles
@@ -95,6 +94,7 @@ This chapter contains various information for developers.
 
    devel/codebase
    devel/storage
+   devel/release
    devel/originaldesigndecisions
    devel/migrations
 

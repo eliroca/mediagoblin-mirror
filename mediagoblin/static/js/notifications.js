@@ -1,4 +1,3 @@
-'use strict';
 /**
  * GNU MediaGoblin -- federated, autonomous media hosting
  * Copyright (C) 2011, 2012 MediaGoblin contributors.  See AUTHORS.
@@ -17,33 +16,26 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-var notifications = {};
+'use strict';
 
-(function (n) {
-    n._base = '/';
-    n._endpoint = 'notifications/json';
+(function () {
+  // Small pill/gem indicator showing number of unseen comments. Comments are
+  // shown inside the header panel which may be hidden.
+  var notificationGem = document.querySelector('.notification-gem');
+  notificationGem.addEventListener('click', function() {
+    panel.show()
+  });
 
-    n.init = function () {
-        $('.notification-gem').on('click', function () {
-            $('.header_dropdown_down:visible').click();
-        });
-    }
-
-})(notifications)
-
-$(document).ready(function () {
-    notifications.init();
-
-    var mark_all_comments_seen = document.getElementById('mark_all_comments_seen');
-
-    if (mark_all_comments_seen) {
-        mark_all_comments_seen.href = '#';
-        mark_all_comments_seen.onclick = function() {
-            $.ajax({
-                type: 'GET',
-                url: mark_all_comments_seen_url,
-                success: function(res, status, xhr) { window.location.reload(); },
-            });
-        }
-    }
-});
+  // Mark all comments seen feature.
+  //
+  // TODO: Currently broken due to bug in mark_comment_notification_seen().
+  var mark_all_comments_seen = document.getElementById('mark_all_comments_seen');
+  if (mark_all_comments_seen) {
+    mark_all_comments_seen.href = '#';
+    mark_all_comments_seen.onclick = function() {
+      fetch(mark_all_comments_seen_url).then(function(response) {
+        window.location.reload();
+      });
+    };
+  }
+})();

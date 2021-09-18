@@ -45,7 +45,7 @@ def setup_logging_from_paste_ini(loglevel, **kw):
         raise OSError('{} does not exist. Logging can not be set up.'.format(
             logging_conf_file))
 
-    logging.config.fileConfig(logging_conf_file)
+    logging.config.fileConfig(logging_conf_file, disable_existing_loggers=False)
 
     hook_runall('celery_logging_setup')
 

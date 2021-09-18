@@ -331,6 +331,6 @@ Chris Webber on "Why copyright assignment?":
     even incentivized: significant contributors who do a copyright
     assignment to the FSF are eligible to have a unique goblin drawing
     produced for them by the project's main founder, Christopher Allan
-    Webber.  See `the wiki <http://wiki.mediagoblin.org/>`_ for details.
+    Webber.  See `the wiki <https://web.archive.org/web/20200817190402/https://wiki.mediagoblin.org/>`_ for details.
 
 

@@ -56,7 +56,7 @@ dnl # * x.y.dev  - dev
 dnl 
 dnl # see http://www.python.org/dev/peps/pep-0386/
 
-AC_INIT([mediagoblin], [0.11.0], [mediagoblin-devel@gnu.org])
+AC_INIT([mediagoblin], [0.12.0], [mediagoblin-devel@gnu.org])
 
 
 dnl----
