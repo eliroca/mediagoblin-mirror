@@ -19,6 +19,11 @@ Release Notes
 
 This chapter has important information about our current and previous releases.
 
+0.12.0 (Work in progress)
+=========================
+
+- Fix incorrect setuptools install location for db/migrations/env.py (Elisei Roca)
+
 ..
    **To do:**
    - add TLS to deploying documentation
