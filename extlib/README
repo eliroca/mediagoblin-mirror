@@ -3,15 +3,15 @@
 =========================
 
 This directory contains two kinds of things: external dependencies
-specified in package.json (which gets installed into the node_modules
+specified in bower.json (which gets installed into the node_modules
 directory), and full copies of third-party code, which we call
 embedded code copies.
 
 
-External dependencies specified in package.json
+External dependencies specified in bower.json
 ===============================================
 
-package.json is a file that specifies external code dependencies. We
+bower.json is a file that specifies external code dependencies. We
 download those using the "npm" tool. As a developer of MediaGoblin,
 install npm however is convenient for you (for example, apt-get
 install npm).
@@ -19,16 +19,16 @@ install npm).
 If you are "merely installing" MediaGoblin (and aren't attempting to
 change its code), you should know that the MediaGoblin team's main
 release download, also known as the MediaGoblin mulltipack tarball,
-contains a copy of all the code specified via package.json.
+contains a copy of all the code specified via bower.json.
 
-As a general rule, always specify dependencies in package.json using
+As a general rule, always specify dependencies in bower.json using
 "==" to pin to a specific release that you have tested MediaGoblin
 with. The MediaGoblin team always welcomes patches that merely change
 the version of a dependency so long as you have tested that the app
 works. Doing this is a valuable and significant contribution to the
 project.
 
-Other notes about the contents of package.json:
+Other notes about the contents of bower.json:
 
 * Inconsolata is available in the npm repositories, but it does not
   include the OTF font format, and at the time of writing it appears
