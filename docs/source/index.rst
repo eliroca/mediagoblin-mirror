@@ -93,6 +93,7 @@ This chapter contains various information for developers.
 .. toctree::
    :maxdepth: 1
 
+   devel/contributing
    devel/codebase
    devel/storage
    devel/release
