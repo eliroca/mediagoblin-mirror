@@ -24,7 +24,8 @@ This page will describe how to get started contributing to MediaGoblin:
 * How to update and build the documentation
 * How to submit code contributions
 
-We eventually hope to migrate the information over from our wiki pages:
+We eventually hope to migrate the information over from these wiki pages:
+
 * https://wiki.mediagoblin.org/Main_Page#Technical_project_documentation
 * https://wiki.mediagoblin.org/HackingHowto
 * https://wiki.mediagoblin.org/Git_workflow
