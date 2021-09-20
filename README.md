@@ -4,7 +4,7 @@
 
 MediaGoblin is a free software media publishing platform that anyone can run.
 You can think of it as a decentralized alternative to Flickr, YouTube,
-SoundCloud.
+SoundCloud. It's also:
 
 * The perfect tool to show and share your media!
 * Building tools to empower the world through decentralization!
@@ -17,7 +17,7 @@ your organisation controls. See our [Deploying
 MediaGoblin](https://docs.mediagoblin.org/en/master/siteadmin/deploying.html)
 for instructions.
 
-Please see our [https://mediagoblin.org/pages/join.html](join us) page us and
+Please see our [join us](https://mediagoblin.org/pages/join.html) page us and
 get involved!
 
 * [website](https://mediagoblin.org)
