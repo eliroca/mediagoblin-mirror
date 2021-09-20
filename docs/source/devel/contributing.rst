@@ -21,6 +21,7 @@ This page will describe how to get started contributing to MediaGoblin:
 
 * How to set up a development environment
 * How to run the test suite
+* How to update and build the documentation
 * How to submit code contributions
 
 We eventually hope to migrate the information over from our wiki pages:
