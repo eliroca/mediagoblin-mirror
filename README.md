@@ -24,7 +24,7 @@ Yes!
 # Can I help/hang out/participate/whisper sweet nothings in your ear?
 
 Yes!  Please join us and hang out!  For more information on where we
-hang out, see https://mediagoblin.org/join/.
+hang out, see https://mediagoblin.org/pages/join.html.
 
 
 # Where is the documentation?
