@@ -1,5 +1,7 @@
 # GNU MediaGoblin
 
+<img src="https://mediagoblin.org/images/home_goblin.png" alt="">
+
 What is MediaGoblin?
 
 * A place to store all your different media (photos, videos, audios,
