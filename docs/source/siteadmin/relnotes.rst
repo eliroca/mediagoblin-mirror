@@ -23,10 +23,7 @@ This chapter has important information about our current and previous releases.
 =========================
 
 - Fix incorrect setuptools install location for db/migrations/env.py (Elisei Roca)
-
-..
-   **To do:**
-   - add TLS to deploying documentation
+- Add a "Troubleshooting" page to the documentation (Ben Sturmfels)
 
 
 0.12.0
