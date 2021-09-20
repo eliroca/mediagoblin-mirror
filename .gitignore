@@ -51,7 +51,6 @@
 *~
 *.sw?
 *.mo
-*.patch
 
 # The legacy of buildout
 .installed.cfg
