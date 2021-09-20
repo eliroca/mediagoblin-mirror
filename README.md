@@ -1,9 +1,6 @@
-========
- README
-========
+# GNU MediaGoblin
 
-What is GNU MediaGoblin?
-========================
+What is MediaGoblin?
 
 * A place to store all your different media (photos, videos, audios,
   and more!) that’s as awesome as, if not more awesome than, existing
@@ -15,27 +12,25 @@ What is GNU MediaGoblin?
   Presentations and documents?  Yes, and more!) or extend old ones.
 * A real community, and we'd love to have you join us!
 
+Visit our website for more.
 
-Is it ready for me to use?
-==========================
+# Is it ready for me to use?
 
 Yes!
 
 
-Can I help/hang out/participate/whisper sweet nothings in your ear?
-===================================================================
+# Can I help/hang out/participate/whisper sweet nothings in your ear?
 
 Yes!  Please join us and hang out!  For more information on where we
-hang out, see `our Join page <http://mediagoblin.org/join/>`_
+hang out, see http://mediagoblin.org/join/.
 
 
-Where is the documentation?
-===========================
+# Where is the documentation?
 
-The beginnings of a site administration manual is located in the ``docs/``
+The beginnings of a site administration manual is located in the `docs/`
 directory in HTML, Texinfo, and source (Restructured Text) forms.  It's
 also available online at http://docs.mediagoblin.org/ in HTML form.
 
-Contributor/developer documentation as well as documentation on the
-project processes and infrastructure is located on 
-`the wiki <http://wiki.mediagoblin.org/>`_.
+Contributor/developer documentation as well as documentation on the project
+processes and infrastructure is located on the wiki at
+http://wiki.mediagoblin.org/.
