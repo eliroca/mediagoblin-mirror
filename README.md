@@ -14,7 +14,7 @@ What is MediaGoblin?
   Presentations and documents?  Yes, and more!) or extend old ones.
 * A real community, and we'd love to have you join us!
 
-Visit our website for more.
+Visit our website https://mediagoblin.org for more.
 
 # Is it ready for me to use?
 
@@ -24,15 +24,15 @@ Yes!
 # Can I help/hang out/participate/whisper sweet nothings in your ear?
 
 Yes!  Please join us and hang out!  For more information on where we
-hang out, see http://mediagoblin.org/join/.
+hang out, see https://mediagoblin.org/join/.
 
 
 # Where is the documentation?
 
 The beginnings of a site administration manual is located in the `docs/`
 directory in HTML, Texinfo, and source (Restructured Text) forms.  It's
-also available online at http://docs.mediagoblin.org/ in HTML form.
+also available online at https://docs.mediagoblin.org/ in HTML form.
 
 Contributor/developer documentation as well as documentation on the project
 processes and infrastructure is located on the wiki at
-http://wiki.mediagoblin.org/.
+https://wiki.mediagoblin.org/.
