@@ -2,37 +2,26 @@
 
 <img src="https://mediagoblin.org/images/home_goblin.png" alt="">
 
-What is MediaGoblin?
+MediaGoblin is a free software media publishing platform that anyone can run.
+You can think of it as a decentralized alternative to Flickr, YouTube,
+SoundCloud.
 
-* A place to store all your different media (photos, videos, audios,
-  and more!) that’s as awesome as, if not more awesome than, existing
-  network services (Flickr, YouTube, etc)
-* Customizable!
-* A place for people to collaborate and show off original and derived
-  creations.  Free, as in freedom.  We’re a GNU project after all.
-* Extensible: Plugins allow you to add new media types (3d models?
-  Presentations and documents?  Yes, and more!) or extend old ones.
-* A real community, and we'd love to have you join us!
+* The perfect tool to show and share your media!
+* Building tools to empower the world through decentralization!
+* Built for extensibility. Multiple media types, including video support!
+* Part of the GNU project and devoted to user freedom.
+* Powered by a community of people like you.
 
-Visit our website https://mediagoblin.org for more.
+MediaGoblin is a self-hosted web application that you install on a server you or
+your organisation controls. See our [Deploying
+MediaGoblin](https://docs.mediagoblin.org/en/master/siteadmin/deploying.html)
+for instructions.
 
-# Is it ready for me to use?
+Please see our [https://mediagoblin.org/pages/join.html](join us) page us and
+get involved!
 
-Yes!
-
-
-# Can I help/hang out/participate/whisper sweet nothings in your ear?
-
-Yes!  Please join us and hang out!  For more information on where we
-hang out, see https://mediagoblin.org/pages/join.html.
-
-
-# Where is the documentation?
-
-The beginnings of a site administration manual is located in the `docs/`
-directory in HTML, Texinfo, and source (Restructured Text) forms.  It's
-also available online at https://docs.mediagoblin.org/ in HTML form.
-
-Contributor/developer documentation as well as documentation on the project
-processes and infrastructure is located on the wiki at
-https://wiki.mediagoblin.org/.
+* [website](https://mediagoblin.org)
+* [documentation](https://docs.mediagoblin.org)
+* [bug tracker](https://todo.sr.ht/~mediagoblin/mediagoblin)
+* [bug tracker (legacy)](https://issues.mediagoblin.org)
+* [CI](https://builds.sr.ht/~mediagoblin/mediagoblin)
