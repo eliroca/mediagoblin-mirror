@@ -207,7 +207,7 @@
        ("python-openid" ,python-openid) ; For OpenID plugin
        ("python-pastescript" ,python-pastescript)
        ("python-pillow" ,python-pillow)
-       ("python-py-bcrypt" ,python-py-bcrypt)
+       ("python-bcrypt" ,python-bcrypt)
        ("python-pyld" ,python-pyld)
        ("python-pytz" ,python-pytz)
        ("python-requests" ,python-requests) ; For batchaddmedia

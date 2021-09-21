@@ -26,6 +26,8 @@ This chapter has important information about our current and previous releases.
 
 - Fix incorrect setuptools install location for db/migrations/env.py (Elisei Roca)
 - Add a "Troubleshooting" page to the documentation (Ben Sturmfels)
+- Add Ubuntu 20.04 CI build and reinstate Debian 10 CI build (Ben Sturmfels)
+- Switch from `py-bcrypt` to `bcrypt` (Elisei Roca)
 
 
 0.12.0
