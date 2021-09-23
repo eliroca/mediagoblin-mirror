@@ -1,4 +1,4 @@
-image: debian/bullseye
+image: debian/buster
 packages:
   # Install bootstrap and configure dependencies.
   - automake
@@ -8,16 +8,17 @@ packages:
   - virtualenv
 
   # Install make and runtime dependencies.
+  - python3-alembic
+  - python3-jsonschema
+  - python3-kombu
   - python3-lxml
+  - python3-migrate
   - python3-pillow
-
-  # Install test and docs dependencies.
+  - python3-py
   - python3-pytest
   - python3-pytest-xdist
   - python3-snowballstemmer
   - python3-sphinx
-  - python3-sphinxcontrib.devhelp
-  - python3-sphinxcontrib.qthelp
   - python3-sphinxcontrib.websupport
   - python3-webtest
 
@@ -57,18 +58,11 @@ tasks:
       ./configure
       make
 
-      # Install additional Sphinx dependencies not in Debian.
-      ./bin/pip install sphinxcontrib-applehelp sphinxcontrib-htmlhelp sphinxcontrib-jsmath
-
-      # Install raw image library from PyPI as not available in Debian 11.
+      # Install raw image library from PyPI as not available in Debian 10.
       ./bin/pip install py3exiv2
-
-      # Confirm our packages version for later troubleshooting.
-      ./bin/python -m pip freeze
 
       # Run the tests, explicitly listing out skipped tests.
       ./bin/python -m pytest -rs ./mediagoblin/tests --boxed
 
       # Build the documentation.
       cd docs && make html
-

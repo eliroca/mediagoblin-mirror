@@ -53,10 +53,10 @@ tasks:
       cd mediagoblin
       git show --oneline --no-patch
       ./bootstrap.sh
-      VIRTUALENV_FLAGS='--system-site-packages' ./configure
+      ./configure
       make
 
-      # # Install raw image library from PyPI as not available in Debian 10.
+      # # Install raw image library from PyPI as not available in Debian 11.
       # ./bin/pip install py3exiv2
 
       # Confirm our packages version for later troubleshooting.
