@@ -16,7 +16,7 @@
 
 from mediagoblin import mg_globals, messages
 from mediagoblin.auth.tools import register_user
-from mediagoblin.db.models import User, LocalUser
+from mediagoblin.db.models import LocalUser
 from mediagoblin.decorators import allow_registration, auth_enabled
 from mediagoblin.plugins.ldap import forms
 from mediagoblin.plugins.ldap.tools import LDAP

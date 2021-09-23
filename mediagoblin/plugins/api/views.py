@@ -26,9 +26,9 @@ from mediagoblin.decorators import require_active_login
 from mediagoblin.meddleware.csrf import csrf_exempt
 from mediagoblin.media_types import FileTypeNotSupported
 from mediagoblin.plugins.api.tools import api_auth, get_entry_serializable
-from mediagoblin.submit.lib import \
-    check_file_field, submit_media, get_upload_file_limits, \
-    FileUploadLimit, UserUploadLimit, UserPastUploadLimit
+from mediagoblin.submit.lib import (
+    check_file_field, submit_media, FileUploadLimit, UserUploadLimit,
+    UserPastUploadLimit)
 
 _log = logging.getLogger(__name__)
 

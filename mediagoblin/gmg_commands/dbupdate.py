@@ -117,9 +117,9 @@ def run_foundations(db, global_config):
             foundations = import_component(
                 '{}.models:FOUNDATIONS'.format(plugin))
             all_foundations.append((plugin, foundations))
-        except ImportError as exc:
+        except ImportError:
             continue
-        except AttributeError as exc:
+        except AttributeError:
             continue
 
     for name, foundations in all_foundations:

@@ -24,9 +24,8 @@ from mediagoblin.tools.translate import pass_to_ugettext as _
 from mediagoblin.meddleware.csrf import csrf_exempt
 from mediagoblin.auth.tools import check_login_simple
 from mediagoblin.submit.lib import \
-    submit_media, check_file_field, get_upload_file_limits, \
+    submit_media, check_file_field, \
     FileUploadLimit, UserUploadLimit, UserPastUploadLimit
-
 
 from mediagoblin.user_pages.lib import add_media_to_collection
 from mediagoblin.db.models import Collection

@@ -23,8 +23,8 @@ from urllib.parse import urljoin
 
 from mediagoblin import mg_globals as mgg
 from mediagoblin import messages
-from mediagoblin.db.models import MediaEntry, LocalUser, TextComment, \
-                                  AccessToken, Comment
+from mediagoblin.db.models import (
+    MediaEntry, LocalUser, AccessToken, Comment)
 from mediagoblin.tools.response import (
     redirect, render_404,
     render_user_banned, json_response)

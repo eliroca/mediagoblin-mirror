@@ -30,7 +30,6 @@ try:
 except ImportError:
     from werkzeug.wsgi import SharedDataMiddleware
 from mediagoblin import meddleware, __version__
-from mediagoblin.db.util import check_db_up_to_date
 from mediagoblin.tools import common, session, translate, template
 from mediagoblin.tools.response import render_http_exception
 from mediagoblin.tools.theme import register_themes

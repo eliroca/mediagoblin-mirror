@@ -58,8 +58,6 @@ Lifecycle
 
 import logging
 
-from functools import wraps
-
 from mediagoblin import mg_globals
 
 

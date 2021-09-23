@@ -17,9 +17,7 @@
 import os
 
 from mediagoblin import mg_globals
-from mediagoblin.init import setup_global_and_app_config
 from mediagoblin.gmg_commands import util as commands_util
-from mediagoblin.tools.theme import register_themes
 from mediagoblin.tools.translate import pass_to_ugettext as _
 from mediagoblin.tools.common import simple_printer
 from mediagoblin.tools import pluginapi

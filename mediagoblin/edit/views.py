@@ -16,10 +16,8 @@
 from datetime import datetime
 
 from itsdangerous import BadSignature
-from pyld import jsonld
 from werkzeug.exceptions import Forbidden
 from werkzeug.utils import secure_filename
-from jsonschema import ValidationError, Draft4Validator
 
 from mediagoblin import messages
 from mediagoblin import mg_globals
@@ -31,10 +29,9 @@ from mediagoblin.edit.lib import may_edit_media
 from mediagoblin.decorators import (require_active_login, active_user_from_url,
                             get_media_entry_by_id, user_may_alter_collection,
                             get_user_collection, user_has_privilege,
-                            user_not_banned, user_may_delete_media)
+                            user_not_banned)
 from mediagoblin.tools.crypto import get_timed_signer_url
-from mediagoblin.tools.metadata import (compact_and_validate, DEFAULT_CHECKER,
-                                        DEFAULT_SCHEMA)
+from mediagoblin.tools.metadata import compact_and_validate
 from mediagoblin.tools.mail import email_debug_message
 from mediagoblin.tools.response import (render_to_response,
                                         redirect, redirect_obj, render_404)
@@ -44,7 +41,7 @@ from mediagoblin.tools.text import (
     convert_to_tag_list_of_dicts, media_tags_as_string)
 from mediagoblin.tools.url import slugify
 from mediagoblin.db.util import check_media_slug_used, check_collection_slug_used
-from mediagoblin.db.models import User, LocalUser, Client, AccessToken, Location
+from mediagoblin.db.models import User, LocalUser, AccessToken, Location
 
 import mimetypes
 
@@ -67,7 +64,7 @@ def edit_media(request, media):
         license=media.license)
 
     form = forms.EditForm(
-        request.method=='POST' and request.form or None,
+        request.method == 'POST' and request.form or None,
         **defaults)
 
     if request.method == 'POST' and form.validate():

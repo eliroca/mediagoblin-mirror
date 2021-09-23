@@ -20,13 +20,14 @@ import mimetypes
 
 from werkzeug.datastructures import FileStorage
 
-from mediagoblin.decorators import oauth_required, require_active_login
+from mediagoblin.decorators import oauth_required
 from mediagoblin.api.decorators import user_has_privilege
-from mediagoblin.db.models import User, LocalUser, MediaEntry, Comment, TextComment, Activity
+from mediagoblin.db.models import (
+    LocalUser, MediaEntry, TextComment, Activity, Location)
 from mediagoblin.tools.federation import create_activity, create_generator
 from mediagoblin.tools.routing import extract_url_arguments
-from mediagoblin.tools.response import redirect, json_response, json_error, \
-                                       render_404, render_to_response
+from mediagoblin.tools.response import (
+    redirect, json_response, json_error, render_to_response)
 from mediagoblin.meddleware.csrf import csrf_exempt
 from mediagoblin.submit.lib import new_upload_entry, api_upload_request, \
                                     api_add_to_feed

@@ -20,8 +20,7 @@ import os
 from mediagoblin.db.models import LocalUser
 from mediagoblin.gmg_commands import util as commands_util
 from mediagoblin.submit.lib import (
-    submit_media, get_upload_file_limits,
-    FileUploadLimit, UserUploadLimit, UserPastUploadLimit)
+    submit_media, FileUploadLimit, UserUploadLimit, UserPastUploadLimit)
 
 from mediagoblin import mg_globals
 

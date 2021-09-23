@@ -109,7 +109,7 @@ def submit_start(request):
                                 user=request.user.username)
             except FileTypeNotSupported as e:
                 submit_form.file.errors.append(e)
-            except Exception as e:
+            except Exception:
                 raise
 
     return render_to_response(

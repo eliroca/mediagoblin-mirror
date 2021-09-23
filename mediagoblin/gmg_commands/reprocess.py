@@ -22,8 +22,6 @@ from mediagoblin import mg_globals
 from mediagoblin.db.models import MediaEntry
 from mediagoblin.gmg_commands import util as commands_util
 from mediagoblin.submit.lib import run_process_media
-from mediagoblin.tools.translate import lazy_pass_to_ugettext as _
-from mediagoblin.tools.pluginapi import hook_handle
 from mediagoblin.processing import (
     ProcessorDoesNotExist, ProcessorNotEligible,
     get_entry_and_processing_manager, get_processing_manager_for_type,
