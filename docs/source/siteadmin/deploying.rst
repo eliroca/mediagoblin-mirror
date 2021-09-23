@@ -66,14 +66,14 @@ MediaGoblin has the following core dependencies:
 
 These instructions have been tested on Debian 11 and Fedora 33. These
 instructions should approximately translate to recent Debian
-derivatives such as Ubuntu 18.04 and Trisquel 8, and to relatives of
-Fedora such as CentOS 8.
+derivatives such as Ubuntu and Trisquel, and to relatives of Fedora
+such as CentOS, but we haven't explicitly tested these options.
 
 Issue the following commands:
 
 .. code-block:: bash
 
-    # Debian 10
+    # Debian 11
     sudo apt update
     sudo apt install automake git nodejs npm python3-dev \
     python3-gst-1.0 python3-lxml python3-pil virtualenv
