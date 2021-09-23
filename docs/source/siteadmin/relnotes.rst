@@ -22,6 +22,8 @@ This chapter has important information about our current and previous releases.
 0.12.0 (Work in progress)
 =========================
 
+**Changes:**
+
 - Fix incorrect setuptools install location for db/migrations/env.py (Elisei Roca)
 - Add a "Troubleshooting" page to the documentation (Ben Sturmfels)
 
