@@ -21,7 +21,7 @@ This deployment guide will take you step-by-step through
 setting up your own instance of MediaGoblin.
 
 MediaGoblin most likely isn't yet available from your operating
-system's package manage, however, a basic install isn't too complex in
+system's package manager, however, a basic install isn't too complex in
 and of itself. We recommend a setup that combines MediaGoblin,
 virtualenv and Nginx on a .deb or .rpm-based GNU/Linux distribution.
 
@@ -130,7 +130,7 @@ Fedora also requires that you initialize and start the
 PostgreSQL database with a few commands. The following commands are
 not needed on a Debian-based platform, however::
 
-    # Feora
+    # Fedora
     sudo /usr/bin/postgresql-setup initdb
     sudo systemctl enable postgresql
     sudo systemctl start postgresql
