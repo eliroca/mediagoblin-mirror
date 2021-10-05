@@ -233,6 +233,12 @@
        ("python-pygobject" ,python-pygobject)
 
        ;; PDF media.
+       ;;
+       ;; jgart suggests that we'll need to wrap the binaries used in
+       ;; mediagoblin/media_types/pdf/processing.py - pdftocairo, pdfinfo, and
+       ;; unoconv probably need to be wrapped to point to the executable that is
+       ;; in /gnu/store. See this issue for a similar discussion about wrapping
+       ;; binaries with guix: https://issues.guix.gnu.org/50833
        ("poppler" ,poppler)))
     (home-page "https://mediagoblin.org/")
     (synopsis "Web application for media publishing")
