@@ -572,7 +572,7 @@ the error by entering either of::
     sudo systemctl status mediagoblin-celeryd.service
     sudo systemctl status mediagoblin-paster.service
 
-Or view the full logs with:
+Or view the full logs with::
 
     sudo journalctl -u mediagoblin-paster.service -f
     sudo journalctl -u mediagoblin-celeryd.service -f
