@@ -222,20 +222,10 @@ particular requirements::
     # Debian
     sudo mkdir --parents /srv/mediagoblin.example.org
     sudo chown --no-dereference --recursive mediagoblin:www-data /srv/mediagoblin.example.org
-    sudo find /srv/mediagoblin.example.org -type d -exec chmod 755 {} \;
-    sudo find /srv/mediagoblin.example.org -type f -exec chmod 644 {} \;
-    sudo find /srv/mediagoblin.example.org/mediagoblin/user_dev/crypto -type d -exec chmod 750 {} \;
-    sudo find /opt/mediagoblin.example.org/mediagoblin/user_dev/crypto -type f -exec chmod 640 {} \;
-    sudo find /opt/mediagoblin.example.org/mediagoblin/bin -type f -exec chmod 750 {} \;
 
     # Fedora
     sudo mkdir --parents /srv/mediagoblin.example.org
     sudo chown --no-dereference --recursive mediagoblin:nginx /srv/mediagoblin.example.org
-    sudo find /srv/mediagoblin.example.org -type d -exec chmod 755 {} \;
-    sudo find /srv/mediagoblin.example.org -type f -exec chmod 644 {} \;
-    sudo find /srv/mediagoblin.example.org/mediagoblin/user_dev/crypto -type d -exec chmod 750 {} \;
-    sudo find /opt/mediagoblin.example.org/mediagoblin/user_dev/crypto -type f -exec chmod 640 {} \;
-    sudo find /opt/mediagoblin.example.org/mediagoblin/bin -type f -exec chmod 750 {} \;
 
 
 Install MediaGoblin and Virtualenv
@@ -483,9 +473,19 @@ created::
 
     # Debian
     sudo chown --no-dereference --recursive mediagoblin:www-data /srv/mediagoblin.example.org
+    sudo find /srv/mediagoblin.example.org -type d -exec chmod 755 {} \;
+    sudo find /srv/mediagoblin.example.org -type f -exec chmod 644 {} \;
+    sudo find /srv/mediagoblin.example.org/mediagoblin/user_dev/crypto -type d -exec chmod 750 {} \;
+    sudo find /opt/mediagoblin.example.org/mediagoblin/user_dev/crypto -type f -exec chmod 640 {} \;
+    sudo find /opt/mediagoblin.example.org/mediagoblin/bin -type f -exec chmod 750 {} \;
 
     # Fedora
     sudo chown --no-dereference --recursive mediagoblin:nginx /srv/mediagoblin.example.org
+    sudo find /srv/mediagoblin.example.org -type d -exec chmod 755 {} \;
+    sudo find /srv/mediagoblin.example.org -type f -exec chmod 644 {} \;
+    sudo find /srv/mediagoblin.example.org/mediagoblin/user_dev/crypto -type d -exec chmod 750 {} \;
+    sudo find /opt/mediagoblin.example.org/mediagoblin/user_dev/crypto -type f -exec chmod 640 {} \;
+    sudo find /opt/mediagoblin.example.org/mediagoblin/bin -type f -exec chmod 750 {} \;
 
 .. note::
    
