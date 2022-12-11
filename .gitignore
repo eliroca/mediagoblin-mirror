@@ -40,6 +40,11 @@
 /config.status
 /configure
 /aclocal.m4
+/install-sh
+
+# npm status
+/package-lock.json
+/package.json
 
 # Tests
 /mediagoblin/tests/.cache/
@@ -56,6 +61,7 @@
 .installed.cfg
 
 # Virtualenv, tox
+/pyvenv.cfg
 venv*
 .tox/
 
