@@ -48,8 +48,8 @@ def bcrypt_check_password(raw_pass, stored_hash, extra_salt=None):
     #
     # See also:
     rand_salt = bcrypt.gensalt(5)
-    randplus_stored_hash = bcrypt.hashpw(stored_hash.encode('utf-8'), rand_salt.encode('utf-8'))
-    randplus_hashed_pass = bcrypt.hashpw(hashed_pass.encode('utf-8'), rand_salt.encode('utf-8'))
+    randplus_stored_hash = bcrypt.hashpw(stored_hash.encode('utf-8'), rand_salt)
+    randplus_hashed_pass = bcrypt.hashpw(hashed_pass, rand_salt)
 
     return randplus_stored_hash == randplus_hashed_pass
 
