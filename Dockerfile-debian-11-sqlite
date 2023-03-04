@@ -48,7 +48,7 @@
 #
 # You can run the test suite with:
 #
-# docker run --tty mediagoblin-python3 bash -c "bin/python -m pytest ./mediagoblin/tests"
+# docker run --tty mediagoblin-python3 bash -c "bin/python -m pytest ./mediagoblin/tests --forked"
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -182,7 +182,7 @@ RUN ./bin/pip install py3exiv2
 RUN ./bin/python -m pip freeze
 
 # Run the tests.
-RUN ./bin/python -m pytest -rs ./mediagoblin/tests
+RUN ./bin/python -m pytest -rs ./mediagoblin/tests --forked
 
 # Build the documentation.
 RUN cd docs && make html

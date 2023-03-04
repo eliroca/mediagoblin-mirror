@@ -64,8 +64,8 @@ if [ "$need_arg" = 1 ]
 then
   testdir="$basedir/mediagoblin/tests"
   set -x
-  exec "$PYTEST" "$@" "$testdir"
+  exec "$PYTEST" "$@" "$testdir" --forked
 else
   set -x
-  exec "$PYTEST" "$@"
+  exec "$PYTEST" "$@" --forked
 fi
