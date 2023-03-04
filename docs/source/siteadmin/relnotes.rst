@@ -24,7 +24,7 @@ This chapter has important information about our current and previous releases.
 
 **Breaking changes:**
 
-- MediaGoblin now supports a minimum of Python 3.6 due to use of f-strings
+- MediaGoblin now supports a minimum of Python 3.7 due to use of f-strings
   internally and updated versions of required Python packages (Ben Sturmfels)
 
 **Changes:**
