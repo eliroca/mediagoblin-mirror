@@ -107,7 +107,7 @@
 ;;;
 ;;; Run the tests:
 ;;;
-;;;   bin/python -m pytest -rs ./mediagoblin/tests/
+;;;   bin/python -m pytest -rs ./mediagoblin/tests/ --forked
 ;;;
 ;;; or:
 ;;;
@@ -177,7 +177,7 @@
              (setenv "PYTHONPATH"
                      (string-append (getcwd) ":"
                                     (getenv "PYTHONPATH")))
-             (invoke "pytest" "mediagoblin/tests" "-rs"
+             (invoke "pytest" "mediagoblin/tests" "-rs" "--forked"
                      ;; Skip the audio tests until updated libsndfile
                      ;; has been merged from core-updates branch.
                      "--deselect=test_audio.py::test_thumbnails"
