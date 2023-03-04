@@ -40,7 +40,10 @@ def bcrypt_check_password(raw_pass, stored_hash, extra_salt=None):
     if extra_salt:
         raw_pass = f"{extra_salt}:{raw_pass}"
 
-    hashed_pass = bcrypt.hashpw(raw_pass.encode('utf-8'), stored_hash.encode('utf-8'))
+    raw_pass = raw_pass.encode('utf-8')
+    stored_hash = stored_hash.encode('utf-8')
+
+    hashed_pass = bcrypt.hashpw(raw_pass, stored_hash)
 
     # Reduce risk of timing attacks by hashing again with a random
     # number (thx to zooko on this advice, which I hopefully
@@ -48,7 +51,7 @@ def bcrypt_check_password(raw_pass, stored_hash, extra_salt=None):
     #
     # See also:
     rand_salt = bcrypt.gensalt(5)
-    randplus_stored_hash = bcrypt.hashpw(stored_hash.encode('utf-8'), rand_salt)
+    randplus_stored_hash = bcrypt.hashpw(stored_hash, rand_salt)
     randplus_hashed_pass = bcrypt.hashpw(hashed_pass, rand_salt)
 
     return randplus_stored_hash == randplus_hashed_pass
