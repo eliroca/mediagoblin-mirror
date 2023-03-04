@@ -154,7 +154,7 @@ easy one.
 
 Use ``python`` from your MediaGoblin virtual environment and do::
 
-    python setup.py develop
+    python -m pip install --editable .
 
 Any changes you make to your plugin will be available in your
 MediaGoblin virtual environment.

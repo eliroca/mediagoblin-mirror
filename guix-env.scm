@@ -64,14 +64,13 @@
 ;;; the virtualenv):
 ;;;
 ;;;   rm -rf bin include lib lib64 pyvenv.cfg
-;;;   python3 -m venv --system-site-packages . && bin/python setup.py develop --no-deps
+;;;   python3 -m venv --system-site-packages . && bin/python -m pip install --no-deps --editable .
 ;;;
-;;; ... wait whaaat, what's that venv line?!  I thought you said this
-;;; was a reasonable virtualenv replacement!  Well it is and it will
-;;; be, but there's a catch, and the catch is that Guix doesn't know
-;;; about this directory and "setup.py dist" is technically necessary
-;;; for certain things to run, so we have a virtualenv with nothing
-;;; in it but this project itself.
+;;; ... wait whaaat, what's that venv line?!  I thought you said this was a
+;;; reasonable virtualenv replacement!  Well it is and it will be, but there's a
+;;; catch, and the catch is that Guix doesn't know about this directory and "pip
+;;; install --no-deps --editable ." is technically necessary for certain things
+;;; to run, so we have a virtualenv with nothing in it but this project itself.
 ;;;
 ;;; For first time setup only, migrate the database and add a user:
 ;;;

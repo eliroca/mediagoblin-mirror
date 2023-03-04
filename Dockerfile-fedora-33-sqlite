@@ -100,7 +100,7 @@ RUN ./bin/gmg makeadmin admin
 
 # Without the following we get "ModuleNotFoundError: No module named
 # 'paste.script'" when running ./lazyserver.sh. Not sure why as PasteScript is
-# in the setup.py requirements. Before this we have Paste==3.4.0; after we have
+# in the setup.cfg requirements. Before this we have Paste==3.4.0; after we have
 # Paste==3.5.0.
 RUN ./bin/pip install PasteScript --force-reinstall
 
