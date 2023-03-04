@@ -36,6 +36,12 @@ This chapter has important information about our current and previous releases.
 - Add Ubuntu 20.04 CI build and reinstate Debian 10 CI build (Ben Sturmfels)
 - Switch from `py-bcrypt` to `bcrypt` (Elisei Roca)
 
+**Bug fixes:**
+
+- Fix incorrect setuptools install location for db/migrations/env.py (Elisei Roca)
+- Pin version of `jinja2` dependency to avoid AttributeError and Ubuntu installation issues (Dan Helfman)
+- Add support for autoconf > 2.69 [srht#12] (Peter Horvath)
+
 
 0.12.0
 ======
