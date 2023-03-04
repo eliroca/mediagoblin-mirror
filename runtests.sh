@@ -64,8 +64,8 @@ if [ "$need_arg" = 1 ]
 then
   testdir="$basedir/mediagoblin/tests"
   set -x
-  exec "$PYTEST" "$@" "$testdir" --boxed
+  exec "$PYTEST" "$@" "$testdir"
 else
   set -x
-  exec "$PYTEST" "$@" --boxed
+  exec "$PYTEST" "$@"
 fi

@@ -83,7 +83,7 @@ RUN make
 
 RUN ./bin/python -m pip freeze
 
-RUN ./bin/python -m pytest -rs ./mediagoblin/tests --boxed
+RUN ./bin/python -m pytest -rs ./mediagoblin/tests
 
 RUN cd docs && make html
 
