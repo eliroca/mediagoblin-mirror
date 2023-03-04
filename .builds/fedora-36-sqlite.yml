@@ -50,6 +50,9 @@ packages:
   
 tasks:
   - core: |
+      echo "Fedora build is disabled until we have Python 3.10 support"
+      exit 1
+      
       cd mediagoblin
       git show --oneline --no-patch
       ./bootstrap.sh
