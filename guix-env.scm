@@ -107,7 +107,7 @@
 ;;;
 ;;; Run the tests:
 ;;;
-;;;   bin/python -m pytest -rs ./mediagoblin/tests/ --boxed
+;;;   bin/python -m pytest -rs ./mediagoblin/tests/
 ;;;
 ;;; or:
 ;;;
@@ -177,7 +177,7 @@
              (setenv "PYTHONPATH"
                      (string-append (getcwd) ":"
                                     (getenv "PYTHONPATH")))
-             (invoke "pytest" "mediagoblin/tests" "-rs" "--boxed"
+             (invoke "pytest" "mediagoblin/tests" "-rs"
                      ;; Skip the audio tests until updated libsndfile
                      ;; has been merged from core-updates branch.
                      "--deselect=test_audio.py::test_thumbnails"

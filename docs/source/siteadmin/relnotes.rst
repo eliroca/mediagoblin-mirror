@@ -34,6 +34,7 @@ This chapter has important information about our current and previous releases.
 - Fix incorrect setuptools install location for db/migrations/env.py (Elisei Roca)
 - Pin version of `jinja2` dependency to avoid AttributeError and Ubuntu installation issues (Dan Helfman)
 - Add support for autoconf > 2.69 [srht#12] (Peter Horvath)
+- Remove `--boxed` argument to `pytest` as not supported by `pytest-xdist` >= 3.0.2 (consider `pytest-forked` with `--forked`) (Ben Sturmfels)
 
 
 0.12.0
