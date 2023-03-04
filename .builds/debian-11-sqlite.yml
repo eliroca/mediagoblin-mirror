@@ -67,7 +67,7 @@ tasks:
       ./bin/python -m pip freeze
 
       # Run the tests, explicitly listing out skipped tests.
-      ./bin/python -m pytest -rs ./mediagoblin/tests --boxed
+      ./bin/python -m pytest -rs ./mediagoblin/tests --forked
 
       # Build the documentation.
       cd docs && make html
