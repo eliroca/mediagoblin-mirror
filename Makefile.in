@@ -121,6 +121,8 @@ ifneq ($(VIRTUALENV),no)
 ./bin/python:
 	rm -f ./bin/python
 	${VIRTUALENV} --system-site-packages --python=$(PYTHON) .
+	# Fix Ubuntu 20.04: AttributeError: _DistInfoDistribution__dep_map as per https://github.com/pypa/pip/issues/8676
+	./bin/python -m pip install 'pip>=20.2.4'
 	./bin/python -m pip install --editable .
 
 virtualenv: bin/python extlib
