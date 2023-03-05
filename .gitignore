@@ -40,7 +40,6 @@
 /config.status
 /configure
 /aclocal.m4
-/install-sh
 
 # npm status
 /package-lock.json
