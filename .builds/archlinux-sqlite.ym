@@ -1,0 +1,69 @@
+image: archlinux
+packages:
+  # Install bootstrap and configure dependencies.
+  - automake
+  - autoconf
+    # - gcc
+  # - make
+  - nodejs
+  - npm
+  - python-virtualenv
+  
+  # Install make and runtime dependencies.
+  # - findutils
+  - python-lxml
+  - python-pillow
+  - libffi
+  # - which
+
+  # Install test and docs dependencies.
+  - python-pytest
+  - python-pytest-xdist
+  - python-snowballstemmer
+  - python-sphinx
+  - python-webtest
+
+  # Install audio dependencies.
+  - gst-plugins-base
+  - gst-plugins-bad
+  - gst-plugins-good
+  - gst-plugins-ugly
+  - gst-libav
+  - python-numpy
+
+  # Install video dependencies.
+  - python-gobject
+  - gst-python
+  
+  # # Install raw image dependencies.
+  - libexiv2
+  # - libboost-python-dev
+
+  # # Install document (PDF-only) dependencies.
+  - poppler
+
+  # Install LDAP depedencies.
+  - python-ldap
+
+  # Install OpenID dependencies.
+  - python-openid
+  
+tasks:
+  - core: |
+      cd mediagoblin
+      git show --oneline --no-patch
+      ./bootstrap.sh
+      VIRTUALENV_FLAGS='--system-site-packages' ./configure
+      make
+
+      # # Install raw image library from PyPI as not available in Debian 10.
+      # ./bin/pip install py3exiv2
+
+      # Confirm our packages version for later troubleshooting.
+      ./bin/python -m pip freeze
+
+      # Run the tests, explicitly listing out skipped tests.
+      ./bin/python -m pytest -rs ./mediagoblin/tests --forked
+
+      # Build the documentation.
+      cd docs && make html
