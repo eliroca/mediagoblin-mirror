@@ -35,7 +35,7 @@ This chapter has important information about our current and previous releases.
 - Pin version of `jinja2` dependency to avoid AttributeError and Ubuntu installation issues (Dan Helfman)
 - Add support for autoconf > 2.69 [srht#12] (Peter Horvath)
 - Switch to `pytest --forked` for parallel test runs as `pytest-xdist` 3.0.2 dropped `--boxed` (Ben Sturmfels)
-- Fix remaining bcrypt issue (Olivier Mehani)
+- Fix remaining bcrypt issue (Olivier Mehani, Elisei Roca)
 
 
 0.12.0
