@@ -173,7 +173,7 @@ def store_metadata(media_entry, metadata):
         media_entry.media_data_init(orig_metadata=stored_metadata)
 
 
-@celery.task()
+@celery.shared_task()
 def main_task(entry_id, resolution, medium_size, **process_info):
     """
     Main celery task to transcode the video to the default resolution
@@ -197,7 +197,7 @@ def main_task(entry_id, resolution, medium_size, **process_info):
     _log.debug('MediaEntry processed')
 
 
-@celery.task()
+@celery.shared_task()
 def complementary_task(entry_id, resolution, medium_size, **process_info):
     """
     Side celery task to transcode the video to other resolutions
@@ -213,7 +213,7 @@ def complementary_task(entry_id, resolution, medium_size, **process_info):
         entry.id, medium_size))
 
 
-@celery.task()
+@celery.shared_task()
 def processing_cleanup(entry_id):
     _log.debug('Entered processing_cleanup')
     entry, manager = get_entry_and_processing_manager(entry_id)

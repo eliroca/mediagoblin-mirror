@@ -31,7 +31,7 @@ logging.basicConfig()
 _log.setLevel(logging.DEBUG)
 
 
-@celery.task(default_retry_delay=2 * 60)
+@celery.shared_task(default_retry_delay=2 * 60)
 def handle_push_urls(feed_url):
     """Subtask, notifying the PuSH servers of new content
 

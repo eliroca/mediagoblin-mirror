@@ -20,7 +20,7 @@ import pytz
 
 from mediagoblin.db.models import MediaEntry
 
-@celery.task()
+@celery.shared_task()
 def collect_garbage():
     """
         Garbage collection to clean up media

@@ -16,8 +16,7 @@
 
 import logging
 
-from celery import registry
-from celery.task import Task
+import celery
 
 from mediagoblin.tools.mail import send_email
 from mediagoblin.db.models import Notification
@@ -26,21 +25,18 @@ from mediagoblin.db.models import Notification
 _log = logging.getLogger(__name__)
 
 
-class EmailNotificationTask(Task):
-    '''
-    Celery notification task.
+@celery.shared_task()
+def email_notification_task(notification_id, message):
+    """Celery notification task.
 
     This task is executed by celeryd to offload long-running operations from
     the web server.
-    '''
-    def run(self, notification_id, message):
-        cn = Notification.query.filter_by(id=notification_id).first()
-        _log.info(f'Sending notification email about {cn}')
+    """
+    cn = Notification.query.filter_by(id=notification_id).first()
+    _log.info(f'Sending notification email about {cn}')
 
-        return send_email(
-            message['from'],
-            [message['to']],
-            message['subject'],
-            message['body'])
-
-email_notification_task = registry.tasks[EmailNotificationTask.name]
+    return send_email(
+        message['from'],
+        [message['to']],
+        message['subject'],
+        message['body'])
