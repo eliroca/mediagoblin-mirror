@@ -23,23 +23,34 @@ This chapter has important information about our current and previous releases.
 0.12.1rc1
 =========
 
-This minor release fixes a number of annoying Python dependency issues and adds
-documentation improvements. The release has been tested on Debian 11 (Bullseye)
-and Ubuntu 20.04.
+This minor release fixes a number of Python dependency issues, allows us to
+support newer autoconf versions, fixes a few small bugs and improves the
+documentation. The release has been tested on Debian Bullseye (11) and Ubuntu
+20.04. Due to a dependency issue, we unfortunately **don't yet support Python
+3.10**, which means that Debian Bookworm and Ubuntu 22.04 and Fedora 36 are not
+yet supported. This will be addressed in the upcoming version 0.13.0.
 
 **Changes:**
 
+- Convert README to Markdown for better display on SourceHut, add goblin, fix links (Ben Sturmfels)
+- Add a troubleshooting page to the docs. (Ben Sturmfels)
 - Fix incorrect setuptools install location for db/migrations/env.py (Elisei Roca)
 - Add a "Troubleshooting" page to the documentation (Ben Sturmfels)
 - Add Ubuntu 20.04 CI build (Ben Sturmfels)
+- Add cc0 license to guix package (jgart)
+- Add instructions to set permissions on installation directories (Ben Sturmfels)
 - Switch from `py-bcrypt` to `bcrypt` (Elisei Roca)
+- Explicitly specify we don't support Python 3.10 yet (Olivier Mehani)
 
 **Bug fixes:**
 
+- Fix references to non-existant package.json [trac#5615] (Ben Sturmfels)
+- Remove unneeded shebang from test_processing.py (Elisei Roca)
 - Fix incorrect setuptools install location for db/migrations/env.py (Elisei Roca)
 - Pin version of `jinja2` dependency to avoid AttributeError and Ubuntu installation issues (Dan Helfman, Olivier Mehani)
 - Add support for autoconf > 2.69 [srht#12] (Peter Horvath)
 - Switch to `pytest --forked` for parallel test runs as `pytest-xdist` 3.0.2 dropped `--boxed` (Ben Sturmfels)
+- Fix encoding of passwords before hashing (Olivier Mehani)
 - Fix remaining bcrypt issue (Olivier Mehani, Elisei Roca)
 
 
