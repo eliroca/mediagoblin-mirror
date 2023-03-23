@@ -56,6 +56,16 @@ If you have any problems, please drop in to the `#mediagoblin IRC chat
 tracker <https://todo.sr.ht/~mediagoblin/mediagoblin>`_ or drop us an email to
 `mediagoblin-devel@gnu.org <mailto:mediagoblin-devel@gnu.org>`_.
 
+**Upgrading:**
+
+For detailed instructions on installing or upgrading, see ":doc:`upgrading`" and
+":doc:`deploying`".
+
+If you have any problems, please drop in to the `#mediagoblin IRC chat
+<https://web.libera.chat/#mediagoblin>`_, report an issue on our `issue
+tracker <https://todo.sr.ht/~mediagoblin/mediagoblin>`_ or drop us an email to
+`mediagoblin-devel@gnu.org <mailto:mediagoblin-devel@gnu.org>`_.
+
 **Changes:**
 
 - Convert README to Markdown for better display on SourceHut, add goblin, fix links (Ben Sturmfels)
