@@ -19,8 +19,13 @@ Release Notes
 
 This chapter has important information about our current and previous releases.
 
-0.12.0 (Work in progress)
-=========================
+
+0.12.1rc1
+=========
+
+This minor release fixes a number of annoying Python dependency issues and adds
+documentation improvements. The release has been tested on Debian 11 (Bullseye)
+and Ubuntu 20.04.
 
 **Changes:**
 
@@ -32,7 +37,7 @@ This chapter has important information about our current and previous releases.
 **Bug fixes:**
 
 - Fix incorrect setuptools install location for db/migrations/env.py (Elisei Roca)
-- Pin version of `jinja2` dependency to avoid AttributeError and Ubuntu installation issues (Dan Helfman)
+- Pin version of `jinja2` dependency to avoid AttributeError and Ubuntu installation issues (Dan Helfman, Olivier Mehani)
 - Add support for autoconf > 2.69 [srht#12] (Peter Horvath)
 - Switch to `pytest --forked` for parallel test runs as `pytest-xdist` 3.0.2 dropped `--boxed` (Ben Sturmfels)
 - Fix remaining bcrypt issue (Olivier Mehani, Elisei Roca)
