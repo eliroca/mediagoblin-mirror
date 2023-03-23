@@ -30,6 +30,16 @@ documentation. The release has been tested on Debian Bullseye (11) and Ubuntu
 3.10**, which means that Debian Bookworm and Ubuntu 22.04 and Fedora 36 are not
 yet supported. This will be addressed in the upcoming version 0.13.0.
 
+**Upgrading:**
+
+For detailed instructions on installing or upgrading, see ":doc:`upgrading`" and
+":doc:`deploying`".
+
+If you have any problems, please drop in to the `#mediagoblin IRC chat
+<https://web.libera.chat/#mediagoblin>`_, report an issue on our `issue
+tracker <https://todo.sr.ht/~mediagoblin/mediagoblin>`_ or drop us an email to
+`mediagoblin-devel@gnu.org <mailto:mediagoblin-devel@gnu.org>`_.
+
 **Changes:**
 
 - Convert README to Markdown for better display on SourceHut, add goblin, fix links (Ben Sturmfels)
