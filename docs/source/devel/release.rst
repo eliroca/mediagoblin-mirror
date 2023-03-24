@@ -7,7 +7,7 @@ Release Checklist
 - write a blog post
 - test the upgrade process
 - build the docs and check they look good
-- git tag v0.11.0 --signed
+- git tag --annotate v0.11.0 --signed --message
 - push tags
 - log in and rebuild master and new version docs on readthedocs.org
 - merge into stable branch?

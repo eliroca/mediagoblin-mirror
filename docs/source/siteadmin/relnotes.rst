@@ -23,12 +23,15 @@ This chapter has important information about our current and previous releases.
 0.12.1rc1
 =========
 
-This minor release fixes a number of Python dependency issues, allows us to
+This patch release fixes a number of Python dependency issues, allows us to
 support newer autoconf versions, fixes a few small bugs and improves the
-documentation. The release has been tested on Debian Bullseye (11) and Ubuntu
-20.04. Due to a dependency issue, we unfortunately **don't yet support Python
-3.10**, which means that Debian Bookworm and Ubuntu 22.04 and Fedora 36 are not
-yet supported. This will be addressed in the upcoming version 0.13.0.
+documentation.
+
+This release has been tested on Debian Bullseye (11) and Ubuntu 20.04. Due to a
+dependency issue, we unfortunately **don't yet support Python 3.10**, which
+means that Debian Bookworm and Ubuntu 22.04 and Fedora 36 are not yet
+supported. This will be addressed in the upcoming version 0.13.0. This will be
+the last release to support Python 3.5.
 
 **Upgrading:**
 
