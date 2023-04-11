@@ -20,7 +20,7 @@ Release Notes
 This chapter has important information about our current and previous releases.
 
 
-0.12.1rc1
+0.12.1
 =========
 
 This patch release fixes a number of Python dependency issues, allows us to
