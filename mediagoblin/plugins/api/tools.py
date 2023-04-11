@@ -15,11 +15,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import logging
-import json
 
 from functools import wraps
 from werkzeug.exceptions import Forbidden
-from werkzeug.wrappers import Response
 
 from urllib.parse import urljoin
 
@@ -48,10 +46,11 @@ class Auth:
     method.
     '''
     def trigger(self, request):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def __call__(self, request, *args, **kw):
-        raise NotImplemented()
+        raise NotImplementedError()
+
 
 def get_entry_serializable(entry, urlgen):
     '''

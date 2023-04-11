@@ -31,7 +31,7 @@ import pytz
 import dateutil.tz
 from sqlalchemy import (MetaData, Table, Column, Boolean, SmallInteger,
                         Integer, Unicode, UnicodeText, DateTime,
-                        ForeignKey, Date, Index)
+                        ForeignKey, Date)
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import and_
@@ -42,10 +42,8 @@ from mediagoblin.tools import crypto
 from mediagoblin.db.extratypes import JSONEncoded, MutationDict
 from mediagoblin.db.migration_tools import (
     RegisterMigration, inspect_table, replace_table_hack, model_iteration_hack)
-from mediagoblin.db.models import (MediaEntry, Collection, Comment, User,
-                                   Privilege, Generator, LocalUser, Location,
-                                   Client, RequestToken, AccessToken)
-from mediagoblin.db.extratypes import JSONEncoded, MutationDict
+from mediagoblin.db.models import (
+    MediaEntry, Collection, Comment, User, Privilege, LocalUser, Location)
 
 
 MIGRATIONS = {}

@@ -14,6 +14,7 @@ recursive-include mediagoblin/media_types/video/migrations *.py
 include mediagoblin.example.ini mediagoblin/config_spec.ini paste.ini
 include mediagoblin/config_spec.ini
 include mediagoblin/db/migrations/alembic.ini
+include mediagoblin/db/migrations/env.py
 graft extlib
 graft licenses
 graft devtools

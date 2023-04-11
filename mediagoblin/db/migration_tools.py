@@ -19,11 +19,8 @@ import logging
 import os
 import pkg_resources
 
-from alembic import command
 from alembic.config import Config
-from alembic.migration import MigrationContext
 
-from mediagoblin.db.base import Base
 from mediagoblin.tools.common import simple_printer
 from sqlalchemy import Table
 from sqlalchemy.sql import select

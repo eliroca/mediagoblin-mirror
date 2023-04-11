@@ -21,7 +21,7 @@ This deployment guide will take you step-by-step through
 setting up your own instance of MediaGoblin.
 
 MediaGoblin most likely isn't yet available from your operating
-system's package manage, however, a basic install isn't too complex in
+system's package manager, however, a basic install isn't too complex in
 and of itself. We recommend a setup that combines MediaGoblin,
 virtualenv and Nginx on a .deb or .rpm-based GNU/Linux distribution.
 
@@ -66,14 +66,14 @@ MediaGoblin has the following core dependencies:
 
 These instructions have been tested on Debian 11 and Fedora 33. These
 instructions should approximately translate to recent Debian
-derivatives such as Ubuntu 18.04 and Trisquel 8, and to relatives of
-Fedora such as CentOS 8.
+derivatives such as Ubuntu and Trisquel, and to relatives of Fedora
+such as CentOS, but we haven't explicitly tested these options.
 
 Issue the following commands:
 
 .. code-block:: bash
 
-    # Debian 10
+    # Debian 11
     sudo apt update
     sudo apt install automake git nodejs npm python3-dev \
     python3-gst-1.0 python3-lxml python3-pil virtualenv
@@ -130,7 +130,7 @@ Fedora also requires that you initialize and start the
 PostgreSQL database with a few commands. The following commands are
 not needed on a Debian-based platform, however::
 
-    # Feora
+    # Fedora
     sudo /usr/bin/postgresql-setup initdb
     sudo systemctl enable postgresql
     sudo systemctl start postgresql
@@ -428,6 +428,12 @@ should be modeled on the following::
      # Forward requests to the MediaGoblin app server.
      location / {
         proxy_pass http://127.0.0.1:6543;
+        # On Debian and derivatives the below proxy_set_header lines can be replaced by:
+        # include proxy_params;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
      }
     }
 
@@ -473,9 +479,19 @@ created::
 
     # Debian
     sudo chown --no-dereference --recursive mediagoblin:www-data /srv/mediagoblin.example.org
+    sudo find /srv/mediagoblin.example.org -type d -exec chmod 755 {} \;
+    sudo find /srv/mediagoblin.example.org -type f -exec chmod 644 {} \;
+    sudo find /srv/mediagoblin.example.org/mediagoblin/user_dev/crypto -type d -exec chmod 750 {} \;
+    sudo find /srv/mediagoblin.example.org/mediagoblin/user_dev/crypto -type f -exec chmod 640 {} \;
+    sudo find /srv/mediagoblin.example.org/mediagoblin/bin -type f -exec chmod 750 {} \;
 
     # Fedora
     sudo chown --no-dereference --recursive mediagoblin:nginx /srv/mediagoblin.example.org
+    sudo find /srv/mediagoblin.example.org -type d -exec chmod 755 {} \;
+    sudo find /srv/mediagoblin.example.org -type f -exec chmod 644 {} \;
+    sudo find /srv/mediagoblin.example.org/mediagoblin/user_dev/crypto -type d -exec chmod 750 {} \;
+    sudo find /srv/mediagoblin.example.org/mediagoblin/user_dev/crypto -type f -exec chmod 640 {} \;
+    sudo find /srv/mediagoblin.example.org/mediagoblin/bin -type f -exec chmod 750 {} \;
 
 .. note::
    
@@ -572,7 +588,7 @@ the error by entering either of::
     sudo systemctl status mediagoblin-celeryd.service
     sudo systemctl status mediagoblin-paster.service
 
-Or view the full logs with:
+Or view the full logs with::
 
     sudo journalctl -u mediagoblin-paster.service -f
     sudo journalctl -u mediagoblin-celeryd.service -f

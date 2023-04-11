@@ -13,10 +13,10 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-from mediagoblin.db.models import MediaEntry, User, LocalUser
+from mediagoblin.db.models import MediaEntry, LocalUser
 from mediagoblin.plugins.archivalook.models import FeaturedMedia
 from mediagoblin.tools.translate import lazy_pass_to_ugettext as _
-from mediagoblin.plugins.archivalook.models import FeaturedMedia
+
 
 def get_media_entry_from_uploader_slug(uploader_username, slug):
     """

@@ -20,9 +20,7 @@ import sys
 import logging
 import multiprocessing
 
-from mediagoblin import mg_globals as mgg
 from mediagoblin.media_types.tools import discover
-from mediagoblin.tools.translate import lazy_pass_to_ugettext as _
 from .util import ACCEPTED_RESOLUTIONS
 
 #os.environ['GST_DEBUG'] = '4,python:4'

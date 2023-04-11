@@ -19,9 +19,8 @@ import datetime
 import json
 
 from mediagoblin import messages, mg_globals
-from mediagoblin.db.models import (MediaEntry, MediaTag, Collection, Comment,
-                                   CollectionItem, LocalUser, Activity, \
-                                   GenericModelReference)
+from mediagoblin.db.models import (MediaEntry, MediaTag, Collection,
+                                   CollectionItem, LocalUser, Activity)
 from mediagoblin.plugins.api.tools import get_media_file_paths
 from mediagoblin.tools.response import render_to_response, render_404, \
     redirect, redirect_obj
@@ -31,8 +30,8 @@ from mediagoblin.tools.pagination import Pagination
 from mediagoblin.tools.federation import create_activity
 from mediagoblin.tools.feeds import AtomFeedWithLinks
 from mediagoblin.user_pages import forms as user_forms
-from mediagoblin.user_pages.lib import (send_comment_email,
-	add_media_to_collection, build_report_object)
+from mediagoblin.user_pages.lib import (
+    add_media_to_collection, build_report_object)
 from mediagoblin.notifications import trigger_notification, \
     add_comment_subscription, mark_comment_notification_seen
 from mediagoblin.tools.pluginapi import hook_transform
@@ -50,6 +49,7 @@ from werkzeug.wrappers import Response
 _log = logging.getLogger(__name__)
 _log.setLevel(logging.DEBUG)
 
+
 @user_not_banned
 @uses_pagination
 def user_home(request, page):
@@ -64,7 +64,7 @@ def user_home(request, page):
             {'user': user})
 
     cursor = MediaEntry.query.\
-        filter_by(actor = user.id).order_by(MediaEntry.created.desc())
+        filter_by(actor=user.id).order_by(MediaEntry.created.desc())
 
     pagination = Pagination(page, cursor)
     media_entries = pagination()
@@ -438,7 +438,6 @@ def collection_item_confirm_remove(request, collection_item):
     form = user_forms.ConfirmCollectionItemRemoveForm(request.form)
 
     if request.method == 'POST' and form.validate():
-        username = collection_item.in_collection.get_actor.username
         collection = collection_item.in_collection
 
         if form.confirm.data is True:
@@ -639,7 +638,7 @@ def collection_atom_feed(request):
                 'rel': 'hub',
                 'href': push_url})
 
-    feed = AtomFeed(
+    feed = AtomFeedWithLinks(
                 "MediaGoblin: Feed for %s's collection %s" %
                 (request.matchdict['user'], collection.title),
                 feed_url=request.url,

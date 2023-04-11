@@ -31,7 +31,7 @@ from mediagoblin.plugins.archivalook.models import FeaturedMedia
 from mediagoblin.plugins.archivalook.utils import feature_template
 from mediagoblin.plugins.archivalook.tools import (promote_feature,
                                                     demote_feature)
-from mediagoblin.tools.translate import lazy_pass_to_ugettext as _
+
 
 @user_not_banned
 def root_view(request):
@@ -126,7 +126,7 @@ def feature_media(request, media, **kwargs):
     already_featured_media_ids = [f.media_entry.id 
         for f in FeaturedMedia.query.all()]
     if not media.id in already_featured_media_ids:
-        new_feature = automatically_add_new_feature(media)
+        automatically_add_new_feature(media)
     return redirect(
         request, 'index')
 

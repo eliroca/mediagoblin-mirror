@@ -41,6 +41,10 @@
 /configure
 /aclocal.m4
 
+# npm status
+/package-lock.json
+/package.json
+
 # Tests
 /mediagoblin/tests/.cache/
 /mediagoblin/tests/user_dev/
@@ -51,12 +55,12 @@
 *~
 *.sw?
 *.mo
-*.patch
 
 # The legacy of buildout
 .installed.cfg
 
 # Virtualenv, tox
+/pyvenv.cfg
 venv*
 .tox/
 

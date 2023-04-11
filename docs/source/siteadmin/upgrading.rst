@@ -28,31 +28,37 @@ MediaGoblin/Celery processes before upgrading.
 Upgrade
 -------
 
-1. Update to the latest release.  In your ``mediagoblin`` directory, run::
+1. Switch to the user you used to deploy MediaGoblin, which may be "mediagoblin"
+   if you followed the deployment guide::
 
-     git fetch && git checkout -q v0.12.0 && git submodule update
+     sudo su mediagoblin --shell=/bin/bash
 
-2. Note down any plugins you have installed by reviewing your
+2. Update to the latest release.  In your ``mediagoblin`` directory, run::
+
+     git fetch && git checkout -q v0.12.1 && git submodule update
+
+3. Note down any plugins you have installed by reviewing your
    ``mediagoblin.ini`` configuration. These will be removed by the following
    steps and must be re-installed.
 
-3. Remove your existing installation::
+4. Remove your existing installation::
 
      make distclean
 
-4. Recreate the virtual environment and install MediaGoblin::
+5. Recreate the virtual environment and install MediaGoblin::
 
-     ./bootstrap.sh && ./configure &&
-     make
+     ./bootstrap.sh && ./configure && make
 
-5. Re-install any ":doc:`plugins`" you had previously installed. Skipping these
+   You may need to update file permissions as mentioned in ":doc:`deploying`".
+
+6. Re-install any ":doc:`plugins`" you had previously installed. Skipping these
    may result in errors updating the database.
 
-6. Update the database::
+7. Update the database::
 
      ./bin/gmg dbupdate
 
-7. Restart the Paster and Celery processes. If you followed ":doc:`deploying`",
+8. Restart the Paster and Celery processes. If you followed ":doc:`deploying`",
    this may be something like::
 
      sudo systemctl restart mediagoblin-paster.service
@@ -63,7 +69,7 @@ Upgrade
      sudo journalctl -u mediagoblin-paster.service -f
      sudo journalctl -u mediagoblin-celeryd.service -f
 
-8. View your site and hover your cursor over the "MediaGoblin" link in the
+9. View your site and hover your cursor over the "MediaGoblin" link in the
    footer to confirm the version number you're running.
 
 

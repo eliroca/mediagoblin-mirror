@@ -56,7 +56,7 @@ dnl # * x.y.dev  - dev
 dnl 
 dnl # see http://www.python.org/dev/peps/pep-0386/
 
-AC_INIT([mediagoblin], [0.12.0], [mediagoblin-devel@gnu.org])
+AC_INIT([mediagoblin], [0.12.1], [mediagoblin-devel@gnu.org])
 
 
 dnl----
@@ -80,9 +80,7 @@ dnl In this section, we check for the presence of important commands
 dnl and programs.
 
 AC_CHECK_PROGS([PYTHON], [python3], [none])
-AS_IF([test "x$PYTHON" = xnone],
-	    [AC_MSG_FAILURE(
-		[No acceptable python3 could be found])])
+AS_IF([test "$PYTHON" = none], [AC_MSG_FAILURE([No acceptable python3 could be found])])
 
 dnl----
 dnl With the following set of macros, we implement an option 
@@ -96,16 +94,17 @@ dnl
 # Support doing development in a virtualenv via the --with-virtualenv 
 # configure flag
 AC_ARG_WITH([virtualenv],
-	[AS_HELP_STRING([--without-virtualenv],
-                        [don't install a Python virtualenv for the user])],
-	[],
-	[with_virtualenv=yes])
-AS_IF([test "x$with_virtualenv" != xno],
-	    AC_CHECK_PROGS([VIRTUALENV], [virtualenv virtualenv3 virtualenv2], [no])
-	    AS_IF([test "x$VIRTUALENV" = xno],
-	    [AC_MSG_FAILURE(
-		[--with-virtualenv given but virtualenv could not be found])]),
-	AC_SUBST([VIRTUALENV], [no]))
+  [AS_HELP_STRING([--without-virtualenv], [do not install a Python virtualenv for the user])],
+  [],
+  [with_virtualenv=yes])
+
+AC_CHECK_PROGS([VIRTUALENV], virtualenv, no)
+
+AS_IF(
+  [test "$with_virtualenv" = yes -a "$VIRTUALENV" = no], [AC_MSG_FAILURE([--with-virtualenv given but virtualenv could not be found])],
+  [test "$with_virtualenv" = no], [AC_SUBST([VIRTUALENV], [no])]
+)
+
 AC_ARG_VAR([VIRTUALENV_FLAGS], [flags to pass to the virtualenv command])
 
 dnl----

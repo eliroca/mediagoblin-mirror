@@ -16,24 +16,20 @@
 
 from datetime import datetime
 
-from itsdangerous import BadSignature
-from werkzeug.exceptions import Forbidden
 from werkzeug.utils import secure_filename
 
 from mediagoblin import messages
 from mediagoblin import mg_globals
 
 from mediagoblin.plugins.subtitles import forms
-from mediagoblin.decorators import (require_active_login, active_user_from_url,
+from mediagoblin.decorators import (require_active_login,
                             get_media_entry_by_id, user_may_delete_media)
-from mediagoblin.tools.metadata import (compact_and_validate, DEFAULT_CHECKER,
-                                        DEFAULT_SCHEMA)
 from mediagoblin.tools.response import (render_to_response,
-                                        redirect, redirect_obj, render_404)
+                                        redirect)
 
 import mimetypes
 
-from mediagoblin.plugins.subtitles.tools import open_subtitle,save_subtitle
+from mediagoblin.plugins.subtitles.tools import open_subtitle, save_subtitle
 
 UNSAFE_MIMETYPES = [
         'text/html',

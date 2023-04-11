@@ -38,7 +38,7 @@ This command allows the administrator to upload many media files at once."""
     subparser.epilog = _("""For more information about how to properly run this
 script (and how to format the metadata csv file), read the MediaGoblin
 documentation page on command line uploading
-<http://docs.mediagoblin.org/siteadmin/commandline-upload.html>""")
+<https://docs.mediagoblin.org/en/master/siteadmin/commandline-upload.html>""")
     subparser.add_argument(
         'username',
         help=_("Name of user these media entries belong to"))

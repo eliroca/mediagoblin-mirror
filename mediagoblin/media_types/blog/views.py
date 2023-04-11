@@ -15,37 +15,32 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import logging
-_log = logging.getLogger(__name__)
 
-from datetime import datetime
-
-from werkzeug.exceptions import Forbidden
 from mediagoblin.tools import pluginapi
 
 from mediagoblin import messages, mg_globals
 
 from mediagoblin.media_types.blog import forms as blog_forms
-from mediagoblin.media_types.blog.models import Blog, BlogPostData
+from mediagoblin.media_types.blog.models import Blog
 from mediagoblin.media_types.blog.lib import (
-        may_edit_blogpost, set_blogpost_state, get_all_blogposts_of_blog,
-        get_blog_by_slug)
+    may_edit_blogpost, set_blogpost_state, get_blog_by_slug)
 
-from mediagoblin.decorators import (require_active_login, active_user_from_url,
-                            get_media_entry_by_id, user_may_alter_collection,
-                            get_user_collection, uses_pagination)
+from mediagoblin.decorators import (
+    require_active_login, active_user_from_url, get_media_entry_by_id,
+    uses_pagination)
 from mediagoblin.tools.pagination import Pagination
 from mediagoblin.tools.response import (render_to_response,
                                         redirect, render_404)
 from mediagoblin.tools.translate import pass_to_ugettext as _
-from mediagoblin.tools.template import render_template
 from mediagoblin.tools.text import (
-    convert_to_tag_list_of_dicts, media_tags_as_string, clean_html,
+    convert_to_tag_list_of_dicts, media_tags_as_string,
     cleaned_markdown_conversion)
 
-from mediagoblin.db.util import check_media_slug_used, check_collection_slug_used
-from mediagoblin.db.models import User, Collection, MediaEntry, LocalUser
+from mediagoblin.db.models import MediaEntry, LocalUser
 
 from mediagoblin.notifications import add_comment_subscription
+
+_log = logging.getLogger(__name__)
 
 
 @require_active_login

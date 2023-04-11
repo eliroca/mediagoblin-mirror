@@ -22,11 +22,10 @@ TODO: indexes on foreignkeys, where useful.
 import logging
 import datetime
 
-from sqlalchemy import Column, Integer, Unicode, UnicodeText, DateTime, \
-        Boolean, ForeignKey, UniqueConstraint, PrimaryKeyConstraint, \
-        SmallInteger, Date, types, Float
-from sqlalchemy.orm import relationship, backref, with_polymorphic, validates, \
-        class_mapper
+from sqlalchemy import (
+    Column, Integer, Unicode, UnicodeText, DateTime, Boolean, ForeignKey,
+    UniqueConstraint, PrimaryKeyConstraint, SmallInteger, Date, Float)
+from sqlalchemy.orm import relationship, backref, class_mapper
 from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.sql import and_
 from sqlalchemy.sql.expression import desc
@@ -35,7 +34,7 @@ from sqlalchemy.util import memoized_property
 
 from mediagoblin.db.extratypes import (PathTupleWithSlashes, JSONEncoded,
                                        MutationDict)
-from mediagoblin.db.base import Base, DictReadAttrProxy, FakeCursor
+from mediagoblin.db.base import Base, DictReadAttrProxy
 from mediagoblin.db.mixin import UserMixin, MediaEntryMixin, \
         CollectionMixin, CollectionItemMixin, ActivityMixin, TextCommentMixin, \
         CommentingMixin
@@ -48,6 +47,7 @@ from urllib.parse import urljoin
 from pytz import UTC
 
 _log = logging.getLogger(__name__)
+
 
 class GenericModelReference(Base):
     """

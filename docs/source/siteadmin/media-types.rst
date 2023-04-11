@@ -174,10 +174,10 @@ Raw image
 MediaGoblin can extract and display the JPEG preview from RAW images.
 
 To enable raw image you need to install the Python library ``py3exiv2``. This
-library is not currently available for Debian 10 or 11 but can be installed from
-the Python Package Index after installing the build dependencies::
+library is not currently available for Debian 11 but can be installed from the
+Python Package Index after installing the build dependencies::
 
-    # Debian 10/11
+    # Debian 11
     sudo apt install libexiv2-dev libboost-python-devn
     ./bin/pip install py3pyexiv2
 

@@ -84,8 +84,6 @@ def moderation_users_detail(request):
     ).first()
     active_reports = user.reports_filed_on.filter(
         Report.resolved==None).limit(5)
-    closed_reports = user.reports_filed_on.filter(
-        Report.resolved!=None).all()
     privileges = Privilege.query
     user_banned = UserBan.query.get(user.id)
     ban_form = moderation_forms.BanForm()
@@ -93,11 +91,11 @@ def moderation_users_detail(request):
     return render_to_response(
         request,
         'mediagoblin/moderation/user.html',
-        {'user':user,
+        {'user': user,
          'privileges': privileges,
-         'reports':active_reports,
-         'user_banned':user_banned,
-         'ban_form':ban_form})
+         'reports': active_reports,
+         'user_banned': user_banned,
+         'ban_form': ban_form})
 
 @require_admin_or_moderator_login
 @allow_reporting

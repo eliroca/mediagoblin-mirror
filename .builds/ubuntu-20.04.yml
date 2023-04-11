@@ -1,4 +1,4 @@
-image: debian/bullseye
+image: ubuntu/20.04
 packages:
   # Install bootstrap and configure dependencies.
   - automake
@@ -9,15 +9,13 @@ packages:
 
   # Install make and runtime dependencies.
   - python3-lxml
-  - python3-pillow
+  - python3-pil
 
   # Install test and docs dependencies.
   - python3-pytest
   - python3-pytest-xdist
   - python3-snowballstemmer
   - python3-sphinx
-  - python3-sphinxcontrib.devhelp
-  - python3-sphinxcontrib.qthelp
   - python3-sphinxcontrib.websupport
   - python3-webtest
 

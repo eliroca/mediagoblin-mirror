@@ -40,6 +40,7 @@ MediaGoblin website.  It is written for site administrators.
    siteadmin/production-deployments
    siteadmin/configuration
    siteadmin/upgrading
+   siteadmin/troubleshooting
    siteadmin/media-types
    siteadmin/help
    siteadmin/relnotes
@@ -92,6 +93,7 @@ This chapter contains various information for developers.
 .. toctree::
    :maxdepth: 1
 
+   devel/contributing
    devel/codebase
    devel/storage
    devel/release

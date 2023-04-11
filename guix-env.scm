@@ -107,7 +107,7 @@
 ;;;
 ;;; Run the tests:
 ;;;
-;;;   bin/python -m pytest -rs ./mediagoblin/tests/ --boxed
+;;;   bin/python -m pytest -rs ./mediagoblin/tests/ --forked
 ;;;
 ;;; or:
 ;;;
@@ -123,7 +123,7 @@
 (use-modules (ice-9 match)
              (srfi srfi-1)
              (guix packages)
-             (guix licenses)
+             ((guix licenses) #:prefix license:)
              (guix download)
              (guix git-download)
              (guix build-system gnu)
@@ -177,7 +177,7 @@
              (setenv "PYTHONPATH"
                      (string-append (getcwd) ":"
                                     (getenv "PYTHONPATH")))
-             (invoke "pytest" "mediagoblin/tests" "-rs" "--boxed"
+             (invoke "pytest" "mediagoblin/tests" "-rs" "--forked"
                      ;; Skip the audio tests until updated libsndfile
                      ;; has been merged from core-updates branch.
                      "--deselect=test_audio.py::test_thumbnails"
@@ -207,7 +207,7 @@
        ("python-openid" ,python-openid) ; For OpenID plugin
        ("python-pastescript" ,python-pastescript)
        ("python-pillow" ,python-pillow)
-       ("python-py-bcrypt" ,python-py-bcrypt)
+       ("python-bcrypt" ,python-bcrypt)
        ("python-pyld" ,python-pyld)
        ("python-pytz" ,python-pytz)
        ("python-requests" ,python-requests) ; For batchaddmedia
@@ -233,6 +233,12 @@
        ("python-pygobject" ,python-pygobject)
 
        ;; PDF media.
+       ;;
+       ;; jgart suggests that we'll need to wrap the binaries used in
+       ;; mediagoblin/media_types/pdf/processing.py - pdftocairo, pdfinfo, and
+       ;; unoconv probably need to be wrapped to point to the executable that is
+       ;; in /gnu/store. See this issue for a similar discussion about wrapping
+       ;; binaries with guix: https://issues.guix.gnu.org/50833
        ("poppler" ,poppler)))
     (home-page "https://mediagoblin.org/")
     (synopsis "Web application for media publishing")
@@ -240,6 +246,6 @@
      "MediaGoblin is a free software media publishing platform that anyone can
 run. You can think of it as a decentralized alternative to Flickr, YouTube,
 SoundCloud, etc.")
-    (license agpl3+)))
+    (license (list license:agpl3+ license:cc0))))
 
 mediagoblin
