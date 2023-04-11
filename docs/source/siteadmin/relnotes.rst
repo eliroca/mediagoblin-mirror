@@ -57,7 +57,7 @@ tracker <https://todo.sr.ht/~mediagoblin/mediagoblin>`_ or drop us an email to
 
 **Bug fixes:**
 
-- Fix references to non-existant package.json [trac#5615] (Ben Sturmfels)
+- Fix references to non-existent package.json [trac#5615] (Ben Sturmfels)
 - Remove unneeded shebang from test_processing.py (Elisei Roca)
 - Fix incorrect setuptools install location for db/migrations/env.py (Elisei Roca)
 - Pin version of `jinja2` dependency to avoid AttributeError and Ubuntu installation issues (Dan Helfman, Olivier Mehani)
@@ -65,6 +65,7 @@ tracker <https://todo.sr.ht/~mediagoblin/mediagoblin>`_ or drop us an email to
 - Switch to `pytest --forked` for parallel test runs as `pytest-xdist` 3.0.2 dropped `--boxed` (Ben Sturmfels)
 - Fix encoding of passwords before hashing (Olivier Mehani)
 - Fix remaining bcrypt issue (Olivier Mehani, Elisei Roca)
+- Document need for Nginx `proxy_set_header Host` config [trac#5612] (Ben Sturmfels)
 
 
 0.12.0
